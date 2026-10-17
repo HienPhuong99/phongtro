@@ -83,4 +83,4 @@ className={`py-3.5 px-3 text-right font-bold ${rem > 0 ? 'text-rose-600' : inv.s
 
 ## Đã kiểm tra, không lỗi
 
-Tìm kiếm toàn cục; thu tiền FIFO (giới hạn số tiền, màn hình phân bổ, Tổng quan cập nhật); phiếu báo Zalo/VietQR (cộng tiền, đọc số bằng chữ, ảnh QR); giao diện 375px; console không lỗi; Apps Script `/exec` và `?action=getState` truy cập ẩn danh OK.
+Tìm kiếm toàn cục; thu tiền FIFO (giới hạn số tiền, màn hình phân bổ, Tổng quan cập nhật); phiếu báo Zalo/VietQR (cộng tiền, đọc số bằng chữ, ảnh QR); giao diện 375px; console không lỗi; Apps Script `/exec` mở được (từ 17/10/2026 `getState`/`syncState` bắt buộc mã `SYNC_TOKEN`, xem README).

@@ -31,6 +31,7 @@ function onOpen() {
       .createMenu('🏠 OptiRent Quản Lý Trọ')
       .addItem('🚀 Khởi tạo / Làm mới dữ liệu mẫu', 'setupOptiRentSheets')
       .addItem('📊 Xem báo cáo tổng quan', 'showQuickSummary')
+      .addItem('🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)', 'setupSyncToken')
       .addSeparator()
       .addItem('🌐 Mở giao diện Web App', 'openWebAppModal')
       .addToUi();
@@ -40,39 +41,40 @@ function onOpen() {
 }
 
 /**
+ * Mã bí mật dùng chung giữa Web App và Apps Script.
+ * Lưu trong Script Properties (khóa SYNC_TOKEN), KHÔNG commit vào repo.
+ * Tạo/xem bằng menu "🔑 Tạo / xem mã đồng bộ" trên Google Sheets hoặc chạy setupSyncToken() trong trình soạn thảo.
+ */
+var SYNC_TOKEN_PROPERTY = 'SYNC_TOKEN';
+
+var RAW_STATE_PART_PREFIX = 'RAW_STATE_JSON_';
+var RAW_STATE_CHUNK_SIZE = 45000;
+
+// Web App gửi kèm schema này. Gói dữ liệu khác schema (vd. app Expo cũ) bị từ chối để không ghi đè dữ liệu Web.
+var SYNC_SCHEMA = 'optirent-web-v1';
+
+/**
  * Xử lý HTTP GET:
- * - ?action=getState hoặc ?format=json => Trả về JSON dữ liệu cho Web App
- * - ?action=init => Khởi tạo dữ liệu trên Google Sheets và trả về kết quả JSON
- * - Mặc định => Render giao diện Web App từ Index.html
+ * - ?action=getState&token=... (hoặc ?format=json&token=...) => Trả về JSON dữ liệu (bắt buộc mã đồng bộ)
+ * - Mặc định => Render giao diện Web App từ Index.html (không đọc dữ liệu trên Sheets)
+ * Khởi tạo/nạp lại dữ liệu mẫu chỉ làm được từ menu trên Google Sheets hoặc POST resetSeed có mã đồng bộ.
  */
 function doGet(e) {
   var params = (e && e.parameter) ? e.parameter : {};
   var action = params.action || '';
   var format = params.format || '';
 
-  if (action === 'init') {
-    var initResult = setupOptiRentSheets();
-    return jsonResponse({
-      ok: true,
-      message: 'Đã khởi tạo thành công 7 bảng dữ liệu OptiRent trên Google Sheets',
-      spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
-      result: initResult
-    });
-  }
-
   if (action === 'getState' || format === 'json') {
-    ensureSheetsInitialized();
-    var state = readStateFromSheets();
-    return jsonResponse({
-      ok: true,
-      spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
-      updatedAt: new Date().toISOString(),
-      state: state
-    });
+    if (!isAuthorized(params.token)) {
+      return unauthorizedResponse();
+    }
+    return stateResponse();
   }
 
-  ensureSheetsInitialized();
+  if (action) {
+    return jsonResponse({ ok: false, error: 'Action không hợp lệ: ' + action });
+  }
+
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('OptiRent — Quản lý nhà trọ thông minh')
@@ -81,17 +83,33 @@ function doGet(e) {
 }
 
 /**
- * Xử lý HTTP POST (Đồng bộ dữ liệu 2 chiều từ Web App về Google Sheets)
+ * Xử lý HTTP POST (body JSON gửi dạng text/plain, luôn kèm `token`):
+ * - { action: 'syncState', schema: 'optirent-web-v1', token, state } => Ghi đè dữ liệu trên Sheets
+ * - { action: 'getState', token } => Đọc dữ liệu
+ * - { action: 'resetSeed', token } => Nạp lại dữ liệu mẫu
  */
 function doPost(e) {
   try {
-    ensureSheetsInitialized();
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
-    var action = payload.action || 'syncState';
+    var action = payload.action || '';
 
-    if (action === 'syncState' && payload.state) {
-      writeStateToSheets(payload.state);
+    if (!isAuthorized(payload.token)) {
+      return unauthorizedResponse();
+    }
+
+    if (action === 'getState') {
+      return stateResponse();
+    }
+
+    if (action === 'syncState') {
+      var invalid = validateSyncPayload(payload);
+      if (invalid) {
+        return jsonResponse({ ok: false, error: invalid });
+      }
+      withScriptLock(function() {
+        writeStateToSheets(payload.state);
+      });
       return jsonResponse({
         ok: true,
         action: 'syncState',
@@ -101,7 +119,9 @@ function doPost(e) {
     }
 
     if (action === 'resetSeed') {
-      setupOptiRentSheets();
+      withScriptLock(function() {
+        setupOptiRentSheets();
+      });
       return jsonResponse({
         ok: true,
         action: 'resetSeed',
@@ -121,20 +141,93 @@ function doPost(e) {
   }
 }
 
-function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+// Chỉ đọc, không ghi: Sheets chưa có dữ liệu thì readStateFromSheets trả về dữ liệu mẫu
+function stateResponse() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return jsonResponse({
+    ok: true,
+    spreadsheetId: ss.getId(),
+    spreadsheetUrl: ss.getUrl(),
+    updatedAt: new Date().toISOString(),
+    state: readStateFromSheets()
+  });
 }
 
 /**
- * Đảm bảo Google Sheets đã có đủ các bảng dữ liệu
+ * Kiểm tra mã đồng bộ. Chưa cấu hình SYNC_TOKEN thì từ chối mọi yêu cầu (fail closed).
  */
-function ensureSheetsInitialized() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var roomSheet = ss.getSheetByName(SHEET_NAMES.ROOMS);
-  if (!roomSheet || roomSheet.getLastRow() < 2) {
-    setupOptiRentSheets();
+function isAuthorized(token) {
+  var expected = PropertiesService.getScriptProperties().getProperty(SYNC_TOKEN_PROPERTY);
+  if (!expected || typeof token !== 'string' || token.length !== expected.length) {
+    return false;
   }
+  var diff = 0;
+  for (var i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ token.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function unauthorizedResponse() {
+  return jsonResponse({
+    ok: false,
+    error: 'UNAUTHORIZED: Thiếu hoặc sai mã đồng bộ (SYNC_TOKEN).'
+  });
+}
+
+/**
+ * Chỉ nhận đúng cấu trúc dữ liệu của Web App để tránh ghi đè bằng dữ liệu sai schema.
+ */
+function validateSyncPayload(payload) {
+  if (payload.schema !== SYNC_SCHEMA) {
+    return 'Schema dữ liệu không được hỗ trợ: ' + payload.schema + ' (cần ' + SYNC_SCHEMA + ')';
+  }
+  var state = payload.state;
+  if (!state || typeof state !== 'object') {
+    return 'Thiếu payload.state';
+  }
+  var keys = ['properties', 'rooms', 'tenants', 'vehicles', 'contracts', 'invoices', 'transactions'];
+  for (var i = 0; i < keys.length; i++) {
+    if (!Array.isArray(state[keys[i]])) {
+      return 'payload.state.' + keys[i] + ' phải là mảng';
+    }
+  }
+  return '';
+}
+
+function withScriptLock(fn) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Tạo mã đồng bộ ngẫu nhiên (nếu chưa có) và hiển thị để dán vào trang Cài đặt của Web App.
+ */
+function setupSyncToken() {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty(SYNC_TOKEN_PROPERTY);
+  if (!token) {
+    token = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+    props.setProperty(SYNC_TOKEN_PROPERTY, token);
+  }
+  var message = 'Mã đồng bộ (SYNC_TOKEN) — dán vào Web App > Cài đặt > Mã đồng bộ:\n\n' + token +
+    '\n\nĐổi mã: xoá khóa SYNC_TOKEN trong Project Settings > Script Properties rồi chạy lại.';
+  try {
+    SpreadsheetApp.getUi().alert(message);
+  } catch (err) {
+    Logger.log(message);
+  }
+  return token;
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -363,9 +456,19 @@ function writeStateToSheets(state) {
     ['PHI_RAC_THANG', 30000, 'Phí rác sinh hoạt (VNĐ/tháng)'],
     ['PHI_WIFI_THANG', 100000, 'Phí Internet/Wifi (VNĐ/tháng)'],
     ['NGAN_HANG_VIETQR', 'Vietcombank - 1029384756 - NGUYEN QUAN LY TRO', 'Tài khoản nhận thanh toán QR'],
-    ['CAP_NHAT_CUOI', new Date().toISOString(), 'Thời điểm đồng bộ gần nhất'],
-    ['RAW_STATE_JSON', JSON.stringify(state), 'Dữ liệu JSON đồng bộ 2 chiều với Web App']
+    ['CAP_NHAT_CUOI', new Date().toISOString(), 'Thời điểm đồng bộ gần nhất']
   ];
+  // Mỗi ô Google Sheets giới hạn 50.000 ký tự => chia RAW_STATE_JSON thành nhiều phần
+  var rawJson = JSON.stringify(state);
+  var partCount = Math.max(1, Math.ceil(rawJson.length / RAW_STATE_CHUNK_SIZE));
+  for (var p = 0; p < partCount; p++) {
+    settingsRows.push([
+      RAW_STATE_PART_PREFIX + (p + 1),
+      // Tiền tố '~' để Sheets không hiểu nhầm phần JSON thành số/ngày/công thức (=, +, -)
+      '~' + rawJson.substr(p * RAW_STATE_CHUNK_SIZE, RAW_STATE_CHUNK_SIZE),
+      'Dữ liệu JSON đồng bộ với Web App (phần ' + (p + 1) + '/' + partCount + ')'
+    ]);
+  }
   writeTable(ss, SHEET_NAMES.SETTINGS, ['Khóa Cấu Hình', 'Giá Trị', 'Mô Tả'], settingsRows);
 }
 
@@ -377,13 +480,21 @@ function readStateFromSheets() {
   var settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
   if (settingsSheet && settingsSheet.getLastRow() >= 2) {
     var values = settingsSheet.getDataRange().getValues();
+    var raw = '';
     for (var i = 1; i < values.length; i++) {
-      if (values[i][0] === 'RAW_STATE_JSON' && values[i][1]) {
-        try {
-          return JSON.parse(String(values[i][1]));
-        } catch (err) {
-          Logger.log('Lỗi parse RAW_STATE_JSON: ' + err);
-        }
+      var key = String(values[i][0]);
+      // Hỗ trợ cả định dạng cũ (1 ô RAW_STATE_JSON) lẫn định dạng chia phần RAW_STATE_JSON_1..N
+      if (key === 'RAW_STATE_JSON') {
+        raw += String(values[i][1]);
+      } else if (key.indexOf(RAW_STATE_PART_PREFIX) === 0) {
+        raw += String(values[i][1]).replace(/^~/, '');
+      }
+    }
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (err) {
+        Logger.log('Lỗi parse RAW_STATE_JSON: ' + err);
       }
     }
   }

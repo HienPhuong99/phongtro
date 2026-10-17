@@ -12,6 +12,8 @@ Mỗi khi xong 1 task, tự động làm (không cần hỏi lại):
 
 Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
 
+Lỗi đã biết đang chờ sửa: [docs/BUGS-TODO.md](docs/BUGS-TODO.md). Sửa xong mục nào thì đánh dấu mục đó, hết thì xoá file.
+
 ## Deploy
 
 - **Lệnh triển khai toàn diện (Google Sheets 7 trang tính + Apps Script Web App + GitHub Pages + Kiểm thử E2E `agent-browser`)**:

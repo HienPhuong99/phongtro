@@ -1,0 +1,3960 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import QRCode from 'qrcode';
+import {
+  BarChart3,
+  Calendar,
+  LayoutGrid,
+  Users,
+  FileText,
+  Receipt,
+  Wallet,
+  TrendingUp,
+  Settings,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  Droplets,
+  Send,
+  AlertTriangle,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  Copy,
+  Download,
+  Eye,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  RefreshCw,
+  Building2,
+  Car,
+  Sparkles,
+  ExternalLink,
+  RotateCcw,
+} from 'lucide-react';
+import {
+  NavTab,
+  Property,
+  Room,
+  Tenant,
+  Vehicle,
+  Contract,
+  Invoice,
+  CashTransaction,
+  FifoAllocatedItem,
+} from './types';
+import {
+  SEED_PROPERTIES,
+  SEED_ROOMS,
+  SEED_TENANTS,
+  SEED_VEHICLES,
+  SEED_CONTRACTS,
+  SEED_INVOICES,
+  SEED_TRANSACTIONS,
+  SEED_MONTHLY_CHART,
+  SEED_CALENDAR_EVENTS,
+} from './data/seedData';
+import { formatVND, formatNumberInput, removeAccents } from './utils/format';
+import {
+  CreateContractModal,
+  MeterReadingModal,
+  InvoiceZaloModal,
+  CollectPaymentModal,
+  TempResidenceModal,
+} from './components/Modals';
+
+const STORAGE_KEY = 'optirent_state_v1';
+
+// URL Web App Google Apps Script (sẽ tự động cập nhật khi chạy script deploy-sheets)
+export const DEFAULT_APPS_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
+export const DEFAULT_GOOGLE_SHEETS_URL =
+  'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
+
+export function App() {
+  // Khởi tạo state từ LocalStorage hoặc Seed Data chuẩn video
+  const [properties, setProperties] = useState<Property[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).properties || SEED_PROPERTIES;
+      } catch {
+        return SEED_PROPERTIES;
+      }
+    }
+    return SEED_PROPERTIES;
+  });
+
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('prop-binh-an');
+  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [financeExpanded, setFinanceExpanded] = useState<boolean>(true);
+  const [globalSearch, setGlobalSearch] = useState<string>('');
+  const [isMobilePreview, setIsMobilePreview] = useState<boolean>(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'mobile'
+  );
+  const [isExpoQrModalOpen, setIsExpoQrModalOpen] = useState<boolean>(false);
+  const [expoQrDataUrl, setExpoQrDataUrl] = useState<string>('');
+  const [pwaQrDataUrl, setPwaQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    QRCode.toDataURL('exp://192.168.0.23:8081', { width: 220, margin: 1 })
+      .then(setExpoQrDataUrl)
+      .catch(() => {});
+    QRCode.toDataURL('https://hienphuong99.github.io/phongtro/?mode=mobile', { width: 220, margin: 1 })
+      .then(setPwaQrDataUrl)
+      .catch(() => {});
+  }, []);
+
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).rooms || SEED_ROOMS;
+      } catch {
+        return SEED_ROOMS;
+      }
+    }
+    return SEED_ROOMS;
+  });
+
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).tenants || SEED_TENANTS;
+      } catch {
+        return SEED_TENANTS;
+      }
+    }
+    return SEED_TENANTS;
+  });
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).vehicles || SEED_VEHICLES;
+      } catch {
+        return SEED_VEHICLES;
+      }
+    }
+    return SEED_VEHICLES;
+  });
+
+  const [contracts, setContracts] = useState<Contract[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).contracts || SEED_CONTRACTS;
+      } catch {
+        return SEED_CONTRACTS;
+      }
+    }
+    return SEED_CONTRACTS;
+  });
+
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).invoices || SEED_INVOICES;
+      } catch {
+        return SEED_INVOICES;
+      }
+    }
+    return SEED_INVOICES;
+  });
+
+  const [transactions, setTransactions] = useState<CashTransaction[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved).transactions || SEED_TRANSACTIONS;
+      } catch {
+        return SEED_TRANSACTIONS;
+      }
+    }
+    return SEED_TRANSACTIONS;
+  });
+
+  const [sheetsWebAppUrl, setSheetsWebAppUrl] = useState<string>(() => {
+    return localStorage.getItem('optirent_sheets_url') || DEFAULT_APPS_SCRIPT_URL;
+  });
+  const [syncStatus, setSyncStatus] = useState<string>('');
+
+  // Sub-filters & view states
+  const [roomViewMode, setRoomViewMode] = useState<'floor' | 'list'>('floor');
+  const [roomStatusFilter, setRoomStatusFilter] = useState<string>('all');
+  const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
+  const [tenantSearch, setTenantSearch] = useState<string>('');
+  const [contractFilter, setContractFilter] = useState<string>('active');
+  const [invoiceMonth, setInvoiceMonth] = useState<'2026-09' | '2026-10' | '2026-11'>(
+    '2026-11'
+  );
+  const [invoiceSubTab, setInvoiceSubTab] = useState<'by_room' | 'all'>('by_room');
+  const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
+  const [reportGranularity, setReportGranularity] = useState<
+    'day' | 'week' | 'month' | 'year'
+  >('month');
+  const [hoveredChartIdx, setHoveredChartIdx] = useState<number | null>(null);
+
+  // Modals state
+  const [isContractModalOpen, setIsContractModalOpen] = useState<boolean>(false);
+  const [contractInitialRoom, setContractInitialRoom] = useState<string | undefined>(
+    undefined
+  );
+  const [isMeterModalOpen, setIsMeterModalOpen] = useState<boolean>(false);
+  const [meterInitialRoom, setMeterInitialRoom] = useState<string | undefined>(undefined);
+  const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
+  const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
+  const [isTempResidenceOpen, setIsTempResidenceOpen] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3200);
+  };
+
+  // Lưu tự động vào LocalStorage
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        properties,
+        rooms,
+        tenants,
+        vehicles,
+        contracts,
+        invoices,
+        transactions,
+      })
+    );
+  }, [properties, rooms, tenants, vehicles, contracts, invoices, transactions]);
+
+  const currentProperty = useMemo(
+    () => properties.find((p) => p.id === selectedPropertyId) || properties[0],
+    [properties, selectedPropertyId]
+  );
+
+  // Các dữ liệu tính toán động cho Tổng quan & các trang
+  const propertyRooms = useMemo(
+    () => rooms.filter((r) => r.propertyId === currentProperty.id),
+    [rooms, currentProperty.id]
+  );
+
+  const occupiedRooms = useMemo(
+    () => propertyRooms.filter((r) => r.status === 'occupied'),
+    [propertyRooms]
+  );
+  const vacantRooms = useMemo(
+    () => propertyRooms.filter((r) => r.status === 'vacant'),
+    [propertyRooms]
+  );
+  const maintenanceRooms = useMemo(
+    () => propertyRooms.filter((r) => r.status === 'maintenance'),
+    [propertyRooms]
+  );
+
+  const occupancyRate = useMemo(() => {
+    if (propertyRooms.length === 0) return 0;
+    return Math.round((occupiedRooms.length / propertyRooms.length) * 100);
+  }, [occupiedRooms.length, propertyRooms.length]);
+
+  const totalMonthlyContractRent = useMemo(
+    () => occupiedRooms.reduce((sum, r) => sum + r.price, 0),
+    [occupiedRooms]
+  );
+
+  const monthlyVacancyLoss = useMemo(
+    () => vacantRooms.reduce((sum, r) => sum + r.price, 0),
+    [vacantRooms]
+  );
+
+  // Thu hôm nay (ngày 11/10/2026)
+  const collectedToday = useMemo(
+    () =>
+      transactions
+        .filter((t) => t.date === '11/10/2026' && t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0),
+    [transactions]
+  );
+
+  // Lợi nhuận tháng này (tháng 10/2026)
+  const currentMonthProfit = useMemo(() => {
+    const octTx = transactions.filter((t) => t.date.endsWith('/10/2026'));
+    const inc = octTx
+      .filter((t) => t.type === 'income')
+      .reduce((s, t) => s + t.amount, 0);
+    const exp = octTx
+      .filter((t) => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+    return inc - exp;
+  }, [transactions]);
+
+  // Hóa đơn quá hạn (kỳ 2026-09 chưa thu đủ)
+  const overdueInvoices = useMemo(
+    () =>
+      invoices.filter(
+        (i) => i.billingMonth === '2026-09' && i.totalAmount - i.paidAmount > 0
+      ),
+    [invoices]
+  );
+  const overdueTotalAmount = useMemo(
+    () =>
+      overdueInvoices.reduce(
+        (sum, i) => sum + Math.max(0, i.totalAmount - i.paidAmount),
+        0
+      ),
+    [overdueInvoices]
+  );
+
+  // Hóa đơn tới hạn trong 5 ngày (kỳ 2026-10 đã lập hóa đơn, chưa thu đủ)
+  const dueSoonInvoices = useMemo(
+    () =>
+      invoices.filter(
+        (i) =>
+          i.billingMonth === '2026-10' &&
+          i.status !== 'draft' &&
+          i.totalAmount - i.paidAmount > 0
+      ),
+    [invoices]
+  );
+  const dueSoonTotalAmount = useMemo(
+    () =>
+      dueSoonInvoices.reduce(
+        (sum, i) => sum + Math.max(0, i.totalAmount - i.paidAmount),
+        0
+      ),
+    [dueSoonInvoices]
+  );
+
+  // Hóa đơn nháp chờ lập (P103 kỳ 2026-10)
+  const draftInvoices = useMemo(
+    () => invoices.filter((i) => i.status === 'draft'),
+    [invoices]
+  );
+
+  // Hóa đơn chưa gửi Zalo (trong kỳ 2026-10)
+  const unsentInvoices = useMemo(
+    () =>
+      invoices.filter(
+        (i) => i.billingMonth === '2026-10' && i.status !== 'draft' && !i.sentZalo
+      ),
+    [invoices]
+  );
+
+  // Khoản cọc chờ hoàn trả lại khách (P202 - Huỳnh Thị Hà - 909.334 đ)
+  const pendingRefundContracts = useMemo(
+    () =>
+      contracts.filter(
+        (c) =>
+          c.status === 'terminated' &&
+          !c.depositRefunded &&
+          (c.depositRefundAmount || 0) > 0
+      ),
+    [contracts]
+  );
+  const pendingRefundTotal = useMemo(
+    () =>
+      pendingRefundContracts.reduce(
+        (sum, c) => sum + (c.depositRefundAmount || 0),
+        0
+      ),
+    [pendingRefundContracts]
+  );
+
+  // Toàn bộ hóa đơn còn nợ (gồm cả 2026-09, 2026-10, 2026-11 trừ nháp)
+  const allUnpaidInvoices = useMemo(
+    () =>
+      invoices.filter(
+        (i) => i.status !== 'draft' && i.totalAmount - i.paidAmount > 0
+      ),
+    [invoices]
+  );
+  const allUnpaidTotalAmount = useMemo(
+    () =>
+      allUnpaidInvoices.reduce(
+        (sum, i) => sum + Math.max(0, i.totalAmount - i.paidAmount),
+        0
+      ),
+    [allUnpaidInvoices]
+  );
+
+  // Tính công nợ và đã thu theo từng phòng (hiển thị ở bảng Khách thuê & Báo cáo)
+  const roomFinancialStats = useMemo(() => {
+    const map: Record<string, { paid: number; debt: number }> = {};
+    // Tiền đã thu lịch sử (từ tháng 5 -> tháng 9)
+    const historicalPaidByRoom: Record<string, number> = {
+      P101: 11773000,
+      P102: 17221800,
+      P103: 11020800,
+      P104: 12174600,
+      P201: 11888400,
+      P203: 12421200,
+      P301: 11037000,
+      P302: 10421000,
+      P303: 11233600,
+      A204: 11773000,
+      A205: 17221800,
+    };
+
+    rooms.forEach((r) => {
+      map[r.code] = {
+        paid: historicalPaidByRoom[r.code] || 0,
+        debt: 0,
+      };
+    });
+
+    // Cộng công nợ từ các kỳ 2026-09 và 2026-10 (khớp hoàn toàn frame_20s.png!)
+    invoices.forEach((inv) => {
+      if (inv.status === 'draft') return;
+      if (inv.billingMonth === '2026-09' || inv.billingMonth === '2026-10') {
+        const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
+        if (!map[inv.roomCode]) {
+          map[inv.roomCode] = { paid: 0, debt: 0 };
+        }
+        map[inv.roomCode].debt += rem;
+      }
+    });
+
+    // Thiết lập mặc định cho A204, A205 giống frame_20s.png
+    if (!map['A204']) map['A204'] = { paid: 11773000, debt: 6236000 };
+    if (!map['A205']) map['A205'] = { paid: 17221800, debt: 6670700 };
+
+    return map;
+  }, [rooms, invoices]);
+
+  // ============================================================================
+  // HÀNH ĐỘNG NGHIỆP VỤ (Tạo HĐ, Ghi điện nước, Thu tiền FIFO, Hoàn cọc, Đồng bộ)
+  // ============================================================================
+
+  // 1. Tạo hợp đồng mới
+  const handleCreateContract = (payload: {
+    roomCode: string;
+    tenantName: string;
+    tenantPhone: string;
+    tenantCccd: string;
+    startDate: string;
+    endDate: string;
+    signDate: string;
+    paymentCycle: string;
+    billingCycle: 'calendar_month' | 'move_in_date';
+    rentAmount: number;
+    depositAmount: number;
+    depositMode: 'received_today' | 'received_before' | 'pending';
+    coTenantNames: string[];
+    firstPeriodRent: number;
+    firstPeriodLabel: string;
+  }) => {
+    const newContractCode = `HD-${String(contracts.length + 1).padStart(5, '0')}`;
+    const newTenantId = `t-${Date.now()}`;
+    const newTenantCode = `KH-${String(tenants.length + 1).padStart(5, '0')}`;
+
+    const newContract: Contract = {
+      id: `c-${Date.now()}`,
+      code: newContractCode,
+      propertyId: currentProperty.id,
+      roomCode: payload.roomCode,
+      tenantId: newTenantId,
+      tenantName: payload.tenantName,
+      tenantPhone: payload.tenantPhone,
+      coTenantNames: payload.coTenantNames,
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      signDate: payload.signDate,
+      paymentCycle: payload.paymentCycle,
+      billingCycle: payload.billingCycle,
+      rentAmount: payload.rentAmount,
+      depositAmount: payload.depositAmount,
+      depositMode: payload.depositMode,
+      status: 'active',
+      daysRemaining: 365,
+    };
+
+    setContracts((prev) => [newContract, ...prev]);
+
+    // Cập nhật trạng thái phòng sang Đã thuê
+    setRooms((prev) =>
+      prev.map((r) =>
+        r.code === payload.roomCode
+          ? {
+              ...r,
+              status: 'occupied',
+              price: payload.rentAmount,
+              deposit: payload.depositAmount,
+              tenantId: newTenantId,
+              tenantName: payload.tenantName,
+              tenantPhone: payload.tenantPhone,
+              contractCode: newContractCode,
+            }
+          : r
+      )
+    );
+
+    // Thêm khách thuê mới nếu chưa có
+    setTenants((prev) => [
+      {
+        id: newTenantId,
+        code: newTenantCode,
+        propertyId: currentProperty.id,
+        name: payload.tenantName,
+        phone: payload.tenantPhone,
+        cccd: payload.tenantCccd,
+        roomCode: payload.roomCode,
+        contractCode: newContractCode,
+        contractEndDate: payload.endDate,
+        role: 'representative',
+        status: 'active',
+        hasCccdPhoto: false,
+        tempResidenceDeclared: true,
+      },
+      ...prev,
+    ]);
+
+    // Nếu vừa nhận tiền cọc hôm nay, ghi vào sổ thu chi
+    if (payload.depositMode === 'received_today' && payload.depositAmount > 0) {
+      setTransactions((prev) => [
+        {
+          id: `tx-dep-${Date.now()}`,
+          propertyId: currentProperty.id,
+          date: payload.signDate,
+          isoDate: '2026-10-11',
+          type: 'income',
+          category: 'Thu tiền cọc',
+          roomCode: payload.roomCode,
+          description: `Thu tiền cọc phòng ${payload.roomCode} - HĐ ${newContractCode}`,
+          amount: payload.depositAmount,
+          method: 'Chuyển khoản',
+        },
+        ...prev,
+      ]);
+    }
+
+    showToast(
+      `Đã tạo hợp đồng ${newContractCode} cho phòng ${payload.roomCode} (Kỳ đầu: ${formatVND(
+        payload.firstPeriodRent
+      )})`
+    );
+  };
+
+  // 2. Lưu chỉ số điện nước & lập hóa đơn hàng loạt
+  const handleSaveReadingsAndCreateInvoices = (
+    readings: Record<string, { elecNew: number; waterNew: number; photo?: string }>
+  ) => {
+    setInvoices((prev) =>
+      prev.map((inv) => {
+        if (inv.billingMonth !== invoiceMonth) return inv;
+        const rData = readings[inv.roomCode];
+        if (!rData) {
+          return inv.status === 'draft' ? { ...inv, status: 'unpaid' } : inv;
+        }
+        const elecUsage = Math.max(0, rData.elecNew - inv.elecOld);
+        const waterUsage = Math.max(0, rData.waterNew - inv.waterOld);
+        const elecAmount = elecUsage * inv.elecRate;
+        const waterAmount = waterUsage * inv.waterRate;
+        const totalAmount =
+          inv.rentAmount +
+          elecAmount +
+          waterAmount +
+          inv.trashAmount +
+          inv.internetAmount +
+          inv.vehicleAmount;
+
+        return {
+          ...inv,
+          elecNew: rData.elecNew,
+          elecUsage,
+          elecAmount,
+          waterNew: rData.waterNew,
+          waterUsage,
+          waterAmount,
+          totalAmount,
+          status: inv.paidAmount >= totalAmount ? 'paid' : 'unpaid',
+          meterPhoto: rData.photo || inv.meterPhoto,
+        };
+      })
+    );
+    showToast(`Đã cập nhật chỉ số điện nước và lập hóa đơn kỳ ${invoiceMonth}!`);
+  };
+
+  // 3. Thu tiền tự động trừ vào hóa đơn cũ nhất trước (FIFO)
+  const handleConfirmCollectFIFO = (payload: {
+    roomCode: string;
+    amount: number;
+    paymentDate: string;
+    method: 'Chuyển khoản' | 'Tiền mặt';
+    note: string;
+    billImage?: string;
+  }): FifoAllocatedItem[] => {
+    // Lấy danh sách hóa đơn chưa thu đủ của phòng đó, sắp xếp từ kỳ cũ nhất (2026-09 -> 2026-10 -> 2026-11)
+    const roomUnpaid = invoices
+      .filter(
+        (i) =>
+          i.roomCode === payload.roomCode &&
+          i.status !== 'draft' &&
+          i.totalAmount - i.paidAmount > 0
+      )
+      .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
+
+    let remainingMoney = payload.amount;
+    const allocatedItems: FifoAllocatedItem[] = [];
+    const updatedMap: Record<string, { addPaid: number; newStatus: Invoice['status'] }> =
+      {};
+    const newTxList: CashTransaction[] = [];
+
+    for (const inv of roomUnpaid) {
+      if (remainingMoney <= 0) break;
+      const needed = Math.max(0, inv.totalAmount - inv.paidAmount);
+      const take = Math.min(remainingMoney, needed);
+      if (take > 0) {
+        remainingMoney -= take;
+        const newPaid = inv.paidAmount + take;
+        const fullyPaid = newPaid >= inv.totalAmount;
+        updatedMap[inv.id] = {
+          addPaid: take,
+          newStatus: fullyPaid ? 'paid' : 'partial',
+        };
+        allocatedItems.push({
+          invoiceId: inv.id,
+          invoiceCode: inv.code,
+          monthLabel: inv.billingMonth.replace('-', '/'),
+          amountAllocated: take,
+          fullyPaid,
+        });
+        newTxList.push({
+          id: `tx-${inv.code}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          propertyId: currentProperty.id,
+          date: payload.paymentDate,
+          isoDate: '2026-10-11',
+          type: 'income',
+          category: 'Thu tiền hóa đơn',
+          roomCode: payload.roomCode,
+          invoiceCode: inv.code,
+          description: `Thu tiền phòng ${payload.roomCode} - HĐ ${inv.code}`,
+          amount: take,
+          method: payload.method,
+          billImage: payload.billImage,
+        });
+      }
+    }
+
+    setInvoices((prev) =>
+      prev.map((inv) => {
+        const up = updatedMap[inv.id];
+        if (!up) return inv;
+        return {
+          ...inv,
+          paidAmount: inv.paidAmount + up.addPaid,
+          status: up.newStatus,
+        };
+      })
+    );
+
+    // Đưa các phiếu thu mới lên đầu danh sách Hoạt động gần đây (giống giây 00:51-00:54)
+    setTransactions((prev) => [...newTxList.reverse(), ...prev]);
+
+    showToast(
+      `Đã thu ${formatVND(payload.amount)} phòng ${payload.roomCode} (tự trừ ${
+        allocatedItems.length
+      } hóa đơn cũ nhất trước)`
+    );
+
+    return allocatedItems;
+  };
+
+  // 4. Hoàn trả tiền cọc cho khách đã trả phòng
+  const handleMarkDepositRefunded = (contract: Contract) => {
+    const refundAmt = contract.depositRefundAmount || 0;
+    setContracts((prev) =>
+      prev.map((c) =>
+        c.id === contract.id ? { ...c, depositRefunded: true } : c
+      )
+    );
+    if (refundAmt > 0) {
+      setTransactions((prev) => [
+        {
+          id: `tx-refund-${Date.now()}`,
+          propertyId: currentProperty.id,
+          date: '11/10/2026',
+          isoDate: '2026-10-11',
+          type: 'expense',
+          category: 'Hoàn tiền cọc',
+          roomCode: contract.roomCode,
+          description: `Hoàn trả tiền cọc phòng ${contract.roomCode} (${contract.tenantName})`,
+          amount: refundAmt,
+          method: 'Chuyển khoản',
+        },
+        ...prev,
+      ]);
+    }
+    showToast(
+      `Đã xác nhận chuyển trả ${formatVND(refundAmt)} tiền cọc cho ${contract.tenantName}!`
+    );
+  };
+
+  // 5. Đồng bộ 2 chiều với Google Sheets Web App (Apps Script)
+  const handleSyncGoogleSheets = async () => {
+    setSyncStatus('Đang đồng bộ lên Google Sheets...');
+    try {
+      const payload = {
+        action: 'SYNC_ALL',
+        timestamp: new Date().toISOString(),
+        property: currentProperty,
+        rooms,
+        tenants,
+        vehicles,
+        contracts,
+        invoices,
+        transactions,
+      };
+      if (sheetsWebAppUrl && sheetsWebAppUrl.startsWith('https://script.google.com')) {
+        await fetch(sheetsWebAppUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+        });
+      }
+      setSyncStatus('Đã đồng bộ thành công với Google Sheets lúc ' + new Date().toLocaleTimeString('vi-VN'));
+      showToast('Đã đồng bộ toàn bộ 6 phân hệ lên Google Sheets!');
+    } catch {
+      setSyncStatus('Đã lưu cục bộ & hàng đợi đồng bộ Google Sheets.');
+      showToast('Đã lưu dữ liệu đồng bộ!');
+    }
+  };
+
+  // 6. Khôi phục dữ liệu mẫu gốc của video
+  const handleResetDemoData = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setProperties(SEED_PROPERTIES);
+    setRooms(SEED_ROOMS);
+    setTenants(SEED_TENANTS);
+    setVehicles(SEED_VEHICLES);
+    setContracts(SEED_CONTRACTS);
+    setInvoices(SEED_INVOICES);
+    setTransactions(SEED_TRANSACTIONS);
+    showToast('Đã khôi phục dữ liệu gốc chuẩn video Phongtro.mp4!');
+  };
+
+  // Kết quả tìm kiếm nhanh trên thanh Topbar
+  const searchResults = useMemo(() => {
+    const q = removeAccents(globalSearch.trim());
+    if (!q) return [];
+    const results: Array<{
+      id: string;
+      label: string;
+      sub: string;
+      badge: string;
+      onClick: () => void;
+    }> = [];
+
+    rooms.forEach((r) => {
+      if (
+        removeAccents(r.code).includes(q) ||
+        removeAccents(r.tenantName || '').includes(q)
+      ) {
+        results.push({
+          id: `sr-r-${r.id}`,
+          label: `Phòng ${r.code} (${r.tenantName || 'Trống'})`,
+          sub: `${formatVND(r.price)}/tháng · Tầng ${r.floor}`,
+          badge: 'Phòng',
+          onClick: () => {
+            setActiveTab('rooms');
+            setGlobalSearch('');
+          },
+        });
+      }
+    });
+
+    tenants.forEach((t) => {
+      if (
+        removeAccents(t.name).includes(q) ||
+        t.phone.includes(q) ||
+        t.cccd.includes(q)
+      ) {
+        results.push({
+          id: `sr-t-${t.id}`,
+          label: `${t.name} (${t.roomCode})`,
+          sub: `SĐT: ${t.phone} · CCCD: ${t.cccd}`,
+          badge: 'Khách thuê',
+          onClick: () => {
+            setActiveTab('tenants');
+            setTenantSubTab('tenants');
+            setGlobalSearch('');
+          },
+        });
+      }
+    });
+
+    invoices.forEach((inv) => {
+      if (
+        removeAccents(inv.code).includes(q) ||
+        removeAccents(inv.roomCode).includes(q)
+      ) {
+        results.push({
+          id: `sr-i-${inv.id}`,
+          label: `${inv.code} · Phòng ${inv.roomCode} (${inv.billingMonth})`,
+          sub: `Tổng: ${formatVND(inv.totalAmount)} · Khách: ${inv.tenantName}`,
+          badge: 'Hóa đơn',
+          onClick: () => {
+            setInvoiceMonth(inv.billingMonth);
+            setActiveTab('invoices');
+            setGlobalSearch('');
+          },
+        });
+      }
+    });
+
+    return results.slice(0, 8);
+  }, [globalSearch, rooms, tenants, invoices]);
+
+  // ============================================================================
+  // RENDER TỪNG MÀN HÌNH CHÍNH
+  // ============================================================================
+
+  // 1. TỔNG QUAN (Chuẩn giây 00:00 - 00:05 & 00:50 - 00:54)
+  const renderOverview = () => {
+    const todoItems = [
+      {
+        id: 'todo-1',
+        borderColor: 'border-l-amber-400',
+        icon: <Droplets className="w-4 h-4 text-amber-500" />,
+        iconBg: 'bg-amber-50',
+        title: '1 phòng chưa ghi chỉ số tháng này',
+        subtitle: 'P204',
+        actionLabel: 'Ghi chỉ số',
+        onClick: () => {
+          setMeterInitialRoom('P204');
+          setIsMeterModalOpen(true);
+        },
+      },
+      {
+        id: 'todo-2',
+        borderColor: 'border-l-blue-500',
+        icon: <Receipt className="w-4 h-4 text-blue-600" />,
+        iconBg: 'bg-blue-50',
+        title: `${draftInvoices.length || 1} phòng chưa lập hóa đơn tháng này`,
+        subtitle: 'Phòng đã ghi chỉ số sẽ tính ra tiền ngay.',
+        actionLabel: 'Lập hóa đơn',
+        onClick: () => {
+          setInvoiceMonth('2026-10');
+          setActiveTab('invoices');
+        },
+      },
+      {
+        id: 'todo-3',
+        borderColor: 'border-l-blue-500',
+        icon: <Send className="w-4 h-4 text-blue-600" />,
+        iconBg: 'bg-blue-50',
+        title: `${unsentInvoices.length} hóa đơn chưa gửi cho khách`,
+        subtitle: 'Sao chép tin nhắn kèm mã QR rồi gửi qua Zalo.',
+        actionLabel: 'Gửi',
+        onClick: () => {
+          setInvoiceMonth('2026-11');
+          setActiveTab('invoices');
+        },
+      },
+      {
+        id: 'todo-4',
+        borderColor: 'border-l-rose-500',
+        icon: <AlertTriangle className="w-4 h-4 text-rose-500" />,
+        iconBg: 'bg-rose-50',
+        title: `${overdueInvoices.length} hóa đơn quá hạn - ${formatVND(
+          overdueTotalAmount
+        )}`,
+        subtitle: 'Đã qua hạn thanh toán mà chưa thu đủ.',
+        actionLabel: 'Xem công nợ',
+        onClick: () => {
+          setFinanceExpanded(true);
+          setActiveTab('finance-debts');
+        },
+      },
+      {
+        id: 'todo-5',
+        borderColor: 'border-l-amber-400',
+        icon: <Clock className="w-4 h-4 text-amber-600" />,
+        iconBg: 'bg-amber-50',
+        title: `${dueSoonInvoices.length} hóa đơn tới hạn trong 5 ngày - ${formatVND(
+          dueSoonTotalAmount
+        )}`,
+        subtitle: 'Nhắc trước để khách kịp chuẩn bị, đỡ phải đòi khi đã quá hạn.',
+        actionLabel: 'Thu nợ',
+        onClick: () => {
+          setInvoiceMonth('2026-10');
+          setActiveTab('invoices');
+        },
+      },
+      {
+        id: 'todo-6',
+        borderColor: 'border-l-amber-400',
+        icon: <Wallet className="w-4 h-4 text-amber-600" />,
+        iconBg: 'bg-amber-50',
+        title: `${pendingRefundContracts.length} khoản cọc chờ trả lại khách - ${formatVND(
+          pendingRefundTotal
+        )}`,
+        subtitle:
+          pendingRefundContracts.length > 0
+            ? `${pendingRefundContracts[0].roomCode} (${pendingRefundContracts[0].tenantName})`
+            : 'Đã hoàn trả toàn bộ cọc',
+        actionLabel: 'Xem',
+        onClick: () => {
+          setFinanceExpanded(true);
+          setActiveTab('finance-deposits');
+        },
+      },
+      {
+        id: 'todo-7',
+        borderColor: 'border-l-blue-500',
+        icon: <LayoutGrid className="w-4 h-4 text-blue-600" />,
+        iconBg: 'bg-blue-50',
+        title: `${vacantRooms.length} phòng đang trống`,
+        subtitle: vacantRooms.map((r) => r.code).join(', ') || 'Không có phòng trống',
+        actionLabel: 'Xem sơ đồ',
+        onClick: () => setActiveTab('rooms'),
+      },
+    ];
+
+    return (
+      <div className="space-y-6">
+        {/* Title */}
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Tổng quan</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Chào buổi tối · Chủ nhật, ngày 11/10/2026
+          </p>
+        </div>
+
+        {/* 3 Top KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            onClick={() => setActiveTab('rooms')}
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-blue-300 cursor-pointer transition"
+          >
+            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
+              <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                <LayoutGrid className="w-4 h-4" />
+              </span>
+              <span>
+                Tỷ lệ lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+              </span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {occupancyRate}%
+            </div>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('finance-cashbook')}
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-emerald-300 cursor-pointer transition"
+          >
+            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
+              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                <ArrowUpRight className="w-4 h-4" />
+              </span>
+              <span>Thu hôm nay</span>
+            </div>
+            <div className="text-2xl font-extrabold text-emerald-600">
+              {formatVND(collectedToday)}
+            </div>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('reports')}
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-purple-300 cursor-pointer transition"
+          >
+            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
+              <span className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <span>Lợi nhuận tháng này</span>
+            </div>
+            <div
+              className={`text-2xl font-extrabold ${
+                currentMonthProfit < 0 ? 'text-rose-600' : 'text-slate-900'
+              }`}
+            >
+              {formatVND(currentMonthProfit)}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Grid: Left (Việc cần làm hôm nay + Hoạt động gần đây) + Right (Tiến độ thu & Trạng thái phòng) */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            {/* Việc cần làm hôm nay */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-900">
+                  Việc cần làm hôm nay
+                </h2>
+                <span className="text-xs text-slate-400">7 việc</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {todoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={item.onClick}
+                    className={`flex items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-100 border-l-4 ${item.borderColor} cursor-pointer transition`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-full ${item.iconBg} flex items-center justify-center shrink-0`}
+                      >
+                        {item.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {item.title}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {item.subtitle}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onClick();
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200/90 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition"
+                    >
+                      <span>{item.actionLabel}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Hoạt động gần đây */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-900">Hoạt động gần đây</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceExpanded(true);
+                    setActiveTab('finance-cashbook');
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-600"
+                >
+                  <span>Xem sổ thu chi</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {transactions.slice(0, 6).map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="py-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          tx.type === 'income'
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : tx.category === 'Vệ sinh'
+                            ? 'bg-purple-50 text-purple-600'
+                            : 'bg-orange-50 text-orange-600'
+                        }`}
+                      >
+                        {tx.type === 'income' ? (
+                          <ArrowUpRight className="w-4 h-4" />
+                        ) : (
+                          <ArrowDownRight className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900">
+                            {tx.category}
+                          </span>
+                          {tx.roomCode && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
+                              {tx.roomCode}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {tx.date} · {tx.description}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`text-xs font-bold shrink-0 ${
+                        tx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'
+                      }`}
+                    >
+                      {formatVND(
+                        tx.type === 'income' ? tx.amount : -tx.amount,
+                        tx.type === 'income'
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column Summary Widgets */}
+          <div className="space-y-6">
+            {/* Tiến độ thu tiền tháng này */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">
+                Tiến độ thu tháng này
+              </h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Phải thu kỳ 10/2026</span>
+                  <span className="font-bold text-slate-900">25.682.000 đ</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Đã thu hôm nay</span>
+                  <span className="font-bold text-emerald-600">
+                    {formatVND(collectedToday)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Còn phải thu</span>
+                  <span className="font-bold text-rose-600">
+                    {formatVND(dueSoonTotalAmount)}
+                  </span>
+                </div>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round((collectedToday / 25682000) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  // Mở ngay modal thu tiền của HD-IV-00089 (P101) giống video
+                  const target =
+                    invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
+                  if (target) setCollectModalInvoice(target);
+                }}
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+              >
+                Thu tiền nhanh (P101 · HD-IV-00089)
+              </button>
+            </div>
+
+            {/* Trạng thái phòng */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">Trạng thái phòng</h3>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-slate-600">Trống</span>
+                    <span className="font-bold text-emerald-600">
+                      {vacantRooms.length} phòng
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{
+                        width: `${(vacantRooms.length / propertyRooms.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-slate-600">Đã thuê</span>
+                    <span className="font-bold text-blue-600">
+                      {occupiedRooms.length} phòng
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-blue-600"
+                      style={{
+                        width: `${(occupiedRooms.length / propertyRooms.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-slate-600">Đang sửa chữa</span>
+                    <span className="font-bold text-rose-600">
+                      {maintenanceRooms.length} phòng
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-rose-500"
+                      style={{
+                        width: `${
+                          (maintenanceRooms.length / propertyRooms.length) * 100
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('rooms')}
+                className="w-full py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Mở sơ đồ phòng
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 2. PHÒNG - SƠ ĐỒ CHIA THEO TẦNG (Chuẩn giây 00:06 & 00:10 - 00:17)
+  const renderRooms = () => {
+    const filteredRooms = propertyRooms.filter((r) => {
+      if (roomStatusFilter === 'all') return true;
+      return r.status === roomStatusFilter;
+    });
+
+    const floors = [1, 2, 3];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Phòng</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {currentProperty.name} · {propertyRooms.length} phòng,{' '}
+              {occupiedRooms.length} đang thuê, {vacantRooms.length} trống
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setContractInitialRoom('P202');
+              setIsContractModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            Tạo hợp đồng cho phòng trống
+          </button>
+        </div>
+
+        {/* Sub-tabs & Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-6 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setRoomViewMode('floor')}
+              className={`pb-2 border-b-2 transition ${
+                roomViewMode === 'floor'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Cơ sở
+            </button>
+            <button
+              type="button"
+              onClick={() => setRoomViewMode('list')}
+              className={`pb-2 border-b-2 transition ${
+                roomViewMode === 'list'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Tất cả phòng
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { id: 'all', label: 'Tất cả', count: propertyRooms.length, dot: '' },
+              {
+                id: 'vacant',
+                label: 'Trống',
+                count: vacantRooms.length,
+                dot: 'bg-emerald-500',
+              },
+              {
+                id: 'occupied',
+                label: 'Đã thuê',
+                count: occupiedRooms.length,
+                dot: 'bg-slate-600',
+              },
+              { id: 'moving_in', label: 'Sắp vào ở', count: 0, dot: 'bg-blue-500' },
+              { id: 'deposited', label: 'Đặt cọc', count: 0, dot: 'bg-amber-600' },
+              {
+                id: 'maintenance',
+                label: 'Đang sửa',
+                count: maintenanceRooms.length,
+                dot: 'bg-rose-500',
+              },
+            ].map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setRoomStatusFilter(pill.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition ${
+                  roomStatusFilter === pill.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {pill.dot && (
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      roomStatusFilter === pill.id ? 'bg-white' : pill.dot
+                    }`}
+                  />
+                )}
+                <span>{pill.label}</span>
+                <span
+                  className={`text-[11px] ${
+                    roomStatusFilter === pill.id ? 'text-blue-100' : 'text-slate-400'
+                  }`}
+                >
+                  {pill.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <LayoutGrid className="w-4 h-4" />
+              </span>
+              <span>
+                Lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+              </span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {occupancyRate}%
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <Wallet className="w-4 h-4" />
+              </span>
+              <span>Tiền thuê/tháng theo hợp đồng</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(totalMonthlyContractRent)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-amber-200 bg-amber-50/10 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <AlertTriangle className="w-4 h-4" />
+              </span>
+              <span>{vacantRooms.length} phòng trống - hụt mỗi tháng</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(monthlyVacancyLoss)}
+            </div>
+          </div>
+        </div>
+
+        {/* Sơ đồ phòng chia theo tầng */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-6">
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trống
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-slate-500" /> Đã thuê
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600" /> Sắp vào ở
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-600" /> Đặt cọc
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-600" /> Đang sửa chữa
+            </span>
+          </div>
+
+          {floors.map((floor) => {
+            const floorRooms = filteredRooms.filter((r) => r.floor === floor);
+            if (floorRooms.length === 0) return null;
+            return (
+              <div key={floor} className="space-y-2.5">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  TẦNG {floor}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {floorRooms.map((room) => {
+                    const isVacant = room.status === 'vacant';
+                    const isMaint = room.status === 'maintenance';
+                    return (
+                      <div
+                        key={room.id}
+                        onClick={() => {
+                          if (isVacant) {
+                            setContractInitialRoom(room.code);
+                            setIsContractModalOpen(true);
+                          } else if (isMaint) {
+                            setMeterInitialRoom(room.code);
+                            setIsMeterModalOpen(true);
+                          } else {
+                            setInvoiceMonth('2026-11');
+                            setActiveTab('invoices');
+                          }
+                        }}
+                        className={`relative rounded-xl p-4 cursor-pointer transition border ${
+                          isVacant
+                            ? 'bg-emerald-50/60 border-emerald-400 hover:bg-emerald-50'
+                            : isMaint
+                            ? 'bg-slate-50/90 border-slate-200 border-l-4 border-l-rose-500 hover:bg-slate-100'
+                            : 'bg-slate-50/90 border-slate-200 border-l-4 border-l-blue-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isVacant && (
+                          <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                            Còn trống
+                          </span>
+                        )}
+                        <div className="text-sm font-extrabold text-slate-900">
+                          {room.code}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          {formatVND(room.price)}
+                        </div>
+                        <div className="text-xs font-medium text-slate-700 mt-1 truncate">
+                          {isVacant
+                            ? 'Bấm để lập hợp đồng'
+                            : isMaint
+                            ? 'Đang bảo trì thiết bị'
+                            : room.tenantName}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isVacant
+                                ? 'bg-emerald-500'
+                                : isMaint
+                                ? 'bg-rose-500'
+                                : 'bg-blue-600'
+                            }`}
+                          />
+                          <span>
+                            {isVacant
+                              ? 'Trống'
+                              : isMaint
+                              ? 'Đang sửa chữa'
+                              : 'Đã thuê'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // 3. KHÁCH THUÊ & DANH SÁCH XE (Chuẩn giây 00:18 - 00:23)
+  const renderTenants = () => {
+    const filteredTenants = tenants.filter((t) => {
+      if (!tenantSearch.trim()) return true;
+      const q = removeAccents(tenantSearch.trim());
+      return (
+        removeAccents(t.name).includes(q) ||
+        t.phone.includes(q) ||
+        t.cccd.includes(q) ||
+        removeAccents(t.roomCode).includes(q)
+      );
+    });
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Khách thuê</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {tenantSubTab === 'tenants'
+                ? 'Danh sách khách, dùng khi khai báo tạm trú.'
+                : 'Danh sách xe của khách đang thuê.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsTempResidenceOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition"
+            >
+              <FileText className="w-4 h-4" />
+              Khai báo tạm trú (CT01)
+            </button>
+          </div>
+        </div>
+
+        {/* Sub-tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-6 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setTenantSubTab('tenants')}
+              className={`pb-2 border-b-2 transition ${
+                tenantSubTab === 'tenants'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Danh sách khách
+            </button>
+            <button
+              type="button"
+              onClick={() => setTenantSubTab('vehicles')}
+              className={`pb-2 border-b-2 transition ${
+                tenantSubTab === 'vehicles'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Danh sách xe
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={tenantSearch}
+              onChange={(e) => setTenantSearch(e.target.value)}
+              placeholder="Tìm theo tên, SĐT, CCCD, phòng..."
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none w-60"
+            />
+          </div>
+        </div>
+
+        {tenantSubTab === 'tenants' ? (
+          <>
+            {/* 4 KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Users className="w-4 h-4" />
+                  </span>
+                  <span>Tổng khách trong sổ</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {tenants.length}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </span>
+                  <span>Đang thuê</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {tenants.filter((t) => t.status === 'active').length}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+                    <Clock className="w-4 h-4" />
+                  </span>
+                  <span>Đã chuyển đi</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">0</div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                    <FileText className="w-4 h-4" />
+                  </span>
+                  <span>Đã có ảnh CCCD</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {tenants.filter((t) => t.hasCccdPhoto).length}/{tenants.length}
+                </div>
+              </div>
+            </div>
+
+            {/* Bảng Danh sách khách thuê */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-100 text-left">
+                    <th className="py-3.5 px-4 font-medium">Họ tên</th>
+                    <th className="py-3.5 px-3 font-medium">Trạng thái</th>
+                    <th className="py-3.5 px-3 font-medium">Phòng</th>
+                    <th className="py-3.5 px-3 font-medium">Hợp đồng</th>
+                    <th className="py-3.5 px-3 font-medium">CCCD/CMND</th>
+                    <th className="py-3.5 px-3 font-medium">SĐT</th>
+                    <th className="py-3.5 px-3 font-medium text-right">Đã thu</th>
+                    <th className="py-3.5 px-4 font-medium text-right">Công nợ</th>
+                    <th className="py-3.5 px-4"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTenants.map((t) => {
+                    const stats = roomFinancialStats[t.roomCode] || {
+                      paid: 0,
+                      debt: 0,
+                    };
+                    const isRep = t.role === 'representative';
+                    return (
+                      <tr key={t.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-blue-600">{t.name}</div>
+                          <div className="text-[11px] text-slate-400">{t.code}</div>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="inline-flex px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                            Đang thuê
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 font-bold text-blue-600">
+                          {t.roomCode}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="font-bold text-blue-600">
+                            {t.contractCode}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            đến {t.contractEndDate}
+                          </div>
+                          <span
+                            className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              isRep
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {isRep ? 'Đại diện' : 'Ở cùng'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 font-mono text-slate-700">
+                          {t.cccd}
+                        </td>
+                        <td className="py-3.5 px-3 text-slate-700">{t.phone}</td>
+                        <td className="py-3.5 px-3 text-right font-bold text-emerald-700">
+                          {isRep && stats.paid > 0 ? formatVND(stats.paid) : '–'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-rose-600">
+                          {isRep && stats.debt > 0 ? formatVND(stats.debt) : '–'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="inline-flex items-center gap-2 text-slate-400">
+                            <button
+                              type="button"
+                              onClick={() => setIsTempResidenceOpen(true)}
+                              className="hover:text-blue-600"
+                              title="Xem chi tiết tạm trú"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTenants((prev) =>
+                                  prev.map((x) =>
+                                    x.id === t.id
+                                      ? { ...x, hasCccdPhoto: !x.hasCccdPhoto }
+                                      : x
+                                  )
+                                )
+                              }
+                              className="hover:text-blue-600"
+                              title="Đánh dấu đã chụp CCCD"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTenants((prev) => prev.filter((x) => x.id !== t.id))
+                              }
+                              className="hover:text-rose-600"
+                              title="Xóa khách"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          /* Tab Danh sách xe (Chuẩn frame_22s.png) */
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Car className="w-4 h-4" />
+                  </span>
+                  <span>Xe đang gửi</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {vehicles.length}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+                    <Users className="w-4 h-4" />
+                  </span>
+                  <span>Chủ xe</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {vehicles.length}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-100 text-left">
+                    <th className="py-3.5 px-5 font-medium">Biển số</th>
+                    <th className="py-3.5 px-4 font-medium">Chủ xe</th>
+                    <th className="py-3.5 px-4 font-medium">SĐT</th>
+                    <th className="py-3.5 px-4 font-medium">Phòng hiện tại</th>
+                    <th className="py-3.5 px-4 font-medium">Loại xe</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {vehicles.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50">
+                      <td className="py-3.5 px-5 font-bold text-slate-900">
+                        {v.plate}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-800">{v.ownerName}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{v.phone}</td>
+                      <td className="py-3.5 px-4 font-bold text-blue-600">
+                        {v.roomCode}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">{v.vehicleType}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 4. HỢP ĐỒNG (Chuẩn giây 00:07 & 00:24 - 00:31)
+  const renderContracts = () => {
+    const activeContracts = contracts.filter((c) => c.status === 'active');
+    const terminatedContracts = contracts.filter((c) => c.status === 'terminated');
+    const expiringSoonContracts = activeContracts.filter(
+      (c) => c.daysRemaining <= 60
+    );
+
+    const displayedContracts = contracts.filter((c) => {
+      if (contractFilter === 'expiring') return c.status === 'active' && c.daysRemaining <= 60;
+      if (contractFilter === 'terminated') return c.status === 'terminated';
+      if (contractFilter === 'ended') return c.status === 'ended';
+      return c.status === 'active';
+    });
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Hợp đồng</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {activeContracts.length} / {contracts.length} hợp đồng
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setContractInitialRoom('P202');
+              setIsContractModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            Tạo hợp đồng mới
+          </button>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            {
+              id: 'expiring',
+              label: 'Hết hạn trong 60 ngày',
+              count: expiringSoonContracts.length,
+              dot: 'bg-amber-500',
+            },
+            {
+              id: 'debt',
+              label: 'Còn nợ',
+              count: activeContracts.length,
+              dot: 'bg-rose-500',
+            },
+            {
+              id: 'active',
+              label: 'Còn hiệu lực',
+              count: activeContracts.length,
+              dot: '',
+            },
+            { id: 'ended', label: 'Đã kết thúc', count: 0, dot: '' },
+            {
+              id: 'terminated',
+              label: 'Đã thanh lý',
+              count: terminatedContracts.length,
+              dot: '',
+            },
+          ].map((pill) => (
+            <button
+              key={pill.id}
+              type="button"
+              onClick={() => setContractFilter(pill.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition ${
+                contractFilter === pill.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {pill.dot && (
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    contractFilter === pill.id ? 'bg-white' : pill.dot
+                  }`}
+                />
+              )}
+              <span>{pill.label}</span>
+              <span
+                className={`text-[11px] ${
+                  contractFilter === pill.id ? 'text-blue-100' : 'text-slate-400'
+                }`}
+              >
+                {pill.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* 3 KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <FileText className="w-4 h-4" />
+              </span>
+              <span>Hợp đồng đang hiệu lực</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {activeContracts.length}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <Wallet className="w-4 h-4" />
+              </span>
+              <span>Tổng tiền thuê mỗi tháng</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(totalMonthlyContractRent)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <AlertTriangle className="w-4 h-4" />
+              </span>
+              <span>Sắp hết hạn / quá hạn</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">0</div>
+          </div>
+        </div>
+
+        {/* Bảng Hợp đồng */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-400 border-b border-slate-100 text-left">
+                <th className="py-3.5 px-4 font-medium">Mã HĐ</th>
+                <th className="py-3.5 px-3 font-medium">Phòng</th>
+                <th className="py-3.5 px-3 font-medium">Khách đại diện</th>
+                <th className="py-3.5 px-3 font-medium">Từ ngày</th>
+                <th className="py-3.5 px-3 font-medium">Đến ngày</th>
+                <th className="py-3.5 px-3 font-medium">Còn lại</th>
+                <th className="py-3.5 px-4 font-medium text-right">Giá thuê</th>
+                <th className="py-3.5 px-4 font-medium text-right">Tiền cọc</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {displayedContracts.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50 transition">
+                  <td className="py-3.5 px-4 font-semibold text-slate-700">
+                    {c.code}
+                  </td>
+                  <td className="py-3.5 px-3 font-bold text-blue-600">
+                    {c.roomCode}
+                  </td>
+                  <td className="py-3.5 px-3 font-medium text-slate-900">
+                    {c.tenantName}
+                  </td>
+                  <td className="py-3.5 px-3 text-slate-600">{c.startDate}</td>
+                  <td className="py-3.5 px-3 text-slate-600">{c.endDate}</td>
+                  <td className="py-3.5 px-3">
+                    {c.status === 'terminated' ? (
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px]">
+                        Đã thanh lý ({c.moveOutDate})
+                      </span>
+                    ) : c.daysRemaining <= 60 ? (
+                      <span className="px-2 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-800 text-[11px] font-semibold">
+                        Còn {c.daysRemaining} ngày
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">
+                        Còn {c.daysRemaining} ngày
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-semibold text-slate-900">
+                    {formatVND(c.rentAmount)}
+                  </td>
+                  <td className="py-3.5 px-4 text-right text-slate-600">
+                    {formatVND(c.depositAmount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // 5. HÓA ĐƠN & GHI ĐIỆN NƯỚC (Chuẩn giây 00:08 & 00:32 - 00:41)
+  const renderInvoices = () => {
+    const monthInvoices = invoices.filter((i) => i.billingMonth === invoiceMonth);
+    const activeMonthInvoices = monthInvoices.filter((i) => i.status !== 'draft');
+    const monthTotal = activeMonthInvoices.reduce((s, i) => s + i.totalAmount, 0);
+    const monthPaid = activeMonthInvoices.reduce((s, i) => s + i.paidAmount, 0);
+    const monthRemaining = Math.max(0, monthTotal - monthPaid);
+
+    const filteredInvoices = monthInvoices.filter((inv) => {
+      if (invoiceFilter === 'draft') return inv.status === 'draft';
+      if (invoiceFilter === 'unsent') return inv.status !== 'draft' && !inv.sentZalo;
+      if (invoiceFilter === 'unpaid')
+        return inv.status !== 'draft' && inv.totalAmount - inv.paidAmount > 0;
+      return true;
+    });
+
+    const monthLabelMap: Record<'2026-09' | '2026-10' | '2026-11', string> = {
+      '2026-09': 'tháng 09 2026',
+      '2026-10': 'tháng 10 2026',
+      '2026-11': 'tháng 11 2026',
+    };
+
+    const stepMonth = (dir: -1 | 1) => {
+      const order: Array<'2026-09' | '2026-10' | '2026-11'> = [
+        '2026-09',
+        '2026-10',
+        '2026-11',
+      ];
+      const idx = order.indexOf(invoiceMonth);
+      const next = order[idx + dir];
+      if (next) setInvoiceMonth(next);
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header & Month Switcher */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Hóa đơn</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Phải thu <strong className="text-slate-800">{formatVND(monthTotal)}</strong> ·
+              đã thu <strong className="text-emerald-600">{formatVND(monthPaid)}</strong> ·
+              còn lại{' '}
+              <strong className="text-rose-600">{formatVND(monthRemaining)}</strong> ·{' '}
+              {occupiedRooms.length} phòng đang thuê
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={invoiceMonth === '2026-09'}
+              onClick={() => stepMonth(-1)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              ← Tháng trước
+            </button>
+            <select
+              value={invoiceMonth}
+              onChange={(e) =>
+                setInvoiceMonth(e.target.value as '2026-09' | '2026-10' | '2026-11')
+              }
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none"
+            >
+              <option value="2026-09">tháng 09 2026</option>
+              <option value="2026-10">tháng 10 2026</option>
+              <option value="2026-11">tháng 11 2026</option>
+            </select>
+            <button
+              type="button"
+              disabled={invoiceMonth === '2026-11'}
+              onClick={() => stepMonth(1)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              Tháng sau →
+            </button>
+          </div>
+        </div>
+
+        {/* Sub-tabs */}
+        <div className="flex items-center gap-6 border-b border-slate-200 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setInvoiceSubTab('by_room')}
+            className={`pb-2.5 border-b-2 transition ${
+              invoiceSubTab === 'by_room'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Theo phòng
+          </button>
+          <button
+            type="button"
+            onClick={() => setInvoiceSubTab('all')}
+            className={`pb-2.5 border-b-2 transition ${
+              invoiceSubTab === 'all'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Tất cả hóa đơn
+          </button>
+        </div>
+
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Từng phòng đang ở đâu ({monthLabelMap[invoiceMonth]})
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Bấm thẳng vào ô cần làm. Mỗi phòng theo chu kỳ tính tiền của hợp đồng phòng
+                đó.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMeterInitialRoom('P101');
+                  setIsMeterModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition"
+              >
+                <Droplets className="w-3.5 h-3.5 text-slate-600" />
+                Ghi chỉ số hàng loạt
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const firstInv = activeMonthInvoices[0];
+                  if (firstInv) setZaloModalInvoice(firstInv);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-xs transition"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Gửi {activeMonthInvoices.length} hóa đơn
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'all', label: 'Tất cả', count: monthInvoices.length },
+              {
+                id: 'draft',
+                label: 'Nháp chờ chỉ số',
+                count: monthInvoices.filter((i) => i.status === 'draft').length,
+              },
+              {
+                id: 'unsent',
+                label: 'Chưa gửi',
+                count: monthInvoices.filter(
+                  (i) => i.status !== 'draft' && !i.sentZalo
+                ).length,
+              },
+              {
+                id: 'unpaid',
+                label: 'Còn nợ',
+                count: monthInvoices.filter(
+                  (i) => i.status !== 'draft' && i.totalAmount - i.paidAmount > 0
+                ).length,
+              },
+            ].map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setInvoiceFilter(pill.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition ${
+                  invoiceFilter === pill.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200/70'
+                }`}
+              >
+                <span>{pill.label}</span>
+                <span
+                  className={`text-[11px] ${
+                    invoiceFilter === pill.id ? 'text-blue-100' : 'text-slate-500'
+                  }`}
+                >
+                  {pill.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-400 border-b border-slate-100 text-left">
+                  <th className="py-3 px-3 font-medium">Phòng</th>
+                  <th className="py-3 px-3 font-medium">Kỳ tính tiền</th>
+                  <th className="py-3 px-3 font-medium">Chỉ số</th>
+                  <th className="py-3 px-3 font-medium">Hóa đơn</th>
+                  <th className="py-3 px-3 font-medium text-right">Số tiền</th>
+                  <th className="py-3 px-3 font-medium text-right">Đã thu</th>
+                  <th className="py-3 px-3 font-medium text-right">Công nợ</th>
+                  <th className="py-3 px-2 font-medium text-center">Gửi</th>
+                  <th className="py-3 px-2 font-medium text-center">Thu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredInvoices.map((inv) => {
+                  const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3.5 px-3">
+                        <div className="font-extrabold text-slate-900">
+                          {inv.roomCode}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {inv.tenantName}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 text-slate-600">
+                        {inv.periodLabel}
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMeterInitialRoom(inv.roomCode);
+                            setIsMeterModalOpen(true);
+                          }}
+                          className="inline-flex px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px] transition"
+                        >
+                          {inv.elecUsage} kWh · {inv.waterUsage} m3
+                        </button>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        {inv.status === 'draft' ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInvoices((prev) =>
+                                prev.map((x) =>
+                                  x.id === inv.id ? { ...x, status: 'unpaid' } : x
+                                )
+                              )
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-[11px]"
+                          >
+                            Nháp — điền chỉ số
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setZaloModalInvoice(inv)}
+                            className="font-bold text-blue-600 hover:underline"
+                          >
+                            {inv.code}
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-semibold text-slate-900">
+                        {formatVND(inv.totalAmount)}
+                      </td>
+                      <td className="py-3.5 px-3 text-right text-emerald-600 font-semibold">
+                        {inv.paidAmount > 0 ? formatVND(inv.paidAmount) : '–'}
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-bold text-rose-600">
+                        {inv.status === 'draft'
+                          ? 'Chưa lập'
+                          : rem > 0
+                          ? formatVND(rem)
+                          : 'Đã thu đủ'}
+                      </td>
+                      <td className="py-3.5 px-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setZaloModalInvoice(inv)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                            inv.sentZalo
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {inv.sentZalo ? 'Đã gửi' : 'Gửi'}
+                        </button>
+                      </td>
+                      <td className="py-3.5 px-2 text-center">
+                        {rem > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setCollectModalInvoice(inv)}
+                            className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 text-xs font-semibold transition"
+                          >
+                            Thu
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-emerald-600">
+                            ✓ Xong
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 font-extrabold text-slate-900">
+                  <td colSpan={4} className="py-3.5 px-3">
+                    Tổng {activeMonthInvoices.length} hóa đơn
+                  </td>
+                  <td className="py-3.5 px-3 text-right">
+                    {formatVND(monthTotal)}
+                  </td>
+                  <td className="py-3.5 px-3 text-right text-emerald-600">
+                    {formatVND(monthPaid)}
+                  </td>
+                  <td className="py-3.5 px-3 text-right text-rose-600">
+                    {formatVND(monthRemaining)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 6. TÀI CHÍNH (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả) (Chuẩn giây 00:42 - 00:44)
+  const renderFinance = () => {
+    const financeSubTabs: Array<{ id: NavTab; label: string }> = [
+      { id: 'finance-cashbook', label: 'Sổ thu chi' },
+      { id: 'finance-funds', label: 'Quỹ' },
+      { id: 'finance-debts', label: 'Công nợ' },
+      { id: 'finance-deposits', label: 'Cọc phải trả' },
+    ];
+
+    const titleMap: Record<string, { title: string; sub: string }> = {
+      'finance-cashbook': {
+        title: 'Sổ thu chi',
+        sub: 'Toàn bộ lịch sử thu tiền phòng, tiền cọc và các khoản chi bảo trì, vệ sinh.',
+      },
+      'finance-funds': {
+        title: 'Quỹ tiền mặt & Ngân hàng',
+        sub: 'Theo dõi số dư thực tế trong tài khoản Vietcombank và két tiền mặt.',
+      },
+      'finance-debts': {
+        title: 'Công nợ',
+        sub: 'Toàn bộ hóa đơn chưa thu đủ, gồm cả các tháng trước.',
+      },
+      'finance-deposits': {
+        title: 'Cọc phải trả lại',
+        sub: 'Tiền cọc đang cầm của khách, và những khoản đã tới lúc phải chuyển trả.',
+      },
+    };
+
+    const headerInfo = titleMap[activeTab] || titleMap['finance-debts'];
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">{headerInfo.title}</h1>
+          <p className="text-xs text-slate-500 mt-0.5">{headerInfo.sub}</p>
+        </div>
+
+        {/* Sub-tabs */}
+        <div className="flex items-center gap-6 border-b border-slate-200 text-xs font-semibold">
+          {financeSubTabs.map((st) => (
+            <button
+              key={st.id}
+              type="button"
+              onClick={() => setActiveTab(st.id)}
+              className={`pb-2.5 border-b-2 transition ${
+                activeTab === st.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {st.label}
+            </button>
+          ))}
+        </div>
+
+        {/* TAB: CÔNG NỢ (Chuẩn frame_42_5s.png) */}
+        {activeTab === 'finance-debts' && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                    <AlertTriangle className="w-4 h-4" />
+                  </span>
+                  <span>Tổng còn nợ ({allUnpaidInvoices.length} hóa đơn)</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {formatVND(allUnpaidTotalAmount)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Clock className="w-4 h-4" />
+                  </span>
+                  <span>Trong đó quá hạn ({overdueInvoices.length} hóa đơn)</span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {formatVND(overdueTotalAmount)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-100 text-left">
+                    <th className="py-3.5 px-4 font-medium">Phòng</th>
+                    <th className="py-3.5 px-3 font-medium">Khách</th>
+                    <th className="py-3.5 px-3 font-medium">SĐT</th>
+                    <th className="py-3.5 px-3 font-medium">Mã HĐ</th>
+                    <th className="py-3.5 px-3 font-medium">Hạn TT</th>
+                    <th className="py-3.5 px-4 font-medium text-right">Còn nợ</th>
+                    <th className="py-3.5 px-4 font-medium text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allUnpaidInvoices.map((inv) => {
+                    const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
+                    return (
+                      <tr key={inv.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3.5 px-4 font-bold text-blue-600">
+                          {inv.roomCode}
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-slate-900">
+                          {inv.tenantName}
+                        </td>
+                        <td className="py-3.5 px-3 text-slate-600">
+                          {inv.tenantPhone}
+                        </td>
+                        <td className="py-3.5 px-3 text-slate-600">{inv.code}</td>
+                        <td className="py-3.5 px-3">
+                          <span className="text-slate-700 mr-2">{inv.dueDate}</span>
+                          {inv.isOverdue && (
+                            <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-600 text-[10px] font-bold">
+                              Quá hạn
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-rose-600">
+                          {formatVND(rem)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setCollectModalInvoice(inv)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                          >
+                            Thu nợ
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: CỌC PHẢI TRẢ (Chuẩn frame_43s.png & frame_44s.png) */}
+        {activeTab === 'finance-deposits' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Wallet className="w-4 h-4" />
+                  </span>
+                  <span>
+                    Đang giữ hộ khách (
+                    {contracts.filter((c) => c.status === 'active').length} khoản)
+                  </span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {formatVND(totalMonthlyContractRent)}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Khách còn thuê — chưa tới lúc trả
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+                  <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                    <AlertTriangle className="w-4 h-4" />
+                  </span>
+                  <span>
+                    Tới hạn trả lại ({pendingRefundContracts.length} khoản)
+                  </span>
+                </div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {formatVND(pendingRefundTotal)}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Đã thanh lý, chờ chuyển tiền về cho khách
+                </div>
+              </div>
+            </div>
+
+            {/* Tới hạn trả lại */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Tới hạn trả lại</h3>
+                <p className="text-xs text-slate-500">
+                  Khách đã dọn đi, tiền cọc còn nằm trong két của bạn.
+                </p>
+              </div>
+
+              {pendingRefundContracts.length === 0 ? (
+                <div className="text-xs text-emerald-600 font-semibold py-4">
+                  ✓ Đã hoàn trả toàn bộ tiền cọc cho các hợp đồng đã thanh lý.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-100 text-left">
+                        <th className="py-3 px-3 font-medium">Phòng</th>
+                        <th className="py-3 px-3 font-medium">Khách</th>
+                        <th className="py-3 px-3 font-medium">Ngày trả phòng</th>
+                        <th className="py-3 px-3 font-medium text-right">Cọc</th>
+                        <th className="py-3 px-3 font-medium text-right">Đã trừ</th>
+                        <th className="py-3 px-3 font-medium text-right">
+                          Phải trả lại
+                        </th>
+                        <th className="py-3 px-3 font-medium">Tài khoản nhận</th>
+                        <th className="py-3 px-3 font-medium text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pendingRefundContracts.map((c) => (
+                        <tr key={c.id} className="hover:bg-slate-50">
+                          <td className="py-3.5 px-3 font-bold text-blue-600">
+                            {c.roomCode}
+                          </td>
+                          <td className="py-3.5 px-3 font-medium text-slate-900">
+                            {c.tenantName}
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-600">
+                            {c.moveOutDate}
+                          </td>
+                          <td className="py-3.5 px-3 text-right text-slate-700">
+                            {formatVND(c.depositAmount)}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-bold text-rose-600">
+                            – {formatVND(c.depositDeducted || 0)}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-extrabold text-slate-900">
+                            {formatVND(c.depositRefundAmount || 0)}
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-600">
+                            <span className="font-mono">{c.refundBankAccount}</span>{' '}
+                            <span className="text-slate-400">{c.refundBankName}</span>
+                          </td>
+                          <td className="py-3.5 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleMarkDepositRefunded(c)}
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                            >
+                              Đã chuyển trả
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Đang giữ hộ khách */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Đang giữ hộ khách
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Khách còn thuê. Chưa phải trả, nhưng đây là tiền của họ.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-slate-100 text-left">
+                      <th className="py-3 px-3 font-medium">Phòng</th>
+                      <th className="py-3 px-3 font-medium">Khách</th>
+                      <th className="py-3 px-3 font-medium">Ngày nhận cọc</th>
+                      <th className="py-3 px-3 font-medium">Hết hạn hợp đồng</th>
+                      <th className="py-3 px-3 font-medium text-right">Tiền cọc</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {contracts
+                      .filter((c) => c.status === 'active')
+                      .map((c) => (
+                        <tr key={c.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-3 font-bold text-blue-600">
+                            {c.roomCode}
+                          </td>
+                          <td className="py-3 px-3 text-slate-800">
+                            {c.tenantName}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600">{c.startDate}</td>
+                          <td className="py-3 px-3 text-slate-600">{c.endDate}</td>
+                          <td className="py-3 px-3 text-right font-bold text-slate-900">
+                            {formatVND(c.depositAmount)}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SỔ THU CHI */}
+        {activeTab === 'finance-cashbook' && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Nhật ký Sổ thu chi ({transactions.length} bút toán)
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const desc = prompt(
+                    'Nhập nội dung khoản chi mới (VD: Thay bóng đèn hành lang):',
+                    'Sửa khóa cửa phòng P102'
+                  );
+                  if (!desc) return;
+                  const amtStr = prompt('Nhập số tiền (đ):', '250000');
+                  const amt = parseInt((amtStr || '0').replace(/\D/g, ''), 10) || 0;
+                  if (amt <= 0) return;
+                  setTransactions((prev) => [
+                    {
+                      id: `tx-manual-${Date.now()}`,
+                      propertyId: currentProperty.id,
+                      date: '11/10/2026',
+                      isoDate: '2026-10-11',
+                      type: 'expense',
+                      category: 'Bảo trì/Sửa chữa',
+                      description: desc,
+                      amount: amt,
+                      method: 'Tiền mặt',
+                    },
+                    ...prev,
+                  ]);
+                  showToast(`Đã ghi phiếu chi ${formatVND(amt)} vào sổ thu chi!`);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Ghi phiếu chi mới
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-400 border-b border-slate-100 text-left">
+                    <th className="py-3 px-3 font-medium">Ngày</th>
+                    <th className="py-3 px-3 font-medium">Hạng mục</th>
+                    <th className="py-3 px-3 font-medium">Phòng</th>
+                    <th className="py-3 px-3 font-medium">Diễn giải</th>
+                    <th className="py-3 px-3 font-medium">Hình thức</th>
+                    <th className="py-3 px-3 font-medium text-right">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-3 text-slate-600">{tx.date}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-800">
+                        {tx.category}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-blue-600">
+                        {tx.roomCode || '–'}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600">{tx.description}</td>
+                      <td className="py-3 px-3 text-slate-500">{tx.method}</td>
+                      <td
+                        className={`py-3 px-3 text-right font-bold ${
+                          tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
+                      >
+                        {formatVND(
+                          tx.type === 'income' ? tx.amount : -tx.amount,
+                          tx.type === 'income'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: QUỸ */}
+        {activeTab === 'finance-funds' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
+              <div className="text-xs text-slate-500">
+                Quỹ Ngân hàng ({currentProperty.bankName} ·{' '}
+                {currentProperty.bankAccount})
+              </div>
+              <div className="text-2xl font-extrabold text-blue-600">
+                {formatVND(95341400 + collectedToday)}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Tự động cộng khi khách chuyển khoản VietQR
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
+              <div className="text-xs text-slate-500">Quỹ Tiền mặt tại nhà trọ</div>
+              <div className="text-2xl font-extrabold text-emerald-600">
+                {formatVND(3230000)}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Dùng chi bảo trì, sửa chữa lặt vặt và vệ sinh định kỳ
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 7. BÁO CÁO KINH DOANH (Chuẩn giây 00:45 - 00:49 & frame_46s.png)
+  const renderReports = () => {
+    const baseRevenue = 105191400;
+    const baseExpense = 6620000;
+    const extraToday = collectedToday > 6961800 ? collectedToday - 6961800 : 0;
+    const totalRevenue = baseRevenue + extraToday;
+    const totalExpense = baseExpense;
+    const netProfit = totalRevenue - totalExpense;
+
+    const maxChartVal = 30000000;
+
+    const handleCopyReport = () => {
+      const summary = `BÁO CÁO KINH DOANH - ${currentProperty.name} (01/05/2026 - 11/10/2026)
+- Doanh thu thực thu: ${formatVND(totalRevenue)}
+- Chi phí: ${formatVND(totalExpense)}
+- Lợi nhuận ròng: ${formatVND(netProfit)}
+- Tỷ lệ lấp đầy: ${occupancyRate}% (${occupiedRooms.length}/${propertyRooms.length} phòng)`;
+      navigator.clipboard?.writeText(summary);
+      showToast('Đã sao chép số liệu báo cáo kinh doanh!');
+    };
+
+    const handleExportReportCsv = () => {
+      const rows = [
+        ['Tháng', 'Doanh thu (VND)', 'Chi phí (VND)', 'Lợi nhuận (VND)'],
+        ...SEED_MONTHLY_CHART.map((m) => [
+          m.month,
+          String(m.income),
+          String(m.expense),
+          String(m.profit),
+        ]),
+      ];
+      const csv =
+        '\uFEFF' + rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bao-cao-kinh-doanh-OptiRent-2026.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Đã xuất file Excel/CSV Báo cáo kinh doanh!');
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Báo cáo kinh doanh</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Từ 01/05/2026 đến 11/10/2026
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyReport}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Sao chép số liệu
+            </button>
+            <button
+              type="button"
+              onClick={handleExportReportCsv}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Xuất báo cáo
+            </button>
+          </div>
+        </div>
+
+        {/* Granularity Tabs & Date Range */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-6 text-xs font-semibold">
+            {[
+              { id: 'day', label: 'Theo ngày' },
+              { id: 'week', label: 'Theo tuần' },
+              { id: 'month', label: 'Theo tháng' },
+              { id: 'year', label: 'Theo năm' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() =>
+                  setReportGranularity(t.id as 'day' | 'week' | 'month' | 'year')
+                }
+                className={`pb-2 border-b-2 transition ${
+                  reportGranularity === t.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
+              Khoảng tuỳ chọn
+            </span>
+            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
+              01/05/2026
+            </span>
+            <span className="text-slate-400">→</span>
+            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
+              11/10/2026
+            </span>
+          </div>
+        </div>
+
+        {/* 4 KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <ArrowUpRight className="w-4 h-4" />
+              </span>
+              <span>Doanh thu thực thu</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(totalRevenue)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <ArrowDownRight className="w-4 h-4" />
+              </span>
+              <span>Chi phí</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(totalExpense)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <span>Lợi nhuận</span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {formatVND(netProfit)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
+              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+                <LayoutGrid className="w-4 h-4" />
+              </span>
+              <span>
+                Lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+              </span>
+            </div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {occupancyRate}%
+            </div>
+          </div>
+        </div>
+
+        {/* Biểu đồ kết hợp Cột + Đường (Doanh thu · Chi phí · Lợi nhuận) */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold text-slate-900">
+              Doanh thu · Chi phí · Lợi nhuận
+            </h2>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="inline-flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> Thu
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-600" /> Chi
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Lợi nhuận
+              </span>
+            </div>
+          </div>
+
+          <div className="relative h-64 w-full pt-4">
+            <svg
+              viewBox="0 0 750 220"
+              className="w-full h-full overflow-visible"
+            >
+              {/* Grid lines */}
+              {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                const y = 185 - ratio * 155;
+                const labelMap = ['0', '7,3tr', '15tr', '22tr', '29tr'];
+                return (
+                  <g key={idx}>
+                    <line
+                      x1="50"
+                      y1={y}
+                      x2="720"
+                      y2={y}
+                      stroke="#F1F5F9"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x="40"
+                      y={y + 4}
+                      textAnchor="end"
+                      className="fill-slate-400 text-[10px]"
+                    >
+                      {labelMap[idx]}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Area under profit line */}
+              <polygon
+                points={[
+                  `130,185`,
+                  ...SEED_MONTHLY_CHART.map((pt, i) => {
+                    const x = 130 + i * 135;
+                    const y = 185 - (pt.profit / maxChartVal) * 155;
+                    return `${x},${y}`;
+                  }),
+                  `${130 + (SEED_MONTHLY_CHART.length - 1) * 135},185`,
+                ].join(' ')}
+                fill="rgba(16, 185, 129, 0.08)"
+              />
+
+              {/* Bars */}
+              {SEED_MONTHLY_CHART.map((pt, i) => {
+                const xCenter = 130 + i * 135;
+                const incH = (pt.income / maxChartVal) * 155;
+                const expH = Math.max(4, (pt.expense / maxChartVal) * 155);
+                return (
+                  <g
+                    key={pt.month}
+                    onMouseEnter={() => setHoveredChartIdx(i)}
+                    onMouseLeave={() => setHoveredChartIdx(null)}
+                    className="cursor-pointer"
+                  >
+                    {/* Income bar */}
+                    <rect
+                      x={xCenter - 20}
+                      y={185 - incH}
+                      width="20"
+                      height={incH}
+                      rx="3"
+                      fill="#0284C7"
+                    />
+                    {/* Expense bar */}
+                    <rect
+                      x={xCenter + 2}
+                      y={185 - expH}
+                      width="18"
+                      height={expH}
+                      rx="3"
+                      fill="#9333EA"
+                    />
+                    {/* X-axis label */}
+                    <text
+                      x={xCenter}
+                      y="204"
+                      textAnchor="middle"
+                      className="fill-slate-500 text-[10px] font-medium"
+                    >
+                      {pt.month}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Profit Line */}
+              <polyline
+                fill="none"
+                stroke="#10B981"
+                strokeWidth="2.5"
+                points={SEED_MONTHLY_CHART.map((pt, i) => {
+                  const x = 130 + i * 135;
+                  const y = 185 - (pt.profit / maxChartVal) * 155;
+                  return `${x},${y}`;
+                }).join(' ')}
+              />
+
+              {/* Profit Dots */}
+              {SEED_MONTHLY_CHART.map((pt, i) => {
+                const x = 130 + i * 135;
+                const y = 185 - (pt.profit / maxChartVal) * 155;
+                return (
+                  <circle
+                    key={pt.month}
+                    cx={x}
+                    cy={y}
+                    r="4"
+                    className="fill-emerald-500 stroke-white stroke-2"
+                  />
+                );
+              })}
+            </svg>
+
+            {hoveredChartIdx !== null && (
+              <div className="absolute top-2 right-4 bg-slate-900 text-white rounded-xl px-3.5 py-2 text-xs shadow-lg space-y-0.5">
+                <div className="font-bold">
+                  {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                </div>
+                <div className="text-sky-300">
+                  Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                </div>
+                <div className="text-purple-300">
+                  Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                </div>
+                <div className="text-emerald-300 font-bold">
+                  Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Rê chuột vào cột hoặc điểm để xem số tiền. Cột và đường dùng chung một thang đo
+            nên so sánh trực tiếp được.
+          </p>
+        </div>
+
+        {/* Nguồn thu & Khoản chi */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Nguồn thu</h3>
+              <p className="text-xs text-slate-400">Tổng {formatVND(totalRevenue)}</p>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-700">Thu tiền hóa đơn</span>
+                  <span className="font-bold text-slate-900">
+                    {formatVND(totalRevenue)} · <span className="text-slate-400">100%</span>
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-blue-600 w-full" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-700">Thu tiền cọc</span>
+                  <span className="font-bold text-slate-900">
+                    9.850.000 đ · <span className="text-slate-400">9%</span>
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-blue-600 w-[9%]" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Khoản chi</h3>
+              <p className="text-xs text-slate-400">Tổng {formatVND(totalExpense)}</p>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-700">Bảo trì/Sửa chữa</span>
+                  <span className="font-bold text-slate-900">
+                    3.620.000 đ · <span className="text-slate-400">55%</span>
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-purple-600 w-[55%]" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-700">Vệ sinh</span>
+                  <span className="font-bold text-slate-900">
+                    3.000.000 đ · <span className="text-slate-400">45%</span>
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-purple-600 w-[45%]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Theo cơ sở */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-bold text-slate-900">Theo cơ sở</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-400 border-b border-slate-100 text-left">
+                  <th className="py-2.5 px-3 font-medium">Cơ sở</th>
+                  <th className="py-2.5 px-3 font-medium">Phòng</th>
+                  <th className="py-2.5 px-3 font-medium">Lấp đầy</th>
+                  <th className="py-2.5 px-3 font-medium text-right">Đã lập HĐ</th>
+                  <th className="py-2.5 px-3 font-medium text-right">Đã thu</th>
+                  <th className="py-2.5 px-3 font-medium text-right">Chi phí</th>
+                  <th className="py-2.5 px-3 font-medium text-right">Còn nợ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-slate-50">
+                  <td className="py-3 px-3 font-bold text-slate-900">
+                    {currentProperty.name}
+                  </td>
+                  <td className="py-3 px-3 text-slate-600">
+                    {occupiedRooms.length}/{propertyRooms.length}
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold text-[11px]">
+                      {occupancyRate}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-right text-slate-700">
+                    141.498.000 đ
+                  </td>
+                  <td className="py-3 px-3 text-right font-bold text-emerald-600">
+                    {formatVND(totalRevenue)}
+                  </td>
+                  <td className="py-3 px-3 text-right text-slate-700">
+                    {formatVND(totalExpense)}
+                  </td>
+                  <td className="py-3 px-3 text-right font-bold text-rose-600">
+                    36.306.600 đ
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Phòng cho thuê tốt nhất & Phòng cần để ý */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Phòng cho thuê tốt nhất
+              </h3>
+              <p className="text-xs text-slate-400">
+                Xếp theo tiền đã thu được, không phải tiền đã lập hóa đơn.
+              </p>
+            </div>
+            <div className="space-y-3 text-xs">
+              {[
+                { code: 'P203', months: 5, debt: 4926300, paid: 12421200, pct: 100 },
+                { code: 'P104', months: 5, debt: 4602900, paid: 12174600, pct: 96 },
+                { code: 'P201', months: 5, debt: 4491600, paid: 11888400, pct: 93 },
+              ].map((item, idx) => (
+                <div key={item.code} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-blue-600">{item.code}</span>
+                      <span className="text-slate-400">
+                        · {item.months} tháng · nợ {formatVND(item.debt)}
+                      </span>
+                    </div>
+                    <span className="font-bold text-slate-900">
+                      {formatVND(item.paid)}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-slate-800"
+                      style={{ width: `${item.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Phòng cần để ý</h3>
+              <p className="text-xs text-slate-400">
+                Thu được ít nhất trong kỳ, hoặc đang nợ nhiều.
+              </p>
+            </div>
+            <div className="space-y-3 text-xs">
+              {[
+                {
+                  code: 'P202',
+                  note: '1 tháng (Phòng đang trống)',
+                  amount: '2.500.000 đ',
+                  pct: 25,
+                },
+                {
+                  code: 'P303',
+                  note: '4 tháng · nợ 4.816.400 đ',
+                  amount: '11.233.600 đ',
+                  pct: 82,
+                },
+                {
+                  code: 'P204',
+                  note: 'Đang bảo trì sửa chữa',
+                  amount: '2.600.000 đ',
+                  pct: 20,
+                },
+              ].map((item, idx) => (
+                <div key={item.code} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-blue-600">{item.code}</span>
+                      <span className="text-slate-400">· {item.note}</span>
+                    </div>
+                    <span className="font-bold text-slate-900">{item.amount}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-slate-800"
+                      style={{ width: `${item.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 8. LỊCH SỰ KIỆN NHÀ TRỌ (`calendar`)
+  const renderCalendar = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Lịch vận hành nhà trọ</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Theo dõi lịch ghi điện nước, hạn thu tiền hóa đơn, chốt kỳ theo ngày vào ở và hợp
+            đồng sắp hết hạn.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {SEED_CALENDAR_EVENTS.map((ev) => (
+            <div
+              key={ev.id}
+              onClick={() => setActiveTab(ev.actionTab)}
+              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-blue-300 cursor-pointer flex items-start justify-between gap-4 transition"
+            >
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex flex-col items-center justify-center shrink-0">
+                  <span className="text-sm font-extrabold">{ev.dayOfMonth}</span>
+                  <span className="text-[10px] font-medium">{ev.monthYear}</span>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">{ev.title}</div>
+                  <div className="text-[11px] text-slate-500 mt-1">{ev.subtitle}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mt-1" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // 9. CÀI ĐẶT & ĐỒNG BỘ GOOGLE SHEETS (`settings`)
+  const renderSettings = () => {
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Cài đặt hệ thống</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Cấu hình đơn giá điện nước, dịch vụ cố định, tài khoản VietQR và liên kết Google
+            Sheets Apps Script.
+          </p>
+        </div>
+
+        {/* Đơn giá & Ngân hàng */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+          <h2 className="text-sm font-bold text-slate-900">
+            1. Đơn giá điện nước & Tài khoản nhận tiền VietQR ({currentProperty.name})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">
+                Giá điện (đ/kWh)
+              </label>
+              <input
+                type="number"
+                value={currentProperty.electricityRate}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) || 0;
+                  setProperties((prev) =>
+                    prev.map((p) =>
+                      p.id === currentProperty.id
+                        ? { ...p, electricityRate: val }
+                        : p
+                    )
+                  );
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">
+                Giá nước (đ/m3)
+              </label>
+              <input
+                type="number"
+                value={currentProperty.waterRate}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) || 0;
+                  setProperties((prev) =>
+                    prev.map((p) =>
+                      p.id === currentProperty.id ? { ...p, waterRate: val } : p
+                    )
+                  );
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">
+                Ngân hàng nhận chuyển khoản
+              </label>
+              <input
+                type="text"
+                value={currentProperty.bankName}
+                onChange={(e) =>
+                  setProperties((prev) =>
+                    prev.map((p) =>
+                      p.id === currentProperty.id
+                        ? { ...p, bankName: e.target.value }
+                        : p
+                    )
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">
+                Số tài khoản VietQR
+              </label>
+              <input
+                type="text"
+                value={currentProperty.bankAccount}
+                onChange={(e) =>
+                  setProperties((prev) =>
+                    prev.map((p) =>
+                      p.id === currentProperty.id
+                        ? { ...p, bankAccount: e.target.value }
+                        : p
+                    )
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Google Sheets Sync */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                2. Kết nối & Đồng bộ Google Sheets (Google Apps Script Web App)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Tự động khởi tạo 7 trang tính (Phong, KhachThue, Xe, HopDong, HoaDon,
+                SoThuChi, CaiDat) trên Google Sheets.
+              </p>
+            </div>
+            <Sparkles className="w-5 h-5 text-blue-600" />
+          </div>
+
+          <div className="space-y-2 text-xs">
+            <label className="block font-medium text-slate-600">
+              URL Google Apps Script Web App (`.../exec`)
+            </label>
+            <input
+              type="text"
+              value={sheetsWebAppUrl}
+              onChange={(e) => {
+                setSheetsWebAppUrl(e.target.value);
+                localStorage.setItem('optirent_sheets_url', e.target.value);
+              }}
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-slate-800"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleSyncGoogleSheets}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Đồng bộ ngay lên Google Sheets
+            </button>
+            {sheetsWebAppUrl.startsWith('https://script.google.com') && (
+              <a
+                href={sheetsWebAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Mở Web App trên Google Apps Script
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={handleResetDemoData}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Khôi phục dữ liệu mẫu gốc của video
+            </button>
+          </div>
+
+          {syncStatus && (
+            <div className="text-xs text-emerald-600 font-medium pt-1">
+              ✓ {syncStatus}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Hóa đơn nợ kỳ trước của hóa đơn đang mở trong Zalo Modal
+  const zaloPreviousDebt = useMemo(() => {
+    if (!zaloModalInvoice) return 0;
+    return invoices
+      .filter(
+        (i) =>
+          i.roomCode === zaloModalInvoice.roomCode &&
+          i.id !== zaloModalInvoice.id &&
+          i.billingMonth < zaloModalInvoice.billingMonth &&
+          i.status !== 'draft'
+      )
+      .reduce((sum, i) => sum + Math.max(0, i.totalAmount - i.paidAmount), 0);
+  }, [zaloModalInvoice, invoices]);
+
+  // Danh sách hóa đơn còn nợ của phòng đang mở trong Collect Payment Modal
+  const collectUnpaidRoomInvoices = useMemo(() => {
+    if (!collectModalInvoice) return [];
+    return invoices
+      .filter(
+        (i) =>
+          i.roomCode === collectModalInvoice.roomCode &&
+          i.status !== 'draft' &&
+          i.totalAmount - i.paidAmount > 0
+      )
+      .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
+  }, [collectModalInvoice, invoices]);
+
+  return (
+    <div className="min-h-screen flex bg-[#F8FAFC] text-slate-900">
+      {/* LEFT SIDEBAR (Chuẩn giao diện OptiRent trong video) */}
+      <aside className="w-60 bg-white border-r border-slate-200/80 shrink-0 hidden md:flex flex-col justify-between">
+        <div className="p-4 space-y-6">
+          {/* Brand Logo */}
+          <div className="flex items-center justify-between px-2">
+            <div
+              onClick={() => setActiveTab('overview')}
+              className="flex items-center gap-2.5 cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <span className="text-base font-extrabold tracking-tight text-slate-900">
+                OptiRent
+              </span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">
+              PRO
+            </span>
+          </div>
+
+          {/* Menu Items */}
+          <nav className="space-y-1 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'overview'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Tổng quan</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('calendar')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'calendar'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Lịch</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('rooms')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'rooms'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>Phòng</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('tenants')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'tenants'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Khách thuê</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('contracts')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'contracts'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Hợp đồng</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('invoices')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'invoices'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Hóa đơn</span>
+            </button>
+
+            {/* Tài chính expandable */}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFinanceExpanded(!financeExpanded);
+                  if (!activeTab.startsWith('finance-')) {
+                    setActiveTab('finance-debts');
+                  }
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition ${
+                  activeTab.startsWith('finance-')
+                    ? 'bg-blue-50 text-blue-600 font-bold'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Wallet className="w-4 h-4" />
+                  <span>Tài chính</span>
+                </span>
+                {financeExpanded ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
+                )}
+              </button>
+
+              {financeExpanded && (
+                <div className="mt-1 ml-6 pl-3 border-l border-slate-200 space-y-1">
+                  {[
+                    { id: 'finance-cashbook', label: 'Sổ thu chi' },
+                    { id: 'finance-funds', label: 'Quỹ' },
+                    { id: 'finance-debts', label: 'Công nợ' },
+                    { id: 'finance-deposits', label: 'Cọc phải trả' },
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => setActiveTab(sub.id as NavTab)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition ${
+                        activeTab === sub.id
+                          ? 'text-blue-600 font-bold bg-blue-50/50'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('reports')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'reports'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>Báo cáo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition ${
+                activeTab === 'settings'
+                  ? 'bg-blue-50 text-blue-600 font-bold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Settings className="w-4 h-4" />
+                <span>Cài đặt</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+          </nav>
+        </div>
+
+        {/* Bottom Google Sheets Sync Status */}
+        <div className="p-4 border-t border-slate-100 space-y-2">
+          <button
+            type="button"
+            onClick={handleSyncGoogleSheets}
+            className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-2 transition"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Đồng bộ Google Sheets
+          </button>
+          <button
+            type="button"
+            onClick={handleResetDemoData}
+            className="w-full py-1.5 px-3 rounded-lg text-slate-400 hover:text-slate-600 text-[11px] flex items-center justify-center gap-1.5"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Khôi phục dữ liệu mẫu
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TOPBAR */}
+        <header className="bg-white border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+          <div className="flex items-center gap-3 flex-1 min-w-[260px]">
+            {/* Property Selector */}
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+            >
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Global Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Tìm phòng, khách, SĐT, mã hóa đơn..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white pl-9 pr-4 py-2 text-xs text-slate-800 focus:border-blue-600 focus:outline-none transition"
+              />
+              {searchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50">
+                  {searchResults.map((res) => (
+                    <button
+                      key={res.id}
+                      type="button"
+                      onClick={res.onClick}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">
+                          {res.label}
+                        </div>
+                        <div className="text-[11px] text-slate-500">{res.sub}</div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-semibold">
+                        {res.badge}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Topbar Action Buttons (Mobile & Expo Go + Google Sheets) */}
+          <div className="flex items-center gap-2">
+            <a
+              href={DEFAULT_GOOGLE_SHEETS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200 transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Google Sheets</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setIsMobilePreview((v) => !v)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition ${
+                isMobilePreview
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              {isMobilePreview ? '💻 Giao diện Web' : '📱 Khung Mobile'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsExpoQrModalOpen(true)}
+              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1.5"
+            >
+              <span>📲 Chạy Expo Go</span>
+            </button>
+          </div>
+
+          {/* Mobile quick nav */}
+          <div className="flex md:hidden items-center gap-1 overflow-x-auto w-full pt-1">
+            {[
+              { id: 'overview', label: 'Tổng quan' },
+              { id: 'rooms', label: 'Phòng' },
+              { id: 'tenants', label: 'Khách' },
+              { id: 'contracts', label: 'HĐ' },
+              { id: 'invoices', label: 'Hóa đơn' },
+              { id: 'finance-debts', label: 'Thu tiền' },
+              { id: 'reports', label: 'Báo cáo' },
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setActiveTab(m.id as NavTab)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 ${
+                  activeTab === m.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* PAGE CONTENT */}
+        <main
+          className={`p-4 lg:p-8 w-full mx-auto flex-1 transition-all ${
+            isMobilePreview
+              ? 'max-w-[430px] my-4 bg-white rounded-[36px] border-[8px] border-slate-900 shadow-2xl overflow-y-auto'
+              : 'max-w-7xl'
+          }`}
+        >
+          {isMobilePreview && (
+            <div className="mb-4 p-3 rounded-2xl bg-slate-900 text-white flex items-center justify-between text-xs">
+              <div>
+                <div className="font-bold">📱 Chế độ Mobile PWA / Expo Go</div>
+                <div className="text-[11px] text-slate-300">Nhà trọ Bình An · 12 phòng</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExpoQrModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-teal-500 text-white font-bold text-[11px]"
+              >
+                Mã QR Expo
+              </button>
+            </div>
+          )}
+          {activeTab === 'overview' && renderOverview()}
+          {activeTab === 'calendar' && renderCalendar()}
+          {activeTab === 'rooms' && renderRooms()}
+          {activeTab === 'tenants' && renderTenants()}
+          {activeTab === 'contracts' && renderContracts()}
+          {activeTab === 'invoices' && renderInvoices()}
+          {activeTab.startsWith('finance-') && renderFinance()}
+          {activeTab === 'reports' && renderReports()}
+          {activeTab === 'settings' && renderSettings()}
+        </main>
+      </div>
+
+      {/* MODALS */}
+      <CreateContractModal
+        isOpen={isContractModalOpen}
+        onClose={() => setIsContractModalOpen(false)}
+        property={currentProperty}
+        rooms={propertyRooms}
+        tenants={tenants}
+        initialRoomCode={contractInitialRoom}
+        onCreateContract={handleCreateContract}
+      />
+
+      <MeterReadingModal
+        isOpen={isMeterModalOpen}
+        onClose={() => setIsMeterModalOpen(false)}
+        rooms={propertyRooms}
+        invoicesForMonth={invoices.filter((i) => i.billingMonth === invoiceMonth)}
+        initialRoomCode={meterInitialRoom}
+        onSaveReadingsAndCreateInvoices={handleSaveReadingsAndCreateInvoices}
+      />
+
+      <InvoiceZaloModal
+        isOpen={!!zaloModalInvoice}
+        onClose={() => setZaloModalInvoice(null)}
+        invoice={zaloModalInvoice}
+        property={currentProperty}
+        previousDebtAmount={zaloPreviousDebt}
+        depositHeld={
+          rooms.find((r) => r.code === zaloModalInvoice?.roomCode)?.deposit || 2350000
+        }
+        onMarkSentZalo={(invId) =>
+          setInvoices((prev) =>
+            prev.map((i) => (i.id === invId ? { ...i, sentZalo: true } : i))
+          )
+        }
+      />
+
+      <CollectPaymentModal
+        isOpen={!!collectModalInvoice}
+        onClose={() => setCollectModalInvoice(null)}
+        targetInvoice={collectModalInvoice}
+        unpaidRoomInvoices={collectUnpaidRoomInvoices}
+        onConfirmCollect={handleConfirmCollectFIFO}
+      />
+
+      <TempResidenceModal
+        isOpen={isTempResidenceOpen}
+        onClose={() => setIsTempResidenceOpen(false)}
+        tenants={tenants}
+        property={currentProperty}
+      />
+
+      {/* EXPO GO & MOBILE PWA MODAL */}
+      {isExpoQrModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  📲 Chạy thử trên Điện thoại (Expo Go & Mobile PWA)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Hỗ trợ cả Native App trên Expo Go (`mobile-expo/`) và Mobile PWA
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExpoQrModalOpen(false)}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                <div className="text-xs font-bold text-slate-800">1. Native App trên Expo Go</div>
+                {expoQrDataUrl && (
+                  <img
+                    src={expoQrDataUrl}
+                    alt="Expo Go QR"
+                    className="w-36 h-36 mx-auto rounded-xl border border-slate-200 bg-white p-1.5"
+                  />
+                )}
+                <div className="text-[11px] font-mono text-teal-700 bg-teal-50 py-1 px-2 rounded-lg">
+                  exp://192.168.0.23:8081
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Mở ứng dụng <b>Expo Go</b> (Android) hoặc <b>Camera</b> (iOS) để quét
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                <div className="text-xs font-bold text-slate-800">2. Mobile Web PWA</div>
+                {pwaQrDataUrl && (
+                  <img
+                    src={pwaQrDataUrl}
+                    alt="Mobile PWA QR"
+                    className="w-36 h-36 mx-auto rounded-xl border border-slate-200 bg-white p-1.5"
+                  />
+                )}
+                <div className="text-[11px] font-mono text-blue-700 bg-blue-50 py-1 px-2 rounded-lg truncate">
+                  .../phongtro/?mode=mobile
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Mở bằng Safari / Chrome trên điện thoại & chọn <b>Thêm vào MH chính</b>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-200 text-xs font-mono space-y-1">
+              <div className="text-teal-400 font-bold"># Lệnh khởi chạy Expo Go Server:</div>
+              <div>cd mobile-expo && npx expo start --port 8081</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2.5 text-xs font-semibold animate-bounce">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

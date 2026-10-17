@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "OptiRent — Quản Lý Trọ",
+    "slug": "optirent-phongtro",
+    "version": "1.0.0",
+    "scheme": "optirent",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.phuonghihi.optirent"
+    },
+    "android": {
+      "package": "com.phuonghihi.optirent",
+      "adaptiveIcon": {
+        "backgroundColor": "#F0FDFA",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

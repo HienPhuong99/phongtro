@@ -67,6 +67,10 @@ import {
 } from './components/Modals';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
+const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
+const SHEETS_TOKEN_KEY = 'quanlyphongtro_sheets_token';
+// Phải khớp SYNC_SCHEMA trong apps-script/Code.gs
+const SHEETS_SYNC_SCHEMA = 'quanlyphongtro-web-v1';
 
 // URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
@@ -237,9 +241,16 @@ export function App() {
   });
 
   const [sheetsWebAppUrl, setSheetsWebAppUrl] = useState<string>(() => {
-    return localStorage.getItem('quanlyphongtro_sheets_url') || DEFAULT_APPS_SCRIPT_URL;
+    return localStorage.getItem(SHEETS_URL_KEY) || DEFAULT_APPS_SCRIPT_URL;
   });
-  const [syncStatus, setSyncStatus] = useState<string>('');
+  // Mã đồng bộ chỉ lưu trên trình duyệt này, không build vào bundle công khai
+  const [sheetsSyncToken, setSheetsSyncToken] = useState<string>(() => {
+    return localStorage.getItem(SHEETS_TOKEN_KEY) || '';
+  });
+  const [syncStatus, setSyncStatus] = useState<{
+    tone: 'pending' | 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Sub-filters & view states
   const [roomViewMode, setRoomViewMode] = useState<'floor' | 'list'>('floor');
@@ -861,32 +872,56 @@ export function App() {
 
   // 5. Đồng bộ 2 chiều với Google Sheets Web App (Apps Script)
   const handleSyncGoogleSheets = async () => {
-    setSyncStatus('Đang đồng bộ lên Google Sheets...');
+    const failSync = (reason: string) => {
+      setSyncStatus({ tone: 'error', text: 'Đồng bộ thất bại: ' + reason });
+      showToast('Đồng bộ Google Sheets thất bại: ' + reason);
+    };
+    if (!sheetsWebAppUrl.startsWith('https://script.google.com/')) {
+      failSync('URL Web App phải bắt đầu bằng https://script.google.com/');
+      return;
+    }
+    if (!sheetsSyncToken.trim()) {
+      failSync('chưa nhập mã đồng bộ (Cài đặt → Kết nối & Đồng bộ Google Sheets).');
+      return;
+    }
+    setSyncStatus({ tone: 'pending', text: 'Đang đồng bộ lên Google Sheets...' });
     try {
       const payload = {
-        action: 'SYNC_ALL',
-        timestamp: new Date().toISOString(),
-        property: currentProperty,
-        rooms,
-        tenants: allTenants,
-        vehicles: allVehicles,
-        contracts: allContracts,
-        invoices: allInvoices,
-        transactions: allTransactions,
+        action: 'syncState',
+        schema: SHEETS_SYNC_SCHEMA,
+        token: sheetsSyncToken.trim(),
+        state: {
+          properties,
+          rooms,
+          tenants: allTenants,
+          vehicles: allVehicles,
+          contracts: allContracts,
+          invoices: allInvoices,
+          transactions: allTransactions,
+        },
       };
-      if (sheetsWebAppUrl && sheetsWebAppUrl.startsWith('https://script.google.com')) {
-        await fetch(sheetsWebAppUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
-        });
+      // text/plain giữ request ở dạng "simple request" (không preflight) nên đọc được phản hồi JSON của Apps Script
+      const res = await fetch(sheetsWebAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        failSync(`HTTP ${res.status}`);
+        return;
       }
-      setSyncStatus('Đã đồng bộ thành công với Google Sheets lúc ' + new Date().toLocaleTimeString('vi-VN'));
+      const result = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!result || result.ok !== true) {
+        failSync(result?.error || 'phản hồi không hợp lệ từ Apps Script.');
+        return;
+      }
+      setSyncStatus({
+        tone: 'success',
+        text: 'Đã đồng bộ thành công với Google Sheets lúc ' + new Date().toLocaleTimeString('vi-VN'),
+      });
       showToast('Đã đồng bộ toàn bộ 6 phân hệ lên Google Sheets!');
-    } catch {
-      setSyncStatus('Đã lưu cục bộ & hàng đợi đồng bộ Google Sheets.');
-      showToast('Đã lưu dữ liệu đồng bộ!');
+    } catch (err) {
+      failSync(err instanceof Error ? err.message : 'không kết nối được tới Apps Script.');
     }
   };
 
@@ -3992,10 +4027,27 @@ export function App() {
               value={sheetsWebAppUrl}
               onChange={(e) => {
                 setSheetsWebAppUrl(e.target.value);
-                localStorage.setItem('quanlyphongtro_sheets_url', e.target.value);
+                localStorage.setItem(SHEETS_URL_KEY, e.target.value);
               }}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-slate-800"
             />
+            <label className="block font-medium text-slate-600 pt-1">
+              Mã đồng bộ (SYNC_TOKEN)
+            </label>
+            <input
+              type="password"
+              autoComplete="off"
+              value={sheetsSyncToken}
+              onChange={(e) => {
+                setSheetsSyncToken(e.target.value);
+                localStorage.setItem(SHEETS_TOKEN_KEY, e.target.value);
+              }}
+              placeholder="Dán mã từ menu 🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ trên Google Sheets"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-slate-800"
+            />
+            <p className="text-slate-500">
+              Mã chỉ lưu trên trình duyệt này. Thiếu mã thì Apps Script từ chối đọc/ghi dữ liệu.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -4029,8 +4081,18 @@ export function App() {
           </div>
 
           {syncStatus && (
-            <div className="text-xs text-emerald-600 font-medium pt-1">
-              ✓ {syncStatus}
+            <div
+              role={syncStatus.tone === 'error' ? 'alert' : 'status'}
+              className={`text-xs font-medium pt-1 ${
+                syncStatus.tone === 'error'
+                  ? 'text-rose-600'
+                  : syncStatus.tone === 'success'
+                    ? 'text-emerald-600'
+                    : 'text-slate-500'
+              }`}
+            >
+              {syncStatus.tone === 'error' ? '✕' : syncStatus.tone === 'success' ? '✓' : '…'}{' '}
+              {syncStatus.text}
             </div>
           )}
         </div>

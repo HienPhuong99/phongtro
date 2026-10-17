@@ -22,7 +22,7 @@ function ab(args) {
 }
 
 function clickBtn(label) {
-  const js = `(() => { const btns = Array.from(document.querySelectorAll('button')); const target = btns.reverse().find(b => b.innerText && b.innerText.includes('${label}')); if (target) { target.click(); return true; } return false; })()`;
+  const js = `(() => { const modalBtns = Array.from(document.querySelectorAll('.fixed.inset-0 button')); const inModal = modalBtns.find(b => b.innerText && b.innerText.includes('${label}')); if (inModal) { inModal.click(); return 'modal:${label}'; } const btns = Array.from(document.querySelectorAll('button')); const target = btns.find(b => b.innerText && b.innerText.includes('${label}')); if (target) { target.click(); return 'page:${label}'; } return false; })()`;
   ab(`eval "${js}"`);
 }
 
@@ -46,10 +46,34 @@ async function main() {
   ab(`get title`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '01-dashboard.png')}"`);
 
-  // 2. Chuyển sang màn hình Phòng
+  // 2. Chuyển sang màn hình Phòng & Kiểm thử tính năng Điều chỉnh giá thuê phòng
   clickBtn('Phòng');
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '02-rooms.png')}"`);
+
+  // 2b. Mở modal Sửa giá phòng P101, tăng +100k (2.350.000 -> 2.450.000 đ)
+  clickBtn('Sửa giá');
+  ab(`wait 400`);
+  clickBtn('+100k');
+  ab(`wait 300`);
+  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '15-modal-room-price-single.png')}"`);
+
+  // 2c. Chuyển sang tab Bảng giá toàn bộ 12 phòng & Tăng/Giảm hàng loạt
+  clickBtn('2. Bảng giá toàn bộ');
+  ab(`wait 400`);
+  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '16-modal-room-price-bulk.png')}"`);
+
+  // 2d. Quay lại tab Chỉnh sửa từng phòng và bấm Lưu giá phòng P101
+  clickBtn('1. Chỉnh sửa chi tiết');
+  ab(`wait 300`);
+  clickBtn('Lưu giá phòng P101');
+  ab(`wait 400`);
+  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '17-rooms-after-price-update.png')}"`);
+
+  // Xác thực giá phòng P101 và Tổng tiền thuê/tháng theo hợp đồng đã tăng thêm 100.000 đ (22.600.000 đ)
+  ab(
+    `eval "(() => { const text = document.body.innerText; if (!text.includes('22.600.000')) throw new Error('Giá hợp đồng tổng chưa cập nhật lên 22.600.000 đ'); return 'VERIFIED_PRICE_UPDATE_22_600_000'; })()"`
+  );
 
   // 3. Chuyển sang màn hình Khách thuê & Danh sách xe
   clickBtn('Khách thuê');

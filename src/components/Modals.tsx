@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Zap,
@@ -1705,3 +1705,676 @@ export const TempResidenceModal: React.FC<TempResidenceModalProps> = ({
     </div>
   );
 };
+
+// ============================================================================
+// 6. MODAL ĐIỀU CHỈNH GIÁ THUÊ & BẢNG GIÁ PHÒNG (TỪNG PHÒNG + HÀNG LOẠT)
+// ============================================================================
+export interface RoomPriceUpdateItem {
+  roomCode: string;
+  price: number;
+  deposit: number;
+  trashFee: number;
+  internetFee: number;
+  vehicleCount: number;
+  status: Room['status'];
+  notes?: string;
+}
+
+interface RoomPricingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  property: Property;
+  rooms: Room[];
+  contracts: Contract[];
+  initialRoomCode?: string;
+  initialMode?: 'single' | 'bulk';
+  onSaveRoomPricing: (payload: {
+    updates: RoomPriceUpdateItem[];
+    syncActiveContracts: boolean;
+    syncUnpaidInvoices: boolean;
+  }) => void;
+}
+
+export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
+  isOpen,
+  onClose,
+  property,
+  rooms,
+  contracts,
+  initialRoomCode,
+  initialMode = 'single',
+  onSaveRoomPricing,
+}) => {
+  const [mode, setMode] = useState<'single' | 'bulk'>(initialMode);
+  const [selectedRoomCode, setSelectedRoomCode] = useState<string>(
+    initialRoomCode || rooms[0]?.code || 'P101'
+  );
+
+  // State cho chỉnh sửa từng phòng
+  const [price, setPrice] = useState<number>(2350000);
+  const [deposit, setDeposit] = useState<number>(2350000);
+  const [trashFee, setTrashFee] = useState<number>(30000);
+  const [internetFee, setInternetFee] = useState<number>(100000);
+  const [vehicleCount, setVehicleCount] = useState<number>(1);
+  const [status, setStatus] = useState<Room['status']>('occupied');
+  const [notes, setNotes] = useState<string>('');
+
+  // State cho bảng giá hàng loạt
+  const [bulkScope, setBulkScope] = useState<
+    'all' | 'floor-1' | 'floor-2' | 'floor-3' | 'vacant'
+  >('all');
+  const [draftMap, setDraftMap] = useState<Record<string, RoomPriceUpdateItem>>({});
+
+  // Tùy chọn đồng bộ Hợp đồng & Hóa đơn
+  const [syncActiveContracts, setSyncActiveContracts] = useState<boolean>(true);
+  const [syncUnpaidInvoices, setSyncUnpaidInvoices] = useState<boolean>(true);
+
+  const loadSingleRoomState = (rCode: string, roomList: Room[]) => {
+    const r = roomList.find((x) => x.code === rCode) || roomList[0];
+    if (!r) return;
+    setPrice(r.price);
+    setDeposit(r.deposit);
+    setTrashFee(r.trashFee);
+    setInternetFee(r.internetFee);
+    setVehicleCount(r.vehicleCount);
+    setStatus(r.status);
+    setNotes(r.notes || '');
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    const targetCode = initialRoomCode || rooms[0]?.code || 'P101';
+    setSelectedRoomCode(targetCode);
+    loadSingleRoomState(targetCode, rooms);
+
+    const map: Record<string, RoomPriceUpdateItem> = {};
+    rooms.forEach((r) => {
+      map[r.code] = {
+        roomCode: r.code,
+        price: r.price,
+        deposit: r.deposit,
+        trashFee: r.trashFee,
+        internetFee: r.internetFee,
+        vehicleCount: r.vehicleCount,
+        status: r.status,
+        notes: r.notes || '',
+      };
+    });
+    setDraftMap(map);
+  }, [isOpen, initialRoomCode, initialMode, rooms]);
+
+  const currentRoom = useMemo(
+    () => rooms.find((r) => r.code === selectedRoomCode) || rooms[0],
+    [rooms, selectedRoomCode]
+  );
+
+  const activeContractForRoom = useMemo(
+    () =>
+      contracts.find(
+        (c) => c.roomCode === selectedRoomCode && c.status === 'active'
+      ),
+    [contracts, selectedRoomCode]
+  );
+
+  if (!isOpen || !currentRoom) return null;
+
+  const priceDiff = price - currentRoom.price;
+  const priceDiffPercent =
+    currentRoom.price > 0
+      ? ((priceDiff / currentRoom.price) * 100).toFixed(1)
+      : '0.0';
+
+  const handleApplyBulkDelta = (deltaAmount: number, deltaPercent?: number) => {
+    setDraftMap((prev) => {
+      const next = { ...prev };
+      rooms.forEach((r) => {
+        const inScope =
+          bulkScope === 'all' ||
+          (bulkScope === 'floor-1' && r.floor === 1) ||
+          (bulkScope === 'floor-2' && r.floor === 2) ||
+          (bulkScope === 'floor-3' && r.floor === 3) ||
+          (bulkScope === 'vacant' && r.status === 'vacant');
+        if (!inScope) return;
+        const curr = next[r.code] || {
+          roomCode: r.code,
+          price: r.price,
+          deposit: r.deposit,
+          trashFee: r.trashFee,
+          internetFee: r.internetFee,
+          vehicleCount: r.vehicleCount,
+          status: r.status,
+          notes: r.notes || '',
+        };
+        let newPrice = curr.price;
+        if (typeof deltaPercent === 'number') {
+          newPrice = Math.round((curr.price * (1 + deltaPercent / 100)) / 10000) * 10000;
+        } else {
+          newPrice = Math.max(0, curr.price + deltaAmount);
+        }
+        next[r.code] = {
+          ...curr,
+          price: newPrice,
+          deposit: curr.deposit === curr.price ? newPrice : curr.deposit,
+        };
+      });
+      return next;
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mode === 'single') {
+      onSaveRoomPricing({
+        updates: [
+          {
+            roomCode: selectedRoomCode,
+            price,
+            deposit,
+            trashFee,
+            internetFee,
+            vehicleCount,
+            status,
+            notes: notes.trim() || undefined,
+          },
+        ],
+        syncActiveContracts,
+        syncUnpaidInvoices,
+      });
+    } else {
+      const updates = Object.values(draftMap);
+      onSaveRoomPricing({
+        updates,
+        syncActiveContracts,
+        syncUnpaidInvoices,
+      });
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px] p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              🏷️ Điều chỉnh giá thuê & Phí dịch vụ theo từng phòng
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {property.name} · Thiết lập mức giá riêng biệt cho từng phòng hoặc tăng/giảm hàng loạt theo tầng
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Mode Switcher */}
+        <div className="px-6 pt-3 bg-slate-50/70 border-b border-slate-200 flex items-center gap-6 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setMode('single')}
+            className={`pb-3 border-b-2 transition ${
+              mode === 'single'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            1. Chỉnh sửa chi tiết từng phòng ({selectedRoomCode})
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('bulk')}
+            className={`pb-3 border-b-2 transition ${
+              mode === 'bulk'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            2. Bảng giá toàn bộ {rooms.length} phòng & Tăng/Giảm hàng loạt
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-5">
+          {mode === 'single' ? (
+            <div className="space-y-5">
+              {/* Chọn phòng & Thông tin hiện tại */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Chọn phòng cần điều chỉnh giá *
+                  </label>
+                  <select
+                    value={selectedRoomCode}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      setSelectedRoomCode(code);
+                      loadSingleRoomState(code, rooms);
+                    }}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+                  >
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.code}>
+                        Phòng {r.code} (Tầng {r.floor}) — Hiện tại: {formatVND(r.price)}/tháng
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Trạng thái phòng
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as Room['status'])}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
+                  >
+                    <option value="occupied">Đã thuê ({currentRoom.tenantName || 'Đang ở'})</option>
+                    <option value="vacant">Còn trống (Sẵn sàng đón khách)</option>
+                    <option value="maintenance">Đang sửa chữa / Bảo trì</option>
+                    <option value="deposited">Đã nhận cọc giữ phòng</option>
+                    <option value="moving_in">Sắp dọn vào ở</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Thông tin tóm tắt phòng */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <div className="text-slate-500">
+                    Phòng <strong className="text-slate-900">{currentRoom.code}</strong> · Tầng{' '}
+                    <strong className="text-slate-900">{currentRoom.floor}</strong> · Khách hiện tại:{' '}
+                    <strong className="text-blue-600">
+                      {currentRoom.tenantName || 'Chưa có khách (Phòng trống)'}
+                    </strong>
+                  </div>
+                  {activeContractForRoom && (
+                    <div className="text-slate-500">
+                      Hợp đồng đang hiệu lực:{' '}
+                      <strong className="text-slate-800">{activeContractForRoom.code}</strong> (Giá HĐ hiện tại:{' '}
+                      <strong className="text-slate-900">
+                        {formatVND(activeContractForRoom.rentAmount)}
+                      </strong>
+                      /tháng)
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-slate-400 block">Giá niêm yết cũ</span>
+                  <span className="text-sm font-extrabold text-slate-700">
+                    {formatVND(currentRoom.price)}/tháng
+                  </span>
+                </div>
+              </div>
+
+              {/* Giá thuê mới & Nút tăng/giảm nhanh */}
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/30 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-slate-800">
+                    Giá thuê phòng mới (đ/tháng) *
+                  </label>
+                  {priceDiff !== 0 && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        priceDiff > 0
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {priceDiff > 0 ? `+${formatVND(priceDiff)}` : formatVND(priceDiff)} (
+                      {priceDiff > 0 ? `+${priceDiffPercent}%` : `${priceDiffPercent}%`})
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <input
+                    type="text"
+                    aria-label="Giá thuê phòng mới"
+                    value={formatNumberInput(price)}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
+                      setPrice(val);
+                    }}
+                    className="w-full rounded-xl border-2 border-blue-500 bg-white px-4 py-2.5 text-base font-extrabold text-blue-700 focus:outline-none"
+                  />
+                  <div className="text-xs text-slate-600 italic">
+                    Bằng chữ: <strong className="text-slate-800">{readMoneyWordsVN(price)}</strong>
+                  </div>
+                </div>
+
+                {/* Các nút cộng/trừ nhanh */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-500 mr-1">Điều chỉnh nhanh:</span>
+                  {[-200000, -100000, -50000, 50000, 100000, 200000, 500000].map((delta) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      onClick={() => setPrice((prev) => Math.max(0, prev + delta))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                        delta > 0
+                          ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                          : 'bg-white border-rose-200 text-rose-700 hover:bg-rose-50'
+                      }`}
+                    >
+                      {delta > 0 ? `+${delta / 1000}k` : `${delta / 1000}k`}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDeposit(price)}
+                    className="ml-auto px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
+                  >
+                    Đặt tiền cọc = Giá thuê mới
+                  </button>
+                </div>
+              </div>
+
+              {/* Tiền cọc & Phí dịch vụ riêng của phòng */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Tiền đặt cọc chuẩn (đ)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatNumberInput(deposit)}
+                    onChange={(e) =>
+                      setDeposit(parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Phí rác phòng (đ/tháng)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatNumberInput(trashFee)}
+                    onChange={(e) =>
+                      setTrashFee(parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Phí Internet/Wifi (đ/tháng)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatNumberInput(internetFee)}
+                    onChange={(e) =>
+                      setInternetFee(parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Số lượng xe gửi
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={vehicleCount}
+                    onChange={(e) => setVehicleCount(parseInt(e.target.value, 10) || 0)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+
+              {/* Ghi chú phòng */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Ghi chú đặc điểm / lý do điều chỉnh giá phòng
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="VD: Phòng góc có ban công thoáng, lắp thêm máy nước nóng..."
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800"
+                />
+              </div>
+            </div>
+          ) : (
+            /* TAB 2: BẢNG GIÁ TẤT CẢ PHÒNG & ĐIỀU CHỈNH HÀNG LOẠT */
+            <div className="space-y-4">
+              {/* Thanh công cụ tăng/giảm hàng loạt */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700">Phạm vi áp dụng:</span>
+                  <select
+                    value={bulkScope}
+                    onChange={(e) =>
+                      setBulkScope(
+                        e.target.value as
+                          | 'all'
+                          | 'floor-1'
+                          | 'floor-2'
+                          | 'floor-3'
+                          | 'vacant'
+                      )
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800"
+                  >
+                    <option value="all">Tất cả 12 phòng</option>
+                    <option value="floor-1">Chỉ Tầng 1 (P101 - P104)</option>
+                    <option value="floor-2">Chỉ Tầng 2 (P201 - P204)</option>
+                    <option value="floor-3">Chỉ Tầng 3 (P301 - P304)</option>
+                    <option value="vacant">Chỉ các phòng đang trống</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-500">Tăng/Giảm hàng loạt:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(-100000)}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-rose-700 text-xs font-semibold hover:bg-rose-50"
+                  >
+                    -100k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(-50000)}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-rose-700 text-xs font-semibold hover:bg-rose-50"
+                  >
+                    -50k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(50000)}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-50"
+                  >
+                    +50k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(100000)}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-50"
+                  >
+                    +100k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(200000)}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-50"
+                  >
+                    +200k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyBulkDelta(0, 5)}
+                    className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100"
+                  >
+                    +5%
+                  </button>
+                </div>
+              </div>
+
+              {/* Bảng chỉnh sửa trực tiếp từng phòng */}
+              <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[46vh]">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0">
+                    <tr>
+                      <th className="py-2.5 px-3 text-left">Phòng</th>
+                      <th className="py-2.5 px-2 text-left">Tầng</th>
+                      <th className="py-2.5 px-3 text-left">Khách thuê / Trạng thái</th>
+                      <th className="py-2.5 px-3 text-right">Giá cũ</th>
+                      <th className="py-2.5 px-3 text-right">Giá thuê mới (đ/tháng)</th>
+                      <th className="py-2.5 px-3 text-right">Tiền cọc (đ)</th>
+                      <th className="py-2.5 px-3 text-right">Rác + Wifi</th>
+                      <th className="py-2.5 px-3 text-right">Chênh lệch</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rooms.map((r) => {
+                      const d = draftMap[r.code] || {
+                        roomCode: r.code,
+                        price: r.price,
+                        deposit: r.deposit,
+                        trashFee: r.trashFee,
+                        internetFee: r.internetFee,
+                        vehicleCount: r.vehicleCount,
+                        status: r.status,
+                      };
+                      const diff = d.price - r.price;
+                      return (
+                        <tr key={r.id} className="hover:bg-slate-50/80">
+                          <td className="py-2 px-3 font-extrabold text-slate-900">
+                            {r.code}
+                          </td>
+                          <td className="py-2 px-2 text-slate-500">Tầng {r.floor}</td>
+                          <td className="py-2 px-3">
+                            {r.status === 'occupied' ? (
+                              <span className="font-medium text-slate-800">
+                                {r.tenantName}
+                              </span>
+                            ) : r.status === 'vacant' ? (
+                              <span className="text-emerald-600 font-semibold">
+                                Còn trống
+                              </span>
+                            ) : (
+                              <span className="text-rose-600 font-semibold">
+                                Đang sửa
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right text-slate-400">
+                            {formatVND(r.price)}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <input
+                              type="text"
+                              value={formatNumberInput(d.price)}
+                              onChange={(e) => {
+                                const val =
+                                  parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
+                                setDraftMap((prev) => ({
+                                  ...prev,
+                                  [r.code]: { ...d, price: val },
+                                }));
+                              }}
+                              className="w-28 rounded-lg border border-slate-300 px-2.5 py-1 text-right font-bold text-blue-700 focus:border-blue-600 focus:outline-none"
+                            />
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <input
+                              type="text"
+                              value={formatNumberInput(d.deposit)}
+                              onChange={(e) => {
+                                const val =
+                                  parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
+                                setDraftMap((prev) => ({
+                                  ...prev,
+                                  [r.code]: { ...d, deposit: val },
+                                }));
+                              }}
+                              className="w-28 rounded-lg border border-slate-200 px-2.5 py-1 text-right font-semibold text-slate-700 focus:border-blue-600 focus:outline-none"
+                            />
+                          </td>
+                          <td className="py-2 px-3 text-right text-slate-500">
+                            {formatVND(d.trashFee + d.internetFee)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold">
+                            {diff === 0 ? (
+                              <span className="text-slate-300">—</span>
+                            ) : diff > 0 ? (
+                              <span className="text-emerald-600">+{formatVND(diff)}</span>
+                            ) : (
+                              <span className="text-rose-600">{formatVND(diff)}</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tùy chọn đồng bộ Hợp đồng & Hóa đơn */}
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5 text-xs">
+            <div className="font-bold text-slate-800">
+              Tùy chọn đồng bộ tự động khi lưu giá thuê mới:
+            </div>
+            <label className="flex items-center gap-2.5 cursor-pointer text-slate-700">
+              <input
+                type="checkbox"
+                checked={syncActiveContracts}
+                onChange={(e) => setSyncActiveContracts(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                Đồng bộ giá thuê mới vào <strong>Hợp đồng đang hiệu lực</strong> của phòng đó
+              </span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer text-slate-700">
+              <input
+                type="checkbox"
+                checked={syncUnpaidInvoices}
+                onChange={(e) => setSyncUnpaidInvoices(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                Cập nhật lại tiền phòng & tổng tiền trên các{' '}
+                <strong>Hóa đơn chưa thu / nháp (kỳ 2026-10 & 2026-11)</strong>
+              </span>
+            </label>
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Huỷ
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-sm transition"
+            >
+              {mode === 'single'
+                ? `Lưu giá phòng ${selectedRoomCode}`
+                : 'Lưu bảng giá tất cả phòng'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+

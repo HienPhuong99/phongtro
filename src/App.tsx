@@ -62,6 +62,8 @@ import {
   InvoiceZaloModal,
   CollectPaymentModal,
   TempResidenceModal,
+  RoomPricingModal,
+  RoomPriceUpdateItem,
 } from './components/Modals';
 
 const STORAGE_KEY = 'optirent_state_v1';
@@ -209,7 +211,16 @@ export function App() {
   const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
   const [isTempResidenceOpen, setIsTempResidenceOpen] = useState<boolean>(false);
+  const [isRoomPricingOpen, setIsRoomPricingOpen] = useState<boolean>(false);
+  const [pricingRoomCode, setPricingRoomCode] = useState<string | undefined>(undefined);
+  const [pricingMode, setPricingMode] = useState<'single' | 'bulk'>('single');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const openRoomPricingModal = (roomCode?: string, mode: 'single' | 'bulk' = 'single') => {
+    setPricingRoomCode(roomCode || rooms[0]?.code || 'P101');
+    setPricingMode(mode);
+    setIsRoomPricingOpen(true);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -738,6 +749,97 @@ export function App() {
     showToast('Đã khôi phục dữ liệu gốc chuẩn video Phongtro.mp4!');
   };
 
+  // 7. Điều chỉnh giá thuê phòng & tự động đồng bộ Hợp đồng + Hóa đơn chưa thu
+  const handleSaveRoomPricing = (payload: {
+    updates: RoomPriceUpdateItem[];
+    syncActiveContracts: boolean;
+    syncUnpaidInvoices: boolean;
+  }) => {
+    const updateByCode: Record<string, RoomPriceUpdateItem> = {};
+    payload.updates.forEach((u) => {
+      updateByCode[u.roomCode] = u;
+    });
+
+    // Cập nhật danh sách phòng
+    setRooms((prev) =>
+      prev.map((r) => {
+        const up = updateByCode[r.code];
+        if (!up) return r;
+        return {
+          ...r,
+          price: up.price,
+          deposit: up.deposit,
+          trashFee: up.trashFee,
+          internetFee: up.internetFee,
+          vehicleCount: up.vehicleCount,
+          status: up.status,
+          notes: up.notes !== undefined ? up.notes : r.notes,
+        };
+      })
+    );
+
+    // Đồng bộ Hợp đồng đang hiệu lực nếu được chọn
+    if (payload.syncActiveContracts) {
+      setContracts((prev) =>
+        prev.map((c) => {
+          const up = updateByCode[c.roomCode];
+          if (!up || c.status !== 'active') return c;
+          return {
+            ...c,
+            rentAmount: up.price,
+            depositAmount: up.deposit,
+          };
+        })
+      );
+    }
+
+    // Đồng bộ Hóa đơn chưa thu / nháp kỳ 2026-10 và 2026-11 nếu được chọn
+    if (payload.syncUnpaidInvoices) {
+      setInvoices((prev) =>
+        prev.map((inv) => {
+          const up = updateByCode[inv.roomCode];
+          if (
+            !up ||
+            inv.status === 'paid' ||
+            (inv.billingMonth !== '2026-10' && inv.billingMonth !== '2026-11')
+          ) {
+            return inv;
+          }
+          const vehicleAmount = up.vehicleCount * currentProperty.vehicleFee;
+          const newTotal =
+            up.price +
+            inv.elecAmount +
+            inv.waterAmount +
+            up.trashFee +
+            up.internetFee +
+            vehicleAmount;
+          return {
+            ...inv,
+            rentAmount: up.price,
+            trashAmount: up.trashFee,
+            internetAmount: up.internetFee,
+            vehicleCount: up.vehicleCount,
+            vehicleAmount,
+            totalAmount: newTotal,
+          };
+        })
+      );
+    }
+
+    if (payload.updates.length === 1) {
+      const u = payload.updates[0];
+      showToast(
+        `Đã cập nhật giá thuê phòng ${u.roomCode}: ${formatVND(u.price)}/tháng${
+          payload.syncActiveContracts ? ' (đã đồng bộ HĐ & Hóa đơn)' : ''
+        }`
+      );
+    } else {
+      showToast(
+        `Đã cập nhật bảng giá thuê cho ${payload.updates.length} phòng thành công!`
+      );
+    }
+  };
+
   // Kết quả tìm kiếm nhanh trên thanh Topbar
   const searchResults = useMemo(() => {
     const q = removeAccents(globalSearch.trim());
@@ -1244,17 +1346,27 @@ export function App() {
               {occupiedRooms.length} đang thuê, {vacantRooms.length} trống
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setContractInitialRoom('P202');
-              setIsContractModalOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo hợp đồng cho phòng trống
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openRoomPricingModal(propertyRooms[0]?.code || 'P101', 'bulk')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Điều chỉnh giá thuê phòng
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setContractInitialRoom('P202');
+                setIsContractModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo hợp đồng cho phòng trống
+            </button>
+          </div>
         </div>
 
         {/* Sub-tabs & Filter Pills */}
@@ -1379,106 +1491,192 @@ export function App() {
           </div>
         </div>
 
-        {/* Sơ đồ phòng chia theo tầng */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-6">
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trống
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-slate-500" /> Đã thuê
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600" /> Sắp vào ở
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-600" /> Đặt cọc
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-600" /> Đang sửa chữa
-            </span>
-          </div>
-
-          {floors.map((floor) => {
-            const floorRooms = filteredRooms.filter((r) => r.floor === floor);
-            if (floorRooms.length === 0) return null;
-            return (
-              <div key={floor} className="space-y-2.5">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  TẦNG {floor}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {floorRooms.map((room) => {
-                    const isVacant = room.status === 'vacant';
-                    const isMaint = room.status === 'maintenance';
-                    return (
-                      <div
-                        key={room.id}
-                        onClick={() => {
-                          if (isVacant) {
-                            setContractInitialRoom(room.code);
-                            setIsContractModalOpen(true);
-                          } else if (isMaint) {
-                            setMeterInitialRoom(room.code);
-                            setIsMeterModalOpen(true);
-                          } else {
-                            setInvoiceMonth('2026-11');
-                            setActiveTab('invoices');
-                          }
-                        }}
-                        className={`relative rounded-xl p-4 cursor-pointer transition border ${
-                          isVacant
-                            ? 'bg-emerald-50/60 border-emerald-400 hover:bg-emerald-50'
-                            : isMaint
-                            ? 'bg-slate-50/90 border-slate-200 border-l-4 border-l-rose-500 hover:bg-slate-100'
-                            : 'bg-slate-50/90 border-slate-200 border-l-4 border-l-blue-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isVacant && (
-                          <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
-                            Còn trống
-                          </span>
-                        )}
-                        <div className="text-sm font-extrabold text-slate-900">
-                          {room.code}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {formatVND(room.price)}
-                        </div>
-                        <div className="text-xs font-medium text-slate-700 mt-1 truncate">
-                          {isVacant
-                            ? 'Bấm để lập hợp đồng'
-                            : isMaint
-                            ? 'Đang bảo trì thiết bị'
-                            : room.tenantName}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              isVacant
-                                ? 'bg-emerald-500'
-                                : isMaint
-                                ? 'bg-rose-500'
-                                : 'bg-blue-600'
-                            }`}
-                          />
-                          <span>
-                            {isVacant
-                              ? 'Trống'
-                              : isMaint
-                              ? 'Đang sửa chữa'
-                              : 'Đã thuê'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        {roomViewMode === 'floor' ? (
+          /* Sơ đồ phòng chia theo tầng */
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-6">
+            {/* Legend */}
+            <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-600">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trống
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-500" /> Đã thuê
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600" /> Sắp vào ở
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-600" /> Đặt cọc
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-600" /> Đang sửa chữa
+                </span>
               </div>
-            );
-          })}
-        </div>
+              <span className="text-[11px] text-slate-400">
+                💡 Bấm <b>Sửa giá</b> trên từng phòng để điều chỉnh mức giá thuê riêng
+              </span>
+            </div>
+
+            {floors.map((floor) => {
+              const floorRooms = filteredRooms.filter((r) => r.floor === floor);
+              if (floorRooms.length === 0) return null;
+              return (
+                <div key={floor} className="space-y-2.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    TẦNG {floor}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    {floorRooms.map((room) => {
+                      const isVacant = room.status === 'vacant';
+                      const isMaint = room.status === 'maintenance';
+                      return (
+                        <div
+                          key={room.id}
+                          onClick={() => {
+                            if (isVacant) {
+                              setContractInitialRoom(room.code);
+                              setIsContractModalOpen(true);
+                            } else if (isMaint) {
+                              setMeterInitialRoom(room.code);
+                              setIsMeterModalOpen(true);
+                            } else {
+                              setInvoiceMonth('2026-11');
+                              setActiveTab('invoices');
+                            }
+                          }}
+                          className={`relative rounded-xl p-4 cursor-pointer transition border ${
+                            isVacant
+                              ? 'bg-emerald-50/60 border-emerald-400 hover:bg-emerald-50'
+                              : isMaint
+                              ? 'bg-slate-50/90 border-slate-200 border-l-4 border-l-rose-500 hover:bg-slate-100'
+                              : 'bg-slate-50/90 border-slate-200 border-l-4 border-l-blue-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isVacant && (
+                            <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                              Còn trống
+                            </span>
+                          )}
+                          <div className="text-sm font-extrabold text-slate-900">
+                            {room.code}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <span className="text-xs font-bold text-slate-700">
+                              {formatVND(room.price)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRoomPricingModal(room.code, 'single');
+                              }}
+                              title={`Điều chỉnh giá thuê phòng ${room.code}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/90 hover:bg-blue-50 text-blue-600 border border-slate-200/80 text-[10px] font-bold shadow-2xs transition"
+                            >
+                              <Pencil className="w-2.5 h-2.5" />
+                              Sửa giá
+                            </button>
+                          </div>
+                          <div className="text-xs font-medium text-slate-700 mt-1 truncate">
+                            {isVacant
+                              ? 'Bấm để lập hợp đồng'
+                              : isMaint
+                              ? 'Đang bảo trì thiết bị'
+                              : room.tenantName}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-2">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                isVacant
+                                  ? 'bg-emerald-500'
+                                  : isMaint
+                                  ? 'bg-rose-500'
+                                  : 'bg-blue-600'
+                              }`}
+                            />
+                            <span>
+                              {isVacant
+                                ? 'Trống'
+                                : isMaint
+                                ? 'Đang sửa chữa'
+                                : 'Đã thuê'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Bảng danh sách tất cả phòng & chỉnh giá nhanh */
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-400 border-b border-slate-100 text-left">
+                  <th className="py-3.5 px-4 font-medium">Phòng</th>
+                  <th className="py-3.5 px-3 font-medium">Tầng</th>
+                  <th className="py-3.5 px-3 font-medium">Trạng thái</th>
+                  <th className="py-3.5 px-3 font-medium">Khách đang thuê</th>
+                  <th className="py-3.5 px-3 font-medium text-right">Giá thuê / tháng</th>
+                  <th className="py-3.5 px-3 font-medium text-right">Tiền cọc</th>
+                  <th className="py-3.5 px-3 font-medium text-right">Rác + Internet</th>
+                  <th className="py-3.5 px-4 font-medium text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredRooms.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3.5 px-4 font-extrabold text-slate-900">
+                      {r.code}
+                    </td>
+                    <td className="py-3.5 px-3 text-slate-600">Tầng {r.floor}</td>
+                    <td className="py-3.5 px-3">
+                      {r.status === 'occupied' ? (
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-semibold">
+                          Đã thuê
+                        </span>
+                      ) : r.status === 'vacant' ? (
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                          Còn trống
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-[11px] font-semibold">
+                          Đang sửa
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-3 font-medium text-slate-800">
+                      {r.tenantName || '—'}
+                    </td>
+                    <td className="py-3.5 px-3 text-right font-extrabold text-blue-700">
+                      {formatVND(r.price)}
+                    </td>
+                    <td className="py-3.5 px-3 text-right text-slate-600">
+                      {formatVND(r.deposit)}
+                    </td>
+                    <td className="py-3.5 px-3 text-right text-slate-600">
+                      {formatVND(r.trashFee + r.internetFee)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openRoomPricingModal(r.code, 'single')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Sửa giá
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
@@ -1956,7 +2154,17 @@ export function App() {
                     )}
                   </td>
                   <td className="py-3.5 px-4 text-right font-semibold text-slate-900">
-                    {formatVND(c.rentAmount)}
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      <span>{formatVND(c.rentAmount)}</span>
+                      <button
+                        type="button"
+                        onClick={() => openRoomPricingModal(c.roomCode, 'single')}
+                        title={`Điều chỉnh giá thuê phòng ${c.roomCode}`}
+                        className="p-1 rounded hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                   <td className="py-3.5 px-4 text-right text-slate-600">
                     {formatVND(c.depositAmount)}
@@ -3879,6 +4087,17 @@ export function App() {
         onClose={() => setIsTempResidenceOpen(false)}
         tenants={tenants}
         property={currentProperty}
+      />
+
+      <RoomPricingModal
+        isOpen={isRoomPricingOpen}
+        onClose={() => setIsRoomPricingOpen(false)}
+        property={currentProperty}
+        rooms={propertyRooms}
+        contracts={contracts}
+        initialRoomCode={pricingRoomCode}
+        initialMode={pricingMode}
+        onSaveRoomPricing={handleSaveRoomPricing}
       />
 
       {/* EXPO GO & MOBILE PWA MODAL */}

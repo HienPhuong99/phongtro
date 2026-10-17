@@ -200,6 +200,11 @@ export default function App() {
   const [newTenantPhone, setNewTenantPhone] = useState<string>('0909123456');
   const [startDateDay, setStartDateDay] = useState<string>('11');
 
+  // Modal Điều chỉnh giá thuê phòng
+  const [priceEditRoom, setPriceEditRoom] = useState<RoomItem | null>(null);
+  const [priceEditValue, setPriceEditValue] = useState<string>('');
+  const [priceEditDeposit, setPriceEditDeposit] = useState<string>('');
+
   // Thống kê tổng hợp
   const rentedRoomsCount = useMemo(() => rooms.filter((r) => r.status === 'rented').length, [rooms]);
   const occupancyRate = useMemo(() => Math.round((rentedRoomsCount / rooms.length) * 100), [rentedRoomsCount, rooms.length]);
@@ -371,6 +376,51 @@ export default function App() {
     );
   };
 
+  const openPriceEditModal = (room: RoomItem) => {
+    setPriceEditRoom(room);
+    setPriceEditValue(String(room.price));
+    setPriceEditDeposit(String(room.deposit));
+  };
+
+  const confirmPriceEdit = () => {
+    if (!priceEditRoom) return;
+    const newPrice = Math.max(0, Number(priceEditValue.replace(/\D/g, '')) || priceEditRoom.price);
+    const newDeposit = Math.max(
+      0,
+      Number(priceEditDeposit.replace(/\D/g, '')) || newPrice
+    );
+
+    setRooms((prev) =>
+      prev.map((r) =>
+        r.id === priceEditRoom.id
+          ? { ...r, price: newPrice, deposit: newDeposit }
+          : r
+      )
+    );
+
+    setInvoices((prev) =>
+      prev.map((inv) => {
+        if (inv.roomId !== priceEditRoom.id || inv.status === 'paid') return inv;
+        const diff = newPrice - inv.rentAmount;
+        const newTotal = Math.max(0, inv.totalAmount + diff);
+        const newRem = Math.max(0, newTotal - inv.paidAmount);
+        return {
+          ...inv,
+          rentAmount: newPrice,
+          totalAmount: newTotal,
+          remainingAmount: newRem,
+        };
+      })
+    );
+
+    const code = priceEditRoom.id;
+    setPriceEditRoom(null);
+    Alert.alert(
+      '🏷️ Đã cập nhật giá thuê phòng',
+      `Phòng ${code} đã được điều chỉnh thành ${formatVND(newPrice)}/tháng (đã đồng bộ Hóa đơn chưa thu).`
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
@@ -507,7 +557,15 @@ export default function App() {
                   <View style={styles.roomTop}>
                     <View>
                       <Text style={styles.roomName}>{room.name} · Tầng {room.floor}</Text>
-                      <Text style={styles.roomPrice}>Giá thuê: {formatVND(room.price)}/tháng</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                        <Text style={styles.roomPrice}>Giá thuê: {formatVND(room.price)}/tháng</Text>
+                        <TouchableOpacity
+                          style={styles.secondarySmallBtn}
+                          onPress={() => openPriceEditModal(room)}
+                        >
+                          <Text style={styles.secondarySmallBtnText}>🏷️ Sửa giá</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     <View
                       style={[
@@ -945,6 +1003,67 @@ export default function App() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmBtn} onPress={handleCreateContract}>
                 <Text style={styles.confirmBtnText}>Ký hợp đồng</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Điều chỉnh giá thuê phòng */}
+      <Modal visible={Boolean(priceEditRoom)} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>
+              🏷️ Điều chỉnh giá thuê — {priceEditRoom?.name}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              Giá hiện tại: {formatVND(priceEditRoom?.price || 0)}/tháng · Tự động đồng bộ Hóa đơn chưa thu
+            </Text>
+
+            <Text style={styles.inputLabel}>Giá thuê phòng mới (VNĐ/tháng)</Text>
+            <TextInput
+              style={styles.textInput}
+              keyboardType="numeric"
+              value={priceEditValue}
+              onChangeText={setPriceEditValue}
+            />
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {[-100000, -50000, 50000, 100000, 200000].map((delta) => (
+                <TouchableOpacity
+                  key={delta}
+                  style={styles.secondarySmallBtn}
+                  onPress={() => {
+                    const curr = Number(priceEditValue.replace(/\D/g, '')) || 0;
+                    const next = Math.max(0, curr + delta);
+                    setPriceEditValue(String(next));
+                    setPriceEditDeposit(String(next));
+                  }}
+                >
+                  <Text style={styles.secondarySmallBtnText}>
+                    {delta > 0 ? `+${delta / 1000}k` : `${delta / 1000}k`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.inputLabel}>Tiền đặt cọc chuẩn (VNĐ)</Text>
+            <TextInput
+              style={styles.textInput}
+              keyboardType="numeric"
+              value={priceEditDeposit}
+              onChangeText={setPriceEditDeposit}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setPriceEditRoom(null)}
+              >
+                <Text style={styles.cancelBtnText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmBtn} onPress={confirmPriceEdit}>
+                <Text style={styles.confirmBtnText}>Lưu giá thuê mới</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -469,16 +469,54 @@ export default function App() {
               </Text>
             </View>
 
+            {/* Quick Actions Bar (1-Tap Mobile Actions) */}
+            <View style={styles.quickActionRow}>
+              <TouchableOpacity
+                style={styles.quickActionBtn}
+                onPress={() => openPriceEditModal(rooms[0])}
+              >
+                <Text style={styles.quickActionIcon}>🏷️</Text>
+                <Text style={styles.quickActionLabel}>Sửa giá phòng</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionBtn}
+                onPress={() => openFifoModal('P101')}
+              >
+                <Text style={styles.quickActionIcon}>💰</Text>
+                <Text style={styles.quickActionLabel}>Thu nợ FIFO</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionBtn}
+                onPress={() => {
+                  const vacantRoom = rooms.find((r) => r.status === 'vacant') || rooms[5];
+                  setContractModalRoom(vacantRoom);
+                }}
+              >
+                <Text style={styles.quickActionIcon}>📝</Text>
+                <Text style={styles.quickActionLabel}>Lập hợp đồng</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickActionBtn}
+                onPress={() => setTab('invoices')}
+              >
+                <Text style={styles.quickActionIcon}>🧾</Text>
+                <Text style={styles.quickActionLabel}>Gửi VietQR</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* 4 KPI Cards */}
             <View style={styles.kpiGrid}>
               <View style={styles.kpiCard}>
                 <Text style={styles.kpiLabel}>THU HÔM NAY</Text>
-                <Text style={[styles.kpiValue, { color: '#0D9488' }]}>{formatVND(todayIncome)}</Text>
+                <Text style={[styles.kpiValue, { color: '#059669' }]}>{formatVND(todayIncome)}</Text>
                 <Text style={styles.kpiSub}>Tự động phân bổ FIFO</Text>
               </View>
               <View style={styles.kpiCard}>
                 <Text style={styles.kpiLabel}>LỢI NHUẬN THÁNG</Text>
-                <Text style={[styles.kpiValue, { color: monthProfit >= 0 ? '#059669' : '#E11D48' }]}>
+                <Text style={[styles.kpiValue, { color: monthProfit >= 0 ? '#0F172A' : '#E11D48' }]}>
                   {formatVND(monthProfit)}
                 </Text>
                 <Text style={styles.kpiSub}>Chi bảo trì P204: 1,05tr</Text>
@@ -523,12 +561,12 @@ export default function App() {
               </View>
 
               <View style={styles.todoItem}>
-                <View style={[styles.todoDot, { backgroundColor: '#0D9488' }]} />
+                <View style={[styles.todoDot, { backgroundColor: '#2563EB' }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.todoTitle}>Gia hạn hợp đồng P301 & P302</Text>
                   <Text style={styles.todoSub}>Trương Văn Quân & Đinh Văn Sơn · Hết hạn 21/10/2026</Text>
                 </View>
-                <Text style={[styles.todoAmount, { color: '#0D9488' }]}>Còn 4 ngày</Text>
+                <Text style={[styles.todoAmount, { color: '#2563EB' }]}>Còn 4 ngày</Text>
               </View>
             </View>
           </View>
@@ -557,7 +595,7 @@ export default function App() {
                   <View style={styles.roomTop}>
                     <View>
                       <Text style={styles.roomName}>{room.name} · Tầng {room.floor}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <Text style={styles.roomPrice}>Giá thuê: {formatVND(room.price)}/tháng</Text>
                         <TouchableOpacity
                           style={styles.secondarySmallBtn}
@@ -571,19 +609,19 @@ export default function App() {
                       style={[
                         styles.statusBadge,
                         room.status === 'rented'
-                          ? { backgroundColor: '#CCFBF1' }
+                          ? { backgroundColor: '#EFF6FF' }
                           : room.status === 'vacant'
-                          ? { backgroundColor: '#FEF3C7' }
-                          : { backgroundColor: '#FFE4E6' },
+                          ? { backgroundColor: '#ECFDF5' }
+                          : { backgroundColor: '#FFF1F2' },
                       ]}
                     >
                       <Text
                         style={[
                           styles.statusBadgeText,
                           room.status === 'rented'
-                            ? { color: '#0F766E' }
+                            ? { color: '#1D4ED8' }
                             : room.status === 'vacant'
-                            ? { color: '#B45309' }
+                            ? { color: '#047857' }
                             : { color: '#BE123C' },
                         ]}
                       >
@@ -602,7 +640,7 @@ export default function App() {
                         👤 Đại diện: <Text style={{ fontWeight: '700' }}>{room.tenantName}</Text> ({room.tenantPhone})
                       </Text>
                       <Text style={styles.roomDetail}>
-                        👥 {room.occupantsCount}/{room.maxOccupants} người · 🛵 {room.vehiclesCount} xe · 📄 {room.contractCode}
+                        👥 {room.occupantsCount}/{room.maxOccupants} người · 🛵 {room.vehiclesCount} xe · Cọc {formatVND(room.deposit)}
                       </Text>
                       <View style={styles.roomFooter}>
                         <Text style={styles.roomDebt}>
@@ -687,7 +725,9 @@ export default function App() {
                     </Text>
                     <View style={styles.roomFooter}>
                       <View>
-                        <Text style={{ fontSize: 12, color: '#64748B' }}>Tổng: {formatVND(inv.totalAmount)}</Text>
+                        <Text style={{ fontSize: 12, color: '#64748B', fontVariant: ['tabular-nums'] }}>
+                          Tổng: {formatVND(inv.totalAmount)}
+                        </Text>
                         <Text style={styles.roomDebt}>Còn nợ: {formatVND(inv.remainingAmount)}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -823,14 +863,14 @@ export default function App() {
                           style={[
                             styles.statusBadge,
                             t.status === 'staying'
-                              ? { backgroundColor: '#CCFBF1' }
+                              ? { backgroundColor: '#EFF6FF' }
                               : { backgroundColor: '#F1F5F9' },
                           ]}
                         >
                           <Text
                             style={[
                               styles.statusBadgeText,
-                              t.status === 'staying' ? { color: '#0F766E' } : { color: '#475569' },
+                              t.status === 'staying' ? { color: '#1D4ED8' } : { color: '#475569' },
                             ]}
                           >
                             {t.role === 'representative'
@@ -842,7 +882,9 @@ export default function App() {
                         </View>
                       </View>
                       <View style={styles.roomFooter}>
-                        <Text style={{ fontSize: 12, color: '#475569' }}>📞 {t.phone}</Text>
+                        <Text style={{ fontSize: 12, color: '#475569', fontVariant: ['tabular-nums'] }}>
+                          📞 {t.phone}
+                        </Text>
                         <TouchableOpacity
                           style={styles.secondarySmallBtn}
                           onPress={() =>
@@ -866,8 +908,8 @@ export default function App() {
                           Phòng {v.roomId} · Chủ xe: {v.tenantName}
                         </Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: '#E0F2FE' }]}>
-                        <Text style={[styles.statusBadgeText, { color: '#0369A1' }]}>{v.type}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: '#EFF6FF' }]}>
+                        <Text style={[styles.statusBadgeText, { color: '#1D4ED8' }]}>{v.type}</Text>
                       </View>
                     </View>
                     <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{v.note}</Text>
@@ -918,15 +960,15 @@ export default function App() {
                   <Text style={{ fontWeight: '700', fontSize: 13, color: '#0F172A' }}>
                     {item.invoice.period} ({item.invoice.code})
                   </Text>
-                  <Text style={{ fontSize: 11, color: '#64748B' }}>
+                  <Text style={{ fontSize: 11, color: '#64748B', fontVariant: ['tabular-nums'] }}>
                     Nợ gốc: {formatVND(item.invoice.remainingAmount)}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontWeight: '700', fontSize: 13, color: '#0D9488' }}>
+                  <Text style={{ fontWeight: '700', fontSize: 13, color: '#2563EB', fontVariant: ['tabular-nums'] }}>
                     Trừ: {formatVND(item.allocated)}
                   </Text>
-                  <Text style={{ fontSize: 11, color: item.willBePaid ? '#059669' : '#D97706' }}>
+                  <Text style={{ fontSize: 11, color: item.willBePaid ? '#059669' : '#D97706', fontVariant: ['tabular-nums'] }}>
                     {item.willBePaid ? '✓ Sẽ thu đủ' : `Còn: ${formatVND(item.afterDebt)}`}
                   </Text>
                 </View>
@@ -980,10 +1022,10 @@ export default function App() {
             />
 
             <View style={styles.prorataBox}>
-              <Text style={{ fontWeight: '700', color: '#0F766E', fontSize: 13 }}>
+              <Text style={{ fontWeight: '700', color: '#1E40AF', fontSize: 13 }}>
                 ⚡ Tính tiền kỳ đầu (Pro-rata): {startDateDay}/10 → 31/10 ({31 - (Number(startDateDay) || 11) + 1}/31 ngày)
               </Text>
-              <Text style={{ fontWeight: '800', color: '#0D9488', fontSize: 16, marginTop: 4 }}>
+              <Text style={{ fontWeight: '800', color: '#2563EB', fontSize: 16, marginTop: 4, fontVariant: ['tabular-nums'] }}>
                 {formatVND(
                   Math.round(
                     ((contractModalRoom?.price || 2500000) *
@@ -1085,10 +1127,10 @@ export default function App() {
           return (
             <TouchableOpacity
               key={item.key}
-              style={styles.navItem}
+              style={[styles.navItem, active && styles.navItemActive]}
               onPress={() => setTab(item.key)}
             >
-              <Text style={{ fontSize: 18 }}>{item.icon}</Text>
+              <Text style={{ fontSize: 17 }}>{item.icon}</Text>
               <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
             </TouchableOpacity>
           );
@@ -1120,7 +1162,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#0D9488',
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1139,10 +1181,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   syncBtn: {
-    backgroundColor: '#0D9488',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   syncBtnText: {
     color: '#FFFFFF',
@@ -1158,9 +1200,9 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   heroHeader: {
     flexDirection: 'row',
@@ -1178,6 +1220,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
   heroPill: {
     backgroundColor: '#1E293B',
@@ -1186,7 +1229,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   heroPillText: {
-    color: '#5EEAD4',
+    color: '#93C5FD',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -1199,11 +1242,38 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#14B8A6',
+    backgroundColor: '#2563EB',
   },
   heroFooter: {
     color: '#CBD5E1',
     fontSize: 11,
+    fontVariant: ['tabular-nums'],
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  quickActionBtn: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickActionIcon: {
+    fontSize: 16,
+    marginBottom: 3,
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -1214,7 +1284,7 @@ const styles = StyleSheet.create({
   kpiCard: {
     width: '48.5%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 13,
     marginBottom: 10,
     borderWidth: 1,
@@ -1229,6 +1299,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginTop: 4,
+    fontVariant: ['tabular-nums'],
   },
   kpiSub: {
     fontSize: 11,
@@ -1237,7 +1308,7 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
@@ -1256,7 +1327,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   linkText: {
-    color: '#0D9488',
+    color: '#2563EB',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1282,11 +1353,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
   todoAmount: {
     fontSize: 13,
     fontWeight: '800',
     color: '#E11D48',
+    fontVariant: ['tabular-nums'],
   },
   filterRow: {
     flexDirection: 'row',
@@ -1301,7 +1374,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   filterChipActive: {
-    backgroundColor: '#0D9488',
+    backgroundColor: '#2563EB',
   },
   filterChipText: {
     fontSize: 12,
@@ -1313,7 +1386,7 @@ const styles = StyleSheet.create({
   },
   roomCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
@@ -1331,8 +1404,10 @@ const styles = StyleSheet.create({
   },
   roomPrice: {
     fontSize: 12,
-    color: '#64748B',
+    fontWeight: '700',
+    color: '#334155',
     marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -1353,6 +1428,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#334155',
     marginBottom: 4,
+    fontVariant: ['tabular-nums'],
   },
   roomFooter: {
     flexDirection: 'row',
@@ -1364,9 +1440,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#E11D48',
+    fontVariant: ['tabular-nums'],
   },
   primarySmallBtn: {
-    backgroundColor: '#0D9488',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -1377,23 +1454,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondarySmallBtn: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CBD5E1',
   },
   secondarySmallBtnText: {
-    color: '#334155',
-    fontSize: 12,
+    color: '#2563EB',
+    fontSize: 11,
     fontWeight: '700',
   },
   searchInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
     fontSize: 13,
@@ -1404,12 +1481,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    gap: 4,
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  navItemActive: {
+    backgroundColor: '#EFF6FF',
   },
   navLabel: {
     fontSize: 10,
@@ -1418,7 +1502,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   navLabelActive: {
-    color: '#0D9488',
+    color: '#2563EB',
     fontWeight: '800',
   },
   modalBackdrop: {
@@ -1428,8 +1512,8 @@ const styles = StyleSheet.create({
   },
   modalSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 18,
   },
   modalTitle: {
@@ -1442,6 +1526,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     marginBottom: 12,
+    fontVariant: ['tabular-nums'],
   },
   inputLabel: {
     fontSize: 12,
@@ -1452,12 +1537,13 @@ const styles = StyleSheet.create({
   textInput: {
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 10,
+    fontVariant: ['tabular-nums'],
   },
   fifoRow: {
     flexDirection: 'row',
@@ -1465,17 +1551,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   prorataBox: {
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#EFF6FF',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: '#BFDBFE',
     marginVertical: 8,
   },
   modalActions: {
@@ -1486,7 +1572,7 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     paddingVertical: 11,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
   },
@@ -1497,8 +1583,8 @@ const styles = StyleSheet.create({
   confirmBtn: {
     flex: 2,
     paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: '#0D9488',
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
   },
   confirmBtnText: {

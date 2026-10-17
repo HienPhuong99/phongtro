@@ -243,6 +243,23 @@ export function App() {
     );
   }, [properties, rooms, tenants, vehicles, contracts, invoices, transactions]);
 
+  // Hỗ trợ phím Escape đóng hộp thoại đang mở (Chuẩn ui-skills fixing-accessibility)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsContractModalOpen(false);
+        setIsMeterModalOpen(false);
+        setZaloModalInvoice(null);
+        setCollectModalInvoice(null);
+        setIsTempResidenceOpen(false);
+        setIsRoomPricingOpen(false);
+        setIsExpoQrModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const currentProperty = useMemo(
     () => properties.find((p) => p.id === selectedPropertyId) || properties[0],
     [properties, selectedPropertyId]
@@ -1019,79 +1036,151 @@ export function App() {
     ];
 
     return (
-      <div className="space-y-6">
-        {/* Title */}
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Tổng quan</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Chào buổi tối · Chủ nhật, ngày 11/10/2026
-          </p>
+      <div className="space-y-6 ui-enter">
+        {/* Title + Quick Actions Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Tổng quan</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Chào buổi tối · Chủ nhật, ngày 11/10/2026
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMeterInitialRoom('P101');
+                setIsMeterModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 text-xs font-semibold shadow-2xs transition"
+            >
+              <Droplets className="w-3.5 h-3.5 text-blue-600" />
+              <span>Ghi điện nước</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openRoomPricingModal(propertyRooms[0]?.code || 'P101', 'bulk')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 text-xs font-semibold shadow-2xs transition"
+            >
+              <Pencil className="w-3.5 h-3.5 text-blue-600" />
+              <span>Bảng giá phòng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setContractInitialRoom('P202');
+                setIsContractModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Lập hợp đồng</span>
+            </button>
+          </div>
         </div>
 
         {/* 3 Top KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div
+          className={`grid grid-cols-1 ${
+            isMobilePreview ? 'gap-3' : 'md:grid-cols-3 gap-4'
+          }`}
+        >
           <div
             onClick={() => setActiveTab('rooms')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-blue-300 cursor-pointer transition"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition space-y-2.5"
           >
-            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
-              <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                <LayoutGrid className="w-4 h-4" />
-              </span>
-              <span>
-                Tỷ lệ lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <LayoutGrid className="w-4 h-4" />
+                </span>
+                <span className="font-medium">
+                  Tỷ lệ lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold">
+                {vacantRooms.length} trống
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
               {occupancyRate}%
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-blue-600 transition-all"
+                style={{ width: `${occupancyRate}%` }}
+              />
             </div>
           </div>
 
           <div
             onClick={() => setActiveTab('finance-cashbook')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-emerald-300 cursor-pointer transition"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-emerald-300 cursor-pointer transition space-y-2.5"
           >
-            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
-              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                <ArrowUpRight className="w-4 h-4" />
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <ArrowUpRight className="w-4 h-4" />
+                </span>
+                <span className="font-medium">Thu hôm nay</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                Khớp VietQR
               </span>
-              <span>Thu hôm nay</span>
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600">
+            <div className="text-2xl font-extrabold text-emerald-600 tabular-nums">
               {formatVND(collectedToday)}
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Tự động phân bổ công nợ FIFO kỳ cũ trước
             </div>
           </div>
 
           <div
             onClick={() => setActiveTab('reports')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:border-purple-300 cursor-pointer transition"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition space-y-2.5"
           >
-            <div className="flex items-center gap-2.5 text-xs text-slate-500 mb-2">
-              <span className="p-2 rounded-xl bg-purple-50 text-purple-600">
-                <TrendingUp className="w-4 h-4" />
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-slate-100 text-slate-700">
+                  <TrendingUp className="w-4 h-4" />
+                </span>
+                <span className="font-medium">Lợi nhuận tháng này</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                Kỳ 10/2026
               </span>
-              <span>Lợi nhuận tháng này</span>
             </div>
             <div
-              className={`text-2xl font-extrabold ${
+              className={`text-2xl font-extrabold tabular-nums ${
                 currentMonthProfit < 0 ? 'text-rose-600' : 'text-slate-900'
               }`}
             >
               {formatVND(currentMonthProfit)}
             </div>
+            <div className="text-[11px] text-slate-400">
+              Tổng thu trừ chi phí vận hành & hoàn cọc
+            </div>
           </div>
         </div>
 
         {/* Main Grid: Left (Việc cần làm hôm nay + Hoạt động gần đây) + Right (Tiến độ thu & Trạng thái phòng) */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
+        <div
+          className={`grid grid-cols-1 ${
+            isMobilePreview ? 'gap-5' : 'xl:grid-cols-3 gap-6'
+          }`}
+        >
+          <div className={isMobilePreview ? 'space-y-5' : 'xl:col-span-2 space-y-6'}>
             {/* Việc cần làm hôm nay */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-slate-900">
                   Việc cần làm hôm nay
                 </h2>
-                <span className="text-xs text-slate-400">7 việc</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold tabular-nums">
+                  7 việc
+                </span>
               </div>
 
               <div className="space-y-2.5">
@@ -1108,7 +1197,7 @@ export function App() {
                         {item.icon}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 truncate">
+                        <div className="text-xs font-bold text-slate-900 truncate tabular-nums">
                           {item.title}
                         </div>
                         <div className="text-[11px] text-slate-500 truncate mt-0.5">
@@ -1134,7 +1223,7 @@ export function App() {
             </div>
 
             {/* Hoạt động gần đây */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-slate-900">Hoạt động gần đây</h2>
                 <button
@@ -1162,8 +1251,8 @@ export function App() {
                           tx.type === 'income'
                             ? 'bg-emerald-50 text-emerald-600'
                             : tx.category === 'Vệ sinh'
-                            ? 'bg-purple-50 text-purple-600'
-                            : 'bg-orange-50 text-orange-600'
+                            ? 'bg-slate-100 text-slate-700'
+                            : 'bg-amber-50 text-amber-600'
                         }`}
                       >
                         {tx.type === 'income' ? (
@@ -1190,7 +1279,7 @@ export function App() {
                     </div>
 
                     <div
-                      className={`text-xs font-bold shrink-0 ${
+                      className={`text-xs font-bold shrink-0 tabular-nums ${
                         tx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'
                       }`}
                     >
@@ -1208,11 +1297,11 @@ export function App() {
           {/* Right Column Summary Widgets */}
           <div className="space-y-6">
             {/* Tiến độ thu tiền tháng này */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900">
                 Tiến độ thu tháng này
               </h3>
-              <div className="space-y-2.5 text-xs">
+              <div className="space-y-2.5 text-xs tabular-nums">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Phải thu kỳ 10/2026</span>
                   <span className="font-bold text-slate-900">25.682.000 đ</span>
@@ -1249,16 +1338,16 @@ export function App() {
                     invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
                   if (target) setCollectModalInvoice(target);
                 }}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
               >
                 Thu tiền nhanh (P101 · HD-IV-00089)
               </button>
             </div>
 
             {/* Trạng thái phòng */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900">Trạng thái phòng</h3>
-              <div className="space-y-3 text-xs">
+              <div className="space-y-3 text-xs tabular-nums">
                 <div>
                   <div className="flex justify-between mb-1">
                     <span className="text-slate-600">Trống</span>
@@ -1337,10 +1426,10 @@ export function App() {
     const floors = [1, 2, 3];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 ui-enter">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Phòng</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Phòng</h1>
             <p className="text-xs text-slate-500 mt-0.5">
               {currentProperty.name} · {propertyRooms.length} phòng,{' '}
               {occupiedRooms.length} đang thuê, {vacantRooms.length} trống
@@ -1361,7 +1450,7 @@ export function App() {
                 setContractInitialRoom('P202');
                 setIsContractModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
             >
               <Plus className="w-4 h-4" />
               Tạo hợp đồng cho phòng trống
@@ -1439,7 +1528,7 @@ export function App() {
                 )}
                 <span>{pill.label}</span>
                 <span
-                  className={`text-[11px] ${
+                  className={`text-[11px] tabular-nums ${
                     roomStatusFilter === pill.id ? 'text-blue-100' : 'text-slate-400'
                   }`}
                 >
@@ -1451,8 +1540,12 @@ export function App() {
         </div>
 
         {/* 3 KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+        <div
+          className={`grid grid-cols-1 ${
+            isMobilePreview ? 'gap-3' : 'md:grid-cols-3 gap-4'
+          }`}
+        >
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
               <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
                 <LayoutGrid className="w-4 h-4" />
@@ -1461,31 +1554,31 @@ export function App() {
                 Lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
               {occupancyRate}%
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
               <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
                 <Wallet className="w-4 h-4" />
               </span>
               <span>Tiền thuê/tháng theo hợp đồng</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
               {formatVND(totalMonthlyContractRent)}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-amber-200 bg-amber-50/10 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl border border-amber-200 bg-amber-50/10 p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
               <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
                 <AlertTriangle className="w-4 h-4" />
               </span>
               <span>{vacantRooms.length} phòng trống - hụt mỗi tháng</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
               {formatVND(monthlyVacancyLoss)}
             </div>
           </div>
@@ -1493,7 +1586,7 @@ export function App() {
 
         {roomViewMode === 'floor' ? (
           /* Sơ đồ phòng chia theo tầng */
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-6">
             {/* Legend */}
             <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-4">
@@ -1523,10 +1616,22 @@ export function App() {
               if (floorRooms.length === 0) return null;
               return (
                 <div key={floor} className="space-y-2.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    TẦNG {floor}
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      TẦNG {floor}
+                    </div>
+                    <div className="text-[11px] text-slate-400 tabular-nums">
+                      {floorRooms.filter((r) => r.status === 'occupied').length}/
+                      {floorRooms.length} phòng đang thuê
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  <div
+                    className={`grid ${
+                      isMobilePreview
+                        ? 'grid-cols-1 sm:grid-cols-2 gap-3'
+                        : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5'
+                    }`}
+                  >
                     {floorRooms.map((room) => {
                       const isVacant = room.status === 'vacant';
                       const isMaint = room.status === 'maintenance';
@@ -1545,62 +1650,86 @@ export function App() {
                               setActiveTab('invoices');
                             }
                           }}
-                          className={`relative rounded-xl p-4 cursor-pointer transition border ${
+                          className={`group relative rounded-2xl p-4 cursor-pointer transition border ${
                             isVacant
-                              ? 'bg-emerald-50/60 border-emerald-400 hover:bg-emerald-50'
+                              ? 'bg-emerald-50/50 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
                               : isMaint
-                              ? 'bg-slate-50/90 border-slate-200 border-l-4 border-l-rose-500 hover:bg-slate-100'
-                              : 'bg-slate-50/90 border-slate-200 border-l-4 border-l-blue-600 hover:bg-slate-100'
+                              ? 'bg-white border-slate-200/90 border-l-4 border-l-rose-500 hover:border-slate-300 shadow-2xs'
+                              : 'bg-white border-slate-200/90 border-l-4 border-l-blue-600 hover:border-blue-300 shadow-2xs'
                           }`}
                         >
-                          {isVacant && (
-                            <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
-                              Còn trống
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-extrabold text-slate-900">
+                              {room.code}
                             </span>
-                          )}
-                          <div className="text-sm font-extrabold text-slate-900">
-                            {room.code}
+                            {isVacant ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                                Còn trống
+                              </span>
+                            ) : isMaint ? (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-semibold">
+                                Đang sửa
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-semibold">
+                                Đã thuê
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-1">
-                            <span className="text-xs font-bold text-slate-700">
+
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <span className="text-xs font-extrabold text-slate-900 tabular-nums">
                               {formatVND(room.price)}
+                              <span className="text-[10px] font-normal text-slate-400">
+                                /th
+                              </span>
                             </span>
                             <button
                               type="button"
+                              aria-label={`Điều chỉnh giá thuê phòng ${room.code}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openRoomPricingModal(room.code, 'single');
                               }}
                               title={`Điều chỉnh giá thuê phòng ${room.code}`}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/90 hover:bg-blue-50 text-blue-600 border border-slate-200/80 text-[10px] font-bold shadow-2xs transition"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 hover:bg-blue-50 text-blue-600 border border-slate-200/80 text-[10px] font-bold transition"
                             >
                               <Pencil className="w-2.5 h-2.5" />
                               Sửa giá
                             </button>
                           </div>
-                          <div className="text-xs font-medium text-slate-700 mt-1 truncate">
+
+                          <div className="text-xs font-medium text-slate-700 mt-1.5 truncate">
                             {isVacant
                               ? 'Bấm để lập hợp đồng'
                               : isMaint
                               ? 'Đang bảo trì thiết bị'
                               : room.tenantName}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-2">
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                isVacant
-                                  ? 'bg-emerald-500'
+
+                          <div className="flex items-center justify-between gap-1.5 text-[11px] text-slate-500 mt-2.5 pt-2 border-t border-slate-100 tabular-nums">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  isVacant
+                                    ? 'bg-emerald-500'
+                                    : isMaint
+                                    ? 'bg-rose-500'
+                                    : 'bg-blue-600'
+                                }`}
+                              />
+                              <span>
+                                {isVacant
+                                  ? 'Trống'
                                   : isMaint
-                                  ? 'bg-rose-500'
-                                  : 'bg-blue-600'
-                              }`}
-                            />
-                            <span>
-                              {isVacant
-                                ? 'Trống'
-                                : isMaint
-                                ? 'Đang sửa chữa'
-                                : 'Đã thuê'}
+                                  ? 'Đang sửa chữa'
+                                  : `${room.vehicleCount} xe · Cọc ${Math.round(
+                                      room.deposit / 1000
+                                    )}k`}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">
+                              ⚡{room.elecIndex} · 💧{room.waterIndex}
                             </span>
                           </div>
                         </div>
@@ -3032,53 +3161,75 @@ export function App() {
         </div>
 
         {/* 4 KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+        <div
+          className={`grid ${
+            isMobilePreview
+              ? 'grid-cols-2 gap-3'
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'
+          }`}
+        >
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
-              <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+              <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
                 <ArrowUpRight className="w-4 h-4" />
               </span>
-              <span>Doanh thu thực thu</span>
+              <span className="truncate">Doanh thu thực thu</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div
+              className={`${
+                isMobilePreview ? 'text-base' : 'text-2xl'
+              } font-extrabold text-slate-900 tabular-nums`}
+            >
               {formatVND(totalRevenue)}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
-              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+              <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600 shrink-0">
                 <ArrowDownRight className="w-4 h-4" />
               </span>
-              <span>Chi phí</span>
+              <span className="truncate">Chi phí</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div
+              className={`${
+                isMobilePreview ? 'text-base' : 'text-2xl'
+              } font-extrabold text-slate-900 tabular-nums`}
+            >
               {formatVND(totalExpense)}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
-              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600 shrink-0">
                 <TrendingUp className="w-4 h-4" />
               </span>
-              <span>Lợi nhuận</span>
+              <span className="truncate">Lợi nhuận</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div
+              className={`${
+                isMobilePreview ? 'text-base' : 'text-2xl'
+              } font-extrabold text-slate-900 tabular-nums`}
+            >
               {formatVND(netProfit)}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
-              <span className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+              <span className="p-1.5 rounded-lg bg-slate-100 text-slate-700 shrink-0">
                 <LayoutGrid className="w-4 h-4" />
               </span>
-              <span>
-                Lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
+              <span className="truncate">
+                Lấp đầy ({occupiedRooms.length}/{propertyRooms.length})
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div
+              className={`${
+                isMobilePreview ? 'text-base' : 'text-2xl'
+              } font-extrabold text-slate-900 tabular-nums`}
+            >
               {occupancyRate}%
             </div>
           </div>
@@ -3683,8 +3834,46 @@ export function App() {
       .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
   }, [collectModalInvoice, invoices]);
 
+  const mobileBottomNavItems: Array<{
+    id: NavTab;
+    label: string;
+    icon: React.ReactNode;
+    isActive: boolean;
+  }> = [
+    {
+      id: 'overview',
+      label: 'Tổng quan',
+      icon: <BarChart3 className="w-4 h-4" />,
+      isActive: activeTab === 'overview',
+    },
+    {
+      id: 'rooms',
+      label: 'Phòng',
+      icon: <LayoutGrid className="w-4 h-4" />,
+      isActive: activeTab === 'rooms',
+    },
+    {
+      id: 'invoices',
+      label: 'Hóa đơn',
+      icon: <Receipt className="w-4 h-4" />,
+      isActive: activeTab === 'invoices',
+    },
+    {
+      id: 'finance-debts',
+      label: 'Công nợ',
+      icon: <Wallet className="w-4 h-4" />,
+      isActive: activeTab.startsWith('finance-'),
+    },
+    {
+      id: 'reports',
+      label: 'Báo cáo',
+      icon: <TrendingUp className="w-4 h-4" />,
+      isActive: activeTab === 'reports',
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex bg-[#F8FAFC] text-slate-900">
+    <div className="min-h-dvh flex bg-[#F8FAFC] text-slate-900">
       {/* LEFT SIDEBAR (Chuẩn giao diện OptiRent trong video) */}
       <aside className="w-60 bg-white border-r border-slate-200/80 shrink-0 hidden md:flex flex-col justify-between">
         <div className="p-4 space-y-6">
@@ -3694,7 +3883,7 @@ export function App() {
               onClick={() => setActiveTab('overview')}
               className="flex items-center gap-2.5 cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-2xs">
                 <Building2 className="w-4 h-4" />
               </div>
               <span className="text-base font-extrabold tracking-tight text-slate-900">
@@ -3891,12 +4080,13 @@ export function App() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
         {/* TOPBAR */}
-        <header className="bg-white border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">
             {/* Property Selector */}
             <select
+              aria-label="Chọn cơ sở nhà trọ"
               value={selectedPropertyId}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
               className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
@@ -3913,6 +4103,7 @@ export function App() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                aria-label="Tìm kiếm phòng, khách thuê, hóa đơn"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
                 placeholder="Tìm phòng, khách, SĐT, mã hóa đơn..."
@@ -3931,7 +4122,7 @@ export function App() {
                         <div className="text-xs font-bold text-slate-900">
                           {res.label}
                         </div>
-                        <div className="text-[11px] text-slate-500">{res.sub}</div>
+                        <div className="text-[11px] text-slate-500 tabular-nums">{res.sub}</div>
                       </div>
                       <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-semibold">
                         {res.badge}
@@ -3960,7 +4151,7 @@ export function App() {
               onClick={() => setIsMobilePreview((v) => !v)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold border transition ${
                 isMobilePreview
-                  ? 'bg-teal-600 text-white border-teal-600'
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
             >
@@ -3976,7 +4167,7 @@ export function App() {
             </button>
           </div>
 
-          {/* Mobile quick nav */}
+          {/* Mobile secondary sub-tabs pill bar */}
           <div className="flex md:hidden items-center gap-1 overflow-x-auto w-full pt-1">
             {[
               { id: 'overview', label: 'Tổng quan' },
@@ -3991,7 +4182,7 @@ export function App() {
                 key={m.id}
                 type="button"
                 onClick={() => setActiveTab(m.id as NavTab)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${
                   activeTab === m.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-100 text-slate-600'
@@ -4005,37 +4196,119 @@ export function App() {
 
         {/* PAGE CONTENT */}
         <main
-          className={`p-4 lg:p-8 w-full mx-auto flex-1 transition-all ${
+          className={`w-full mx-auto transition-all ${
             isMobilePreview
-              ? 'max-w-[430px] my-4 bg-white rounded-[36px] border-[8px] border-slate-900 shadow-2xl overflow-y-auto'
-              : 'max-w-7xl'
+              ? 'max-w-[420px] h-[760px] my-3 bg-[#F8FAFC] rounded-[44px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col shrink-0'
+              : 'p-4 lg:p-8 max-w-7xl flex-1'
           }`}
         >
           {isMobilePreview && (
-            <div className="mb-4 p-3 rounded-2xl bg-slate-900 text-white flex items-center justify-between text-xs">
-              <div>
-                <div className="font-bold">📱 Chế độ Mobile PWA / Expo Go</div>
-                <div className="text-[11px] text-slate-300">Nhà trọ Bình An · 12 phòng</div>
+            <>
+              {/* iOS Status Bar + Dynamic Island */}
+              <div className="bg-slate-900 text-white px-6 pt-2.5 pb-3 flex items-center justify-between text-[11px] font-bold select-none">
+                <span className="tabular-nums">09:41</span>
+                <div className="w-24 h-4 rounded-full bg-black border border-slate-800 flex items-center justify-end px-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
+                  <span>5G</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-extrabold">
+                    100%
+                  </span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsExpoQrModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-teal-500 text-white font-bold text-[11px]"
-              >
-                Mã QR Expo
-              </button>
+
+              {/* Mobile App Header Banner */}
+              <div className="bg-slate-900 text-white px-4 pb-3.5 pt-1 flex items-center justify-between border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs shadow-2xs">
+                    OR
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold tracking-tight flex items-center gap-1.5">
+                      <span>OptiRent Mobile</span>
+                      <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">
+                        PWA
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {currentProperty.name} · {propertyRooms.length} phòng
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsExpoQrModalOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition"
+                >
+                  Mã QR Expo
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className={isMobilePreview ? 'p-4 flex-1 overflow-y-auto space-y-5' : ''}>
+            {activeTab === 'overview' && renderOverview()}
+            {activeTab === 'calendar' && renderCalendar()}
+            {activeTab === 'rooms' && renderRooms()}
+            {activeTab === 'tenants' && renderTenants()}
+            {activeTab === 'contracts' && renderContracts()}
+            {activeTab === 'invoices' && renderInvoices()}
+            {activeTab.startsWith('finance-') && renderFinance()}
+            {activeTab === 'reports' && renderReports()}
+            {activeTab === 'settings' && renderSettings()}
+          </div>
+
+          {/* Persistent Bottom Navigation Bar inside Mobile Frame */}
+          {isMobilePreview && (
+            <div className="bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-2 pt-2 pb-3 sticky bottom-0 z-20">
+              <div className="grid grid-cols-5 gap-1">
+                {mobileBottomNavItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
+                      item.isActive
+                        ? 'text-blue-600 font-extrabold bg-blue-50/70'
+                        : 'text-slate-500 hover:text-slate-800 font-medium'
+                    }`}
+                  >
+                    {item.icon}
+                    <span className="text-[10px] mt-1">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="w-28 h-1 rounded-full bg-slate-300 mx-auto mt-2" />
             </div>
           )}
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'calendar' && renderCalendar()}
-          {activeTab === 'rooms' && renderRooms()}
-          {activeTab === 'tenants' && renderTenants()}
-          {activeTab === 'contracts' && renderContracts()}
-          {activeTab === 'invoices' && renderInvoices()}
-          {activeTab.startsWith('finance-') && renderFinance()}
-          {activeTab === 'reports' && renderReports()}
-          {activeTab === 'settings' && renderSettings()}
         </main>
+
+        {/* Fixed Bottom Navigation Bar on Real Mobile Viewports (< 768px) */}
+        {!isMobilePreview && (
+          <nav
+            aria-label="Điều hướng di động"
+            className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 pt-1.5 pb-safe"
+          >
+            <div className="grid grid-cols-5 gap-1">
+              {mobileBottomNavItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
+                    item.isActive
+                      ? 'text-blue-600 font-extrabold bg-blue-50/70'
+                      : 'text-slate-500 font-medium'
+                  }`}
+                >
+                  {item.icon}
+                  <span className="text-[10px] mt-0.5">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+        )}
       </div>
 
       {/* MODALS */}
@@ -4103,7 +4376,7 @@ export function App() {
       {/* EXPO GO & MOBILE PWA MODAL */}
       {isExpoQrModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 ui-enter">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900">
@@ -4115,6 +4388,7 @@ export function App() {
               </div>
               <button
                 type="button"
+                aria-label="Đóng cửa sổ QR"
                 onClick={() => setIsExpoQrModalOpen(false)}
                 className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600"
               >
@@ -4168,7 +4442,11 @@ export function App() {
 
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2.5 text-xs font-semibold animate-bounce">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2.5 text-xs font-semibold ui-enter"
+        >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>

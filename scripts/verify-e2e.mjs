@@ -124,6 +124,8 @@ async function main() {
 
   // 8. Kiểm tra chế độ Mobile & Modal Mã QR Expo Go
   clickBtn('Khung Mobile');
+  ab(`wait 300`);
+  clickBtn('Phòng');
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '13-mobile-preview.png')}"`);
   clickBtn('Chạy Expo Go');
@@ -131,7 +133,7 @@ async function main() {
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-expo-go-qr-modal.png')}"`);
 
   ab(`close`);
-  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (14 ẢNH CHỤP MÀN HÌNH) ===');
+  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH) ===');
 }
 
 main().catch((err) => {

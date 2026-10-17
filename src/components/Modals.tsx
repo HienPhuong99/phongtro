@@ -156,7 +156,8 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalName = tenantName.trim() || 'Đoàn Minh Khang';
+    const finalName = tenantName.trim();
+    if (!finalName || currentRoom?.status === 'occupied') return;
     onCreateContract({
       roomCode: selectedRoomCode,
       tenantName: finalName,
@@ -204,7 +205,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               className="w-full sm:w-1/2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
             >
               {rooms.map((r) => (
-                <option key={r.id} value={r.code}>
+                <option key={r.id} value={r.code} disabled={r.status === 'occupied'}>
                   {r.code} · {formatVND(r.price)}{' '}
                   {r.status === 'vacant' ? '(Trống)' : `(${r.tenantName || 'Đang thuê'})`}
                 </option>
@@ -221,6 +222,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <input
                 type="text"
                 list="tenant-suggestions"
+                required
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
                 placeholder="Chọn hoặc gõ tên khách..."
@@ -605,9 +607,7 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
     return 0;
   });
 
-  const [readings, setReadings] = useState<
-    Record<string, { elecOld: number; elecNew: number; waterOld: number; waterNew: number; photo?: string }>
-  >(() => {
+  const buildReadings = () => {
     const map: Record<
       string,
       { elecOld: number; elecNew: number; waterOld: number; waterNew: number; photo?: string }
@@ -631,9 +631,19 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
       }
     });
     return map;
-  });
+  };
 
+  const [readings, setReadings] = useState(buildReadings);
   const [enteredRooms, setEnteredRooms] = useState<Record<string, boolean>>({});
+
+  // Mỗi lần mở lại modal phải lấy chỉ số theo kỳ đang chọn, tránh dùng số cũ của kỳ khác
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setReadings(buildReadings());
+    setEnteredRooms({});
+    const idx = initialRoomCode ? activeRooms.findIndex((r) => r.code === initialRoomCode) : -1;
+    setCurrentIndex(idx >= 0 ? idx : 0);
+  }, [isOpen]);
 
   if (!isOpen || activeRooms.length === 0) return null;
 
@@ -1283,10 +1293,11 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   );
   const [collectedAmountDone, setCollectedAmountDone] = useState<number>(0);
 
+  // Không phụ thuộc totalRoomDebt: sau khi thu, nợ đổi sẽ xoá mất màn hình kết quả FIFO
   React.useEffect(() => {
     setAmount(totalRoomDebt);
     setAllocatedResult(null);
-  }, [totalRoomDebt, targetInvoice?.id, isOpen]);
+  }, [targetInvoice?.id, isOpen]);
 
   if (!isOpen || !targetInvoice) return null;
 
@@ -1442,7 +1453,8 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
                 value={formatNumberInput(amount)}
                 onChange={(e) => {
                   const val = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
-                  setAmount(val);
+                  // Chưa có ví trả trước: thu quá tổng nợ thì phần dư bị mất, nên chặn ở đây
+                  setAmount(Math.min(val, totalRoomDebt));
                 }}
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-right text-slate-900 focus:border-blue-600 focus:outline-none"
               />

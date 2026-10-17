@@ -570,7 +570,8 @@ export function App() {
           waterUsage,
           waterAmount,
           totalAmount,
-          status: inv.paidAmount >= totalAmount ? 'paid' : 'unpaid',
+          status:
+            inv.paidAmount >= totalAmount ? 'paid' : inv.paidAmount > 0 ? 'partial' : 'unpaid',
           meterPhoto: rData.photo || inv.meterPhoto,
         };
       })

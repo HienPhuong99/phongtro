@@ -93,12 +93,9 @@ async function main() {
   const spreadsheetUrl = parentId ? `https://docs.google.com/spreadsheets/d/${parentId}/edit` : '';
   const scriptEditorUrl = `https://script.google.com/d/${scriptId}/edit`;
 
-  console.log('[2/4] Đồng bộ 7 trang tính lên Google Sheets & đẩy mã nguồn Apps Script...');
-  try {
-    run('node scripts/populate-sheets-drive.mjs', ROOT_DIR);
-  } catch (e) {
-    console.log('Bỏ qua bước populate-sheets-drive nếu chưa có xlsx:', e.message);
-  }
+  // Không nạp dữ liệu mẫu ở đây: populate-sheets-drive ghi đè toàn bộ Sheet (mất dữ liệu thật).
+  // Muốn nạp lại dữ liệu mẫu thì chạy riêng `npm run seed:sheets`.
+  console.log('[2/4] Đẩy mã nguồn Apps Script (giữ nguyên dữ liệu trên Google Sheets)...');
   const pushOut = run('clasp push --force');
   console.log(pushOut.trim());
 

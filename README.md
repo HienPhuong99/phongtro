@@ -1,8 +1,10 @@
-# OptiRent — Hệ Thống Quản Lý Nhà Trọ, Hợp Đồng, Điện Nước, VietQR & Thu Tiền FIFO (Web + Mobile PWA + Expo Go + Google Sites + Google Sheets)
+# Quản lý phòng trọ — Hệ Thống Quản Lý Phòng Trọ, Hợp Đồng, Điện Nước, VietQR & Thu Tiền FIFO
 
-Hệ thống Quản lý Nhà trọ thông minh **OptiRent** được xây dựng khớp 100% với video mẫu [`Phongtro.mp4`](./Phongtro.mp4) cho cơ sở **Nhà trọ Bình An** (`12 phòng · 3 tầng · 26 khách thuê · 9 xe máy · 10 hợp đồng · 27 hóa đơn`), tích hợp đồng bộ 2 chiều với **Google Sheets (7 trang tính)**, **Google Apps Script Web App**, **GitHub Pages**, **Google Sites** và ứng dụng di động **Expo Go (`mobile-expo/`)** hoàn toàn miễn phí 100%.
+Hệ thống **Quản lý phòng trọ** hỗ trợ quản lý đa cơ sở (**Nhà trọ Bình An — Cơ sở Bình Thạnh** & **Khu trọ An Phú**), điều chỉnh giá thuê linh hoạt từng phòng hoặc hàng loạt, tính tiền phòng kỳ đầu theo ngày thực tế (**Pro-rata**), ghi chỉ số điện nước, gửi thông báo **VietQR / Zalo** và thu nợ tự động theo thứ tự hóa đơn cũ nhất trước (**FIFO**).
 
-- **🏢 Cơ sở vận hành mẫu**: **Nhà trọ Bình An** (`128 Nguyễn Văn Thương, Bình Thạnh, TP. Hồ Chí Minh`)
+Hệ thống hoạt động đồng bộ trên **Web Quản trị**, **Mobile PWA**, ứng dụng di động **Expo Go (`mobile-expo/`)**, **Google Sites** và **Google Sheets (7 trang tính)** hoàn toàn miễn phí 100%.
+
+- **🏢 Cơ sở vận hành**: **Nhà trọ Bình An** (`128 Nguyễn Văn Thương, Bình Thạnh, TP. Hồ Chí Minh`)
 - **🚀 Live Web Quản trị (GitHub Pages)**: [https://hienphuong99.github.io/phongtro/](https://hienphuong99.github.io/phongtro/)
 - **📱 Live Mobile App (PWA)**: [https://hienphuong99.github.io/phongtro/?mode=mobile](https://hienphuong99.github.io/phongtro/?mode=mobile)
 - **📲 Native Mobile App (Expo Go)**: `exp://192.168.0.23:8081` (thư mục [`mobile-expo/`](./mobile-expo))
@@ -13,45 +15,42 @@ Hệ thống Quản lý Nhà trọ thông minh **OptiRent** được xây dựng
 
 ## 🌐 Nhúng Toàn Trang Trên Google Sites (`google-sites/`)
 
-Tương tự hệ thống **Chấm công & Tính lương (`sites.google.com/view/phuonghihi-staff`)** và **Web bán hàng (`sites.google.com/view/phuonghihi`)**, dự án không dùng Netlify (tránh phát sinh chi phí) mà triển khai miễn phí 100% qua **GitHub Pages + Google Sites + Google Apps Script**:
+Dự án triển khai miễn phí 100% qua **GitHub Pages + Google Sites + Google Apps Script**:
 
 | Tệp nhúng Google Sites | Đường dẫn nguồn nhúng | Mô tả |
 | :--- | :--- | :--- |
-| [`google-sites/embed-web-admin.html`](./google-sites/embed-web-admin.html) | `https://hienphuong99.github.io/phongtro/` | Nhúng toàn trang giao diện Web Quản trị OptiRent lên Google Sites |
+| [`google-sites/embed-web-admin.html`](./google-sites/embed-web-admin.html) | `https://hienphuong99.github.io/phongtro/` | Nhúng toàn trang giao diện Web Quản lý phòng trọ lên Google Sites |
 | [`google-sites/embed-mobile-app.html`](./google-sites/embed-mobile-app.html) | `https://hienphuong99.github.io/phongtro/?mode=mobile` | Nhúng giao diện Mobile PWA tối ưu cho điện thoại lên Google Sites |
 
 ---
 
-## ✨ 8 Phân Hệ Nghiệp Vụ Hoàn Chỉnh (Khớp 100% Video `Phongtro.mp4`)
+## ✨ 8 Phân Hệ Nghiệp Vụ Chính
 
 1. **📊 Tổng quan (Dashboard)**:
-   - Tỷ lệ lấp đầy **`75% (9/12 phòng)`**, Thu hôm nay (`0 đ` → tăng tức thì lên `+6.961.800 đ` sau khi thu nợ P101), Lợi nhuận tháng này (`-1.050.000 đ` → `+5.911.800 đ`).
-   - Danh sách **7 Việc cần làm hôm nay** với nút hành động 1 chạm (`Ghi chỉ số`, `Lập hóa đơn`, `Gửi`, `Xem công nợ`, `Thu nợ`, `Xem`, `Xem sơ đồ`).
+   - Tỷ lệ lấp đầy **`75% (9/12 phòng)`**, Thu hôm nay, Lợi nhuận tháng này, Công nợ cần thu và Cọc phải trả lại.
+   - Danh sách **Việc cần làm hôm nay** với nút thao tác 1 chạm (`Ghi chỉ số`, `Lập hóa đơn`, `Gửi`, `Xem công nợ`, `Thu nợ`, `Xem`, `Xem sơ đồ`).
 2. **🗓️ Lịch vận hành (Calendar)**:
    - Theo dõi lịch ghi chỉ số điện nước (mùng 1–5 hàng tháng), hạn thanh toán hóa đơn, ngày hết hạn hợp đồng và lịch bảo trì phòng.
-3. **🚪 Phòng (`12 phòng · 3 tầng`)**:
+3. **🚪 Phòng (`12 phòng · 3 tầng`) & Điều chỉnh giá thuê**:
    - Sơ đồ trực quan theo Tầng 1 (`P101–P104`), Tầng 2 (`P201–P204`), Tầng 3 (`P301–P304`).
-   - Thống kê doanh thu hợp đồng `22.500.000 đ/tháng`, thất thu phòng trống `5.200.000 đ/tháng` (`P202`, `P304`), phòng đang sửa chữa `P204`.
+   - Hỗ trợ **Sửa giá thuê từng phòng** (kèm nút tăng/giảm nhanh, áp dụng cho cả tầng, tự đồng bộ Hợp đồng và Hóa đơn chưa thu) hoặc **Bảng giá toàn bộ phòng** chỉnh sửa hàng loạt.
 4. **👥 Khách thuê & Danh sách xe (`26 khách · 9 xe máy`)**:
    - Quản lý khách đại diện & người ở cùng (`KH-00001..KH-00026`), CCCD, SĐT, trạng thái cư trú.
    - Quản lý 9 xe máy (`59X1-10000..59X1-27544`) theo từng phòng.
    - Xuất **Tờ khai thay đổi thông tin cư trú (Mẫu CT01)** chỉ với 1 nút bấm.
 5. **📄 Hợp đồng & Tính tiền kỳ đầu Pro-rata (`10 hợp đồng`)**:
-   - 9 hợp đồng đang hiệu lực (`HD-00001..HD-00009`) và 1 hợp đồng đã thanh lý chờ hoàn cọc (`HD-00010` — `Huỳnh Thị Hà` — `P202`).
-   - Modal **Tạo hợp đồng mới** tự động chia tiền phòng kỳ đầu theo số ngày ở thực tế (**Pro-rata**: vào ở ngày `11/10` → cuối tháng `31/10` = `21/31 ngày` = **`1.693.548 đ`**).
+   - Quản lý hợp đồng đang hiệu lực và hợp đồng đã thanh lý chờ hoàn cọc.
+   - Modal **Tạo hợp đồng mới** kiểm tra đầy đủ SĐT (`0xxxxxxxxx`), CCCD (`12 chữ số`), ngày kết thúc hợp lệ, tự động chia tiền phòng kỳ đầu theo số ngày ở thực tế (**Pro-rata**) và tự động lập hóa đơn kỳ đầu tiên.
 6. **🧾 Hóa đơn, Ghi điện nước hàng loạt & Thông báo VietQR/Zalo**:
-   - Quản lý hóa đơn qua 3 kỳ `2026-09`, `2026-10`, `2026-11`.
-   - Modal **Ghi chỉ số hàng loạt** tính tự động sản lượng điện (`3.500 đ/kWh`), nước (`18.000 đ/m³`), rác & Wifi.
+   - Quản lý hóa đơn theo từng kỳ tháng.
+   - Modal **Ghi chỉ số hàng loạt** kiểm tra chặt chẽ chỉ số mới không nhỏ hơn chỉ số cũ, tính tự động sản lượng điện (`3.500 đ/kWh`), nước (`18.000 đ/m³`), rác & Wifi.
    - Modal **Thông báo thanh toán** tự tạo phiếu báo kèm mã **VietQR** và mẫu tin nhắn **Zalo** 1 chạm.
 7. **💰 Tài chính & Thu tiền tự động trừ nợ cũ nhất trước (FIFO)**:
-   - 4 phân hệ con: **Sổ thu chi**, **Quỹ**, **Công nợ (`65.622.900 đ`)**, **Cọc phải trả (`909.334 đ`)**.
-   - Thuật toán **Thu tiền FIFO**: khi thu `6.961.800 đ` của phòng `P101`, hệ thống tự động phân bổ trừ từ hóa đơn cũ nhất trước:
-     - Kỳ `2026/09` (`HD-IV-00052`): trừ `1.163.800 đ` → **Đã thu đủ**
-     - Kỳ `2026/10` (`HD-IV-00070`): trừ `2.870.000 đ` → **Đã thu đủ**
-     - Kỳ `2026/11` (`HD-IV-00089`): trừ `2.928.000 đ` → **Đã thu đủ**
+   - 4 phân hệ con: **Sổ thu chi**, **Quỹ**, **Công nợ**, **Cọc phải trả**.
+   - Thuật toán **Thu tiền FIFO**: khi thu tiền của một phòng, hệ thống tự động phân bổ trừ từ hóa đơn cũ nhất trước và tự động ghi bút toán vào Sổ thu chi.
 8. **📈 Báo cáo Doanh thu — Chi phí — Lợi nhuận**:
-   - Tổng doanh thu thực thu `105.191.400 đ`, Chi phí `6.620.000 đ`, Lợi nhuận ròng `98.571.400 đ`.
-   - Biểu đồ cột + đường từ `T6/2026` đến `T10/2026`, cơ cấu nguồn thu/khoản chi, bảng xếp hạng phòng hiệu quả nhất và phòng cần lưu ý.
+   - Tổng hợp doanh thu thực thu, chi phí, lợi nhuận ròng và tỷ lệ lấp đầy theo từng cơ sở.
+   - Biểu đồ cột + đường trực quan, cơ cấu nguồn thu/khoản chi, bảng xếp hạng phòng hiệu quả nhất và phòng cần lưu ý.
 
 ---
 

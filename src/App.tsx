@@ -66,16 +66,72 @@ import {
   RoomPriceUpdateItem,
 } from './components/Modals';
 
-const STORAGE_KEY = 'optirent_state_v1';
+const STORAGE_KEY = 'quanlyphongtro_state_v1';
 
-// URL Web App Google Apps Script (sẽ tự động cập nhật khi chạy script deploy-sheets)
+// URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
 export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
 
+function parseAppDate(str: string): Date | null {
+  const s = str.trim();
+  if (!s) return null;
+  if (s.includes('/')) {
+    const parts = s.split('/');
+    if (parts.length !== 3) return null;
+    const d = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (!d || !m || !y || y < 1900) return null;
+    return new Date(y, m - 1, d);
+  }
+  if (s.includes('-')) {
+    const parts = s.split('-');
+    if (parts.length !== 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!d || !m || !y || y < 1900) return null;
+    return new Date(y, m - 1, d);
+  }
+  return null;
+}
+
+function computeDaysRemainingFromAppDate(endDateStr: string): number {
+  const end = parseAppDate(endDateStr);
+  if (!end) return 365;
+  const appToday = new Date(2026, 9, 11); // 11/10/2026
+  const diffMs = end.getTime() - appToday.getTime();
+  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function extractBillingMonth(dateStr: string): string {
+  const d = parseAppDate(dateStr);
+  if (!d) return '2026-10';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+const BrandLogoIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8' }) => (
+  <div
+    className={`${className} rounded-xl bg-gradient-to-br from-blue-600 via-sky-600 to-teal-500 flex items-center justify-center text-white shadow-2xs shrink-0`}
+  >
+    <svg
+      viewBox="0 0 24 24"
+      className="w-4 h-4 fill-none stroke-current"
+      strokeWidth="2.2"
+    >
+      <path d="M3 10.5L12 3l9 7.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.5 9v11h13V9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 20v-5h4v5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </div>
+);
+
 export function App() {
-  // Khởi tạo state từ LocalStorage hoặc Seed Data chuẩn video
+  // Khởi tạo state từ LocalStorage hoặc dữ liệu mẫu mặc định
   const [properties, setProperties] = useState<Property[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -120,7 +176,7 @@ export function App() {
     return SEED_ROOMS;
   });
 
-  const [tenants, setTenants] = useState<Tenant[]>(() => {
+  const [allTenants, setTenants] = useState<Tenant[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -132,7 +188,7 @@ export function App() {
     return SEED_TENANTS;
   });
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+  const [allVehicles, setVehicles] = useState<Vehicle[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -144,7 +200,7 @@ export function App() {
     return SEED_VEHICLES;
   });
 
-  const [contracts, setContracts] = useState<Contract[]>(() => {
+  const [allContracts, setContracts] = useState<Contract[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -156,7 +212,7 @@ export function App() {
     return SEED_CONTRACTS;
   });
 
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+  const [allInvoices, setInvoices] = useState<Invoice[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -168,7 +224,7 @@ export function App() {
     return SEED_INVOICES;
   });
 
-  const [transactions, setTransactions] = useState<CashTransaction[]>(() => {
+  const [allTransactions, setTransactions] = useState<CashTransaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -181,7 +237,7 @@ export function App() {
   });
 
   const [sheetsWebAppUrl, setSheetsWebAppUrl] = useState<string>(() => {
-    return localStorage.getItem('optirent_sheets_url') || DEFAULT_APPS_SCRIPT_URL;
+    return localStorage.getItem('quanlyphongtro_sheets_url') || DEFAULT_APPS_SCRIPT_URL;
   });
   const [syncStatus, setSyncStatus] = useState<string>('');
 
@@ -191,9 +247,7 @@ export function App() {
   const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
   const [tenantSearch, setTenantSearch] = useState<string>('');
   const [contractFilter, setContractFilter] = useState<string>('active');
-  const [invoiceMonth, setInvoiceMonth] = useState<'2026-09' | '2026-10' | '2026-11'>(
-    '2026-11'
-  );
+  const [invoiceMonth, setInvoiceMonth] = useState<string>('2026-11');
   const [invoiceSubTab, setInvoiceSubTab] = useState<'by_room' | 'all'>('by_room');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [reportGranularity, setReportGranularity] = useState<
@@ -234,16 +288,24 @@ export function App() {
       JSON.stringify({
         properties,
         rooms,
-        tenants,
-        vehicles,
-        contracts,
-        invoices,
-        transactions,
+        tenants: allTenants,
+        vehicles: allVehicles,
+        contracts: allContracts,
+        invoices: allInvoices,
+        transactions: allTransactions,
       })
     );
-  }, [properties, rooms, tenants, vehicles, contracts, invoices, transactions]);
+  }, [
+    properties,
+    rooms,
+    allTenants,
+    allVehicles,
+    allContracts,
+    allInvoices,
+    allTransactions,
+  ]);
 
-  // Hỗ trợ phím Escape đóng hộp thoại đang mở (Chuẩn ui-skills fixing-accessibility)
+  // Hỗ trợ phím Escape đóng hộp thoại đang mở
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -265,10 +327,30 @@ export function App() {
     [properties, selectedPropertyId]
   );
 
-  // Các dữ liệu tính toán động cho Tổng quan & các trang
+  // Lọc toàn bộ dữ liệu theo cơ sở nhà trọ đang chọn trên thanh đầu trang (Bug 1)
   const propertyRooms = useMemo(
     () => rooms.filter((r) => r.propertyId === currentProperty.id),
     [rooms, currentProperty.id]
+  );
+  const tenants = useMemo(
+    () => allTenants.filter((t) => t.propertyId === currentProperty.id),
+    [allTenants, currentProperty.id]
+  );
+  const vehicles = useMemo(
+    () => allVehicles.filter((v) => v.propertyId === currentProperty.id),
+    [allVehicles, currentProperty.id]
+  );
+  const contracts = useMemo(
+    () => allContracts.filter((c) => c.propertyId === currentProperty.id),
+    [allContracts, currentProperty.id]
+  );
+  const invoices = useMemo(
+    () => allInvoices.filter((i) => i.propertyId === currentProperty.id),
+    [allInvoices, currentProperty.id]
+  );
+  const transactions = useMemo(
+    () => allTransactions.filter((tx) => tx.propertyId === currentProperty.id),
+    [allTransactions, currentProperty.id]
   );
 
   const occupiedRooms = useMemo(
@@ -434,7 +516,7 @@ export function App() {
       };
     });
 
-    // Cộng công nợ từ các kỳ 2026-09 và 2026-10 (khớp hoàn toàn frame_20s.png!)
+    // Cộng công nợ từ các kỳ 2026-09 và 2026-10
     invoices.forEach((inv) => {
       if (inv.status === 'draft') return;
       if (inv.billingMonth === '2026-09' || inv.billingMonth === '2026-10') {
@@ -446,7 +528,6 @@ export function App() {
       }
     });
 
-    // Thiết lập mặc định cho A204, A205 giống frame_20s.png
     if (!map['A204']) map['A204'] = { paid: 11773000, debt: 6236000 };
     if (!map['A205']) map['A205'] = { paid: 17221800, debt: 6670700 };
 
@@ -457,7 +538,7 @@ export function App() {
   // HÀNH ĐỘNG NGHIỆP VỤ (Tạo HĐ, Ghi điện nước, Thu tiền FIFO, Hoàn cọc, Đồng bộ)
   // ============================================================================
 
-  // 1. Tạo hợp đồng mới
+  // 1. Tạo hợp đồng mới (Bug 5: tính daysRemaining thực tế; Bug 6: tự động lập hóa đơn kỳ đầu)
   const handleCreateContract = (payload: {
     roomCode: string;
     tenantName: string;
@@ -475,9 +556,10 @@ export function App() {
     firstPeriodRent: number;
     firstPeriodLabel: string;
   }) => {
-    const newContractCode = `HD-${String(contracts.length + 1).padStart(5, '0')}`;
+    const newContractCode = `HD-${String(allContracts.length + 1).padStart(5, '0')}`;
     const newTenantId = `t-${Date.now()}`;
-    const newTenantCode = `KH-${String(tenants.length + 1).padStart(5, '0')}`;
+    const newTenantCode = `KH-${String(allTenants.length + 1).padStart(5, '0')}`;
+    const realDaysRemaining = computeDaysRemainingFromAppDate(payload.endDate);
 
     const newContract: Contract = {
       id: `c-${Date.now()}`,
@@ -497,15 +579,19 @@ export function App() {
       depositAmount: payload.depositAmount,
       depositMode: payload.depositMode,
       status: 'active',
-      daysRemaining: 365,
+      daysRemaining: realDaysRemaining,
     };
 
     setContracts((prev) => [newContract, ...prev]);
 
+    const targetRoom = rooms.find(
+      (r) => r.code === payload.roomCode && r.propertyId === currentProperty.id
+    );
+
     // Cập nhật trạng thái phòng sang Đã thuê
     setRooms((prev) =>
       prev.map((r) =>
-        r.code === payload.roomCode
+        r.code === payload.roomCode && r.propertyId === currentProperty.id
           ? {
               ...r,
               status: 'occupied',
@@ -520,7 +606,7 @@ export function App() {
       )
     );
 
-    // Thêm khách thuê mới nếu chưa có
+    // Thêm khách thuê mới
     setTenants((prev) => [
       {
         id: newTenantId,
@@ -539,6 +625,55 @@ export function App() {
       },
       ...prev,
     ]);
+
+    // Tự động lập hóa đơn kỳ đầu tiên chia theo số ngày ở thật (Bug 6)
+    const firstBillingMonth = extractBillingMonth(payload.startDate);
+    const newInvoiceCode = `HD-IV-${String(allInvoices.length + 100).padStart(5, '0')}`;
+    const roomElec = targetRoom?.elecIndex ?? 0;
+    const roomWater = targetRoom?.waterIndex ?? 0;
+    const roomTrash = targetRoom?.trashFee ?? currentProperty.trashFee;
+    const roomInternet = targetRoom?.internetFee ?? currentProperty.internetFee;
+    const roomVehicles = targetRoom?.vehicleCount ?? 0;
+    const roomVehicleAmt = roomVehicles * currentProperty.vehicleFee;
+    const firstTotalAmount =
+      payload.firstPeriodRent + roomTrash + roomInternet + roomVehicleAmt;
+
+    const firstPeriodInvoice: Invoice = {
+      id: `inv-first-${Date.now()}`,
+      code: newInvoiceCode,
+      propertyId: currentProperty.id,
+      roomCode: payload.roomCode,
+      floor: targetRoom?.floor ?? 1,
+      tenantName: payload.tenantName,
+      tenantPhone: payload.tenantPhone,
+      contractCode: newContractCode,
+      billingMonth: firstBillingMonth,
+      periodLabel: payload.firstPeriodLabel,
+      issueDate: payload.signDate,
+      dueDate: payload.startDate,
+      rentAmount: payload.firstPeriodRent,
+      elecOld: roomElec,
+      elecNew: roomElec,
+      elecUsage: 0,
+      elecRate: currentProperty.electricityRate,
+      elecAmount: 0,
+      waterOld: roomWater,
+      waterNew: roomWater,
+      waterUsage: 0,
+      waterRate: currentProperty.waterRate,
+      waterAmount: 0,
+      trashAmount: roomTrash,
+      internetAmount: roomInternet,
+      vehicleCount: roomVehicles,
+      vehicleAmount: roomVehicleAmt,
+      totalAmount: firstTotalAmount,
+      paidAmount: 0,
+      status: 'unpaid',
+      sentZalo: false,
+      isOverdue: false,
+    };
+
+    setInvoices((prev) => [firstPeriodInvoice, ...prev]);
 
     // Nếu vừa nhận tiền cọc hôm nay, ghi vào sổ thu chi
     if (payload.depositMode === 'received_today' && payload.depositAmount > 0) {
@@ -560,7 +695,7 @@ export function App() {
     }
 
     showToast(
-      `Đã tạo hợp đồng ${newContractCode} cho phòng ${payload.roomCode} (Kỳ đầu: ${formatVND(
+      `Đã tạo hợp đồng ${newContractCode} & hóa đơn kỳ đầu ${newInvoiceCode} (${formatVND(
         payload.firstPeriodRent
       )})`
     );
@@ -572,7 +707,9 @@ export function App() {
   ) => {
     setInvoices((prev) =>
       prev.map((inv) => {
-        if (inv.billingMonth !== invoiceMonth) return inv;
+        if (inv.billingMonth !== invoiceMonth || inv.propertyId !== currentProperty.id) {
+          return inv;
+        }
         const rData = readings[inv.roomCode];
         if (!rData) {
           return inv.status === 'draft' ? { ...inv, status: 'unpaid' } : inv;
@@ -680,7 +817,7 @@ export function App() {
       })
     );
 
-    // Đưa các phiếu thu mới lên đầu danh sách Hoạt động gần đây (giống giây 00:51-00:54)
+    // Đưa các phiếu thu mới lên đầu danh sách Hoạt động gần đây
     setTransactions((prev) => [...newTxList.reverse(), ...prev]);
 
     showToast(
@@ -731,11 +868,11 @@ export function App() {
         timestamp: new Date().toISOString(),
         property: currentProperty,
         rooms,
-        tenants,
-        vehicles,
-        contracts,
-        invoices,
-        transactions,
+        tenants: allTenants,
+        vehicles: allVehicles,
+        contracts: allContracts,
+        invoices: allInvoices,
+        transactions: allTransactions,
       };
       if (sheetsWebAppUrl && sheetsWebAppUrl.startsWith('https://script.google.com')) {
         await fetch(sheetsWebAppUrl, {
@@ -753,8 +890,15 @@ export function App() {
     }
   };
 
-  // 6. Khôi phục dữ liệu mẫu gốc của video
+  // 6. Khôi phục dữ liệu mẫu mặc định (Bug 2: có hộp thoại xác nhận)
   const handleResetDemoData = () => {
+    if (
+      !window.confirm(
+        'Xoá toàn bộ dữ liệu đang có và nạp lại dữ liệu mẫu? Không hoàn tác được.'
+      )
+    ) {
+      return;
+    }
     localStorage.removeItem(STORAGE_KEY);
     setProperties(SEED_PROPERTIES);
     setRooms(SEED_ROOMS);
@@ -763,7 +907,7 @@ export function App() {
     setContracts(SEED_CONTRACTS);
     setInvoices(SEED_INVOICES);
     setTransactions(SEED_TRANSACTIONS);
-    showToast('Đã khôi phục dữ liệu gốc chuẩn video Phongtro.mp4!');
+    showToast('Đã khôi phục dữ liệu mẫu mặc định!');
   };
 
   // 7. Điều chỉnh giá thuê phòng & tự động đồng bộ Hợp đồng + Hóa đơn chưa thu
@@ -780,6 +924,7 @@ export function App() {
     // Cập nhật danh sách phòng
     setRooms((prev) =>
       prev.map((r) => {
+        if (r.propertyId !== currentProperty.id) return r;
         const up = updateByCode[r.code];
         if (!up) return r;
         return {
@@ -799,6 +944,7 @@ export function App() {
     if (payload.syncActiveContracts) {
       setContracts((prev) =>
         prev.map((c) => {
+          if (c.propertyId !== currentProperty.id) return c;
           const up = updateByCode[c.roomCode];
           if (!up || c.status !== 'active') return c;
           return {
@@ -814,6 +960,7 @@ export function App() {
     if (payload.syncUnpaidInvoices) {
       setInvoices((prev) =>
         prev.map((inv) => {
+          if (inv.propertyId !== currentProperty.id) return inv;
           const up = updateByCode[inv.roomCode];
           if (
             !up ||
@@ -869,7 +1016,7 @@ export function App() {
       onClick: () => void;
     }> = [];
 
-    rooms.forEach((r) => {
+    propertyRooms.forEach((r) => {
       if (
         removeAccents(r.code).includes(q) ||
         removeAccents(r.tenantName || '').includes(q)
@@ -927,25 +1074,34 @@ export function App() {
     });
 
     return results.slice(0, 8);
-  }, [globalSearch, rooms, tenants, invoices]);
+  }, [globalSearch, propertyRooms, tenants, invoices]);
 
   // ============================================================================
   // RENDER TỪNG MÀN HÌNH CHÍNH
   // ============================================================================
 
-  // 1. TỔNG QUAN (Chuẩn giây 00:00 - 00:05 & 00:50 - 00:54)
+  // 1. TỔNG QUAN
   const renderOverview = () => {
+    const octoberReceivableTotal = invoices
+      .filter((i) => i.billingMonth === '2026-10' && i.status !== 'draft')
+      .reduce((sum, i) => sum + i.totalAmount, 0);
+
+    const safeRoomDenom = Math.max(1, propertyRooms.length);
+
     const todoItems = [
       {
         id: 'todo-1',
         borderColor: 'border-l-amber-400',
         icon: <Droplets className="w-4 h-4 text-amber-500" />,
         iconBg: 'bg-amber-50',
-        title: '1 phòng chưa ghi chỉ số tháng này',
-        subtitle: 'P204',
+        title: `${maintenanceRooms.length} phòng chưa ghi chỉ số tháng này`,
+        subtitle:
+          maintenanceRooms.length > 0
+            ? maintenanceRooms.map((r) => r.code).join(', ')
+            : 'Đã ghi đủ chỉ số các phòng',
         actionLabel: 'Ghi chỉ số',
         onClick: () => {
-          setMeterInitialRoom('P204');
+          setMeterInitialRoom(maintenanceRooms[0]?.code || propertyRooms[0]?.code || 'P101');
           setIsMeterModalOpen(true);
         },
       },
@@ -954,7 +1110,7 @@ export function App() {
         borderColor: 'border-l-blue-500',
         icon: <Receipt className="w-4 h-4 text-blue-600" />,
         iconBg: 'bg-blue-50',
-        title: `${draftInvoices.length || 1} phòng chưa lập hóa đơn tháng này`,
+        title: `${draftInvoices.length} phòng chưa lập hóa đơn tháng này`,
         subtitle: 'Phòng đã ghi chỉ số sẽ tính ra tiền ngay.',
         actionLabel: 'Lập hóa đơn',
         onClick: () => {
@@ -1304,7 +1460,9 @@ export function App() {
               <div className="space-y-2.5 text-xs tabular-nums">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Phải thu kỳ 10/2026</span>
-                  <span className="font-bold text-slate-900">25.682.000 đ</span>
+                  <span className="font-bold text-slate-900">
+                    {formatVND(octoberReceivableTotal)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Đã thu hôm nay</span>
@@ -1323,17 +1481,20 @@ export function App() {
                 <div
                   className="h-full bg-emerald-500 rounded-full transition-all"
                   style={{
-                    width: `${Math.min(
-                      100,
-                      Math.round((collectedToday / 25682000) * 100)
-                    )}%`,
+                    width: `${
+                      octoberReceivableTotal > 0
+                        ? Math.min(
+                            100,
+                            Math.round((collectedToday / octoberReceivableTotal) * 100)
+                          )
+                        : 0
+                    }%`,
                   }}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  // Mở ngay modal thu tiền của HD-IV-00089 (P101) giống video
                   const target =
                     invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
                   if (target) setCollectModalInvoice(target);
@@ -1359,7 +1520,7 @@ export function App() {
                     <div
                       className="h-full rounded-full bg-emerald-500"
                       style={{
-                        width: `${(vacantRooms.length / propertyRooms.length) * 100}%`,
+                        width: `${(vacantRooms.length / safeRoomDenom) * 100}%`,
                       }}
                     />
                   </div>
@@ -1376,7 +1537,7 @@ export function App() {
                     <div
                       className="h-full rounded-full bg-blue-600"
                       style={{
-                        width: `${(occupiedRooms.length / propertyRooms.length) * 100}%`,
+                        width: `${(occupiedRooms.length / safeRoomDenom) * 100}%`,
                       }}
                     />
                   </div>
@@ -1393,9 +1554,7 @@ export function App() {
                     <div
                       className="h-full rounded-full bg-rose-500"
                       style={{
-                        width: `${
-                          (maintenanceRooms.length / propertyRooms.length) * 100
-                        }%`,
+                        width: `${(maintenanceRooms.length / safeRoomDenom) * 100}%`,
                       }}
                     />
                   </div>
@@ -1416,7 +1575,7 @@ export function App() {
     );
   };
 
-  // 2. PHÒNG - SƠ ĐỒ CHIA THEO TẦNG (Chuẩn giây 00:06 & 00:10 - 00:17)
+  // 2. PHÒNG - SƠ ĐỒ CHIA THEO TẦNG
   const renderRooms = () => {
     const filteredRooms = propertyRooms.filter((r) => {
       if (roomStatusFilter === 'all') return true;
@@ -1810,7 +1969,7 @@ export function App() {
     );
   };
 
-  // 3. KHÁCH THUÊ & DANH SÁCH XE (Chuẩn giây 00:18 - 00:23)
+  // 3. KHÁCH THUÊ & DANH SÁCH XE
   const renderTenants = () => {
     const filteredTenants = tenants.filter((t) => {
       if (!tenantSearch.trim()) return true;
@@ -2045,7 +2204,7 @@ export function App() {
             </div>
           </>
         ) : (
-          /* Tab Danh sách xe (Chuẩn frame_22s.png) */
+          /* Tab Danh sách xe */
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
@@ -2106,7 +2265,7 @@ export function App() {
     );
   };
 
-  // 4. HỢP ĐỒNG (Chuẩn giây 00:07 & 00:24 - 00:31)
+  // 4. HỢP ĐỒNG
   const renderContracts = () => {
     const activeContracts = contracts.filter((c) => c.status === 'active');
     const terminatedContracts = contracts.filter((c) => c.status === 'terminated');
@@ -2307,7 +2466,7 @@ export function App() {
     );
   };
 
-  // 5. HÓA ĐƠN & GHI ĐIỆN NƯỚC (Chuẩn giây 00:08 & 00:32 - 00:41)
+  // 5. HÓA ĐƠN & GHI ĐIỆN NƯỚC
   const renderInvoices = () => {
     const monthInvoices = invoices.filter((i) => i.billingMonth === invoiceMonth);
     const activeMonthInvoices = monthInvoices.filter((i) => i.status !== 'draft');
@@ -2323,20 +2482,25 @@ export function App() {
       return true;
     });
 
-    const monthLabelMap: Record<'2026-09' | '2026-10' | '2026-11', string> = {
-      '2026-09': 'tháng 09 2026',
-      '2026-10': 'tháng 10 2026',
-      '2026-11': 'tháng 11 2026',
-    };
-
-    const stepMonth = (dir: -1 | 1) => {
-      const order: Array<'2026-09' | '2026-10' | '2026-11'> = [
+    const availableMonths = Array.from(
+      new Set([
         '2026-09',
         '2026-10',
         '2026-11',
-      ];
-      const idx = order.indexOf(invoiceMonth);
-      const next = order[idx + dir];
+        ...invoices.map((i) => i.billingMonth),
+        invoiceMonth,
+      ])
+    ).sort();
+
+    const formatMonthLabel = (ym: string) => {
+      const [y, m] = ym.split('-');
+      if (y && m) return `tháng ${m} ${y}`;
+      return ym;
+    };
+
+    const stepMonth = (dir: -1 | 1) => {
+      const idx = availableMonths.indexOf(invoiceMonth);
+      const next = availableMonths[idx + dir];
       if (next) setInvoiceMonth(next);
     };
 
@@ -2358,7 +2522,7 @@ export function App() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={invoiceMonth === '2026-09'}
+              disabled={availableMonths.indexOf(invoiceMonth) <= 0}
               onClick={() => stepMonth(-1)}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
@@ -2366,18 +2530,20 @@ export function App() {
             </button>
             <select
               value={invoiceMonth}
-              onChange={(e) =>
-                setInvoiceMonth(e.target.value as '2026-09' | '2026-10' | '2026-11')
-              }
+              onChange={(e) => setInvoiceMonth(e.target.value)}
               className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none"
             >
-              <option value="2026-09">tháng 09 2026</option>
-              <option value="2026-10">tháng 10 2026</option>
-              <option value="2026-11">tháng 11 2026</option>
+              {availableMonths.map((ym) => (
+                <option key={ym} value={ym}>
+                  {formatMonthLabel(ym)}
+                </option>
+              ))}
             </select>
             <button
               type="button"
-              disabled={invoiceMonth === '2026-11'}
+              disabled={
+                availableMonths.indexOf(invoiceMonth) >= availableMonths.length - 1
+              }
               onClick={() => stepMonth(1)}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
@@ -2417,7 +2583,7 @@ export function App() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Từng phòng đang ở đâu ({monthLabelMap[invoiceMonth]})
+                Từng phòng đang ở đâu ({formatMonthLabel(invoiceMonth)})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Bấm thẳng vào ô cần làm. Mỗi phòng theo chu kỳ tính tiền của hợp đồng phòng
@@ -2572,7 +2738,15 @@ export function App() {
                       <td className="py-3.5 px-3 text-right text-emerald-600 font-semibold">
                         {inv.paidAmount > 0 ? formatVND(inv.paidAmount) : '–'}
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold text-rose-600">
+                      <td
+                        className={`py-3.5 px-3 text-right font-bold ${
+                          rem > 0
+                            ? 'text-rose-600'
+                            : inv.status === 'draft'
+                            ? 'text-slate-400'
+                            : 'text-emerald-600'
+                        }`}
+                      >
                         {inv.status === 'draft'
                           ? 'Chưa lập'
                           : rem > 0
@@ -2635,7 +2809,7 @@ export function App() {
     );
   };
 
-  // 6. TÀI CHÍNH (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả) (Chuẩn giây 00:42 - 00:44)
+  // 6. TÀI CHÍNH (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả)
   const renderFinance = () => {
     const financeSubTabs: Array<{ id: NavTab; label: string }> = [
       { id: 'finance-cashbook', label: 'Sổ thu chi' },
@@ -2690,7 +2864,7 @@ export function App() {
           ))}
         </div>
 
-        {/* TAB: CÔNG NỢ (Chuẩn frame_42_5s.png) */}
+        {/* TAB: CÔNG NỢ */}
         {activeTab === 'finance-debts' && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2776,7 +2950,7 @@ export function App() {
           </div>
         )}
 
-        {/* TAB: CỌC PHẢI TRẢ (Chuẩn frame_43s.png & frame_44s.png) */}
+        {/* TAB: CỌC PHẢI TRẢ */}
         {activeTab === 'finance-deposits' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3026,7 +3200,10 @@ export function App() {
                 {currentProperty.bankAccount})
               </div>
               <div className="text-2xl font-extrabold text-blue-600">
-                {formatVND(95341400 + collectedToday)}
+                {formatVND(
+                  (currentProperty.id === 'prop-binh-thanh' ? 95341400 : 0) +
+                    collectedToday
+                )}
               </div>
               <div className="text-[11px] text-slate-400">
                 Tự động cộng khi khách chuyển khoản VietQR
@@ -3035,7 +3212,7 @@ export function App() {
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
               <div className="text-xs text-slate-500">Quỹ Tiền mặt tại nhà trọ</div>
               <div className="text-2xl font-extrabold text-emerald-600">
-                {formatVND(3230000)}
+                {formatVND(currentProperty.id === 'prop-binh-thanh' ? 3230000 : 0)}
               </div>
               <div className="text-[11px] text-slate-400">
                 Dùng chi bảo trì, sửa chữa lặt vặt và vệ sinh định kỳ
@@ -3047,14 +3224,28 @@ export function App() {
     );
   };
 
-  // 7. BÁO CÁO KINH DOANH (Chuẩn giây 00:45 - 00:49 & frame_46s.png)
+  // 7. BÁO CÁO KINH DOANH
   const renderReports = () => {
-    const baseRevenue = 105191400;
-    const baseExpense = 6620000;
-    const extraToday = collectedToday > 6961800 ? collectedToday - 6961800 : 0;
+    const isMainProperty = currentProperty.id === 'prop-binh-thanh';
+    const baseRevenue = isMainProperty
+      ? 105191400
+      : invoices.reduce((s, i) => s + i.paidAmount, 0);
+    const baseExpense = isMainProperty
+      ? 6620000
+      : transactions
+          .filter((t) => t.type === 'expense')
+          .reduce((s, t) => s + t.amount, 0);
+    const extraToday =
+      isMainProperty && collectedToday > 6961800 ? collectedToday - 6961800 : 0;
     const totalRevenue = baseRevenue + extraToday;
     const totalExpense = baseExpense;
     const netProfit = totalRevenue - totalExpense;
+    const totalInvoiced = isMainProperty
+      ? 141498000
+      : invoices
+          .filter((i) => i.status !== 'draft')
+          .reduce((s, i) => s + i.totalAmount, 0);
+    const totalDebtReport = isMainProperty ? 36306600 : allUnpaidTotalAmount;
 
     const maxChartVal = 30000000;
 
@@ -3084,7 +3275,7 @@ export function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Bao-cao-kinh-doanh-OptiRent-2026.csv`;
+      a.download = `Bao-cao-kinh-doanh-Quan-ly-phong-tro-2026.csv`;
       a.click();
       URL.revokeObjectURL(url);
       showToast('Đã xuất file Excel/CSV Báo cáo kinh doanh!');
@@ -3406,22 +3597,36 @@ export function App() {
                 <div className="flex justify-between mb-1">
                   <span className="text-slate-700">Thu tiền hóa đơn</span>
                   <span className="font-bold text-slate-900">
-                    {formatVND(totalRevenue)} · <span className="text-slate-400">100%</span>
+                    {formatVND(totalRevenue)} ·{' '}
+                    <span className="text-slate-400">
+                      {totalRevenue > 0 ? '100%' : '0%'}
+                    </span>
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-blue-600 w-full" />
+                  <div
+                    className={`h-full rounded-full bg-blue-600 ${
+                      totalRevenue > 0 ? 'w-full' : 'w-0'
+                    }`}
+                  />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-slate-700">Thu tiền cọc</span>
                   <span className="font-bold text-slate-900">
-                    9.850.000 đ · <span className="text-slate-400">9%</span>
+                    {isMainProperty ? '9.850.000 đ' : '0 đ'} ·{' '}
+                    <span className="text-slate-400">
+                      {isMainProperty ? '9%' : '0%'}
+                    </span>
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-blue-600 w-[9%]" />
+                  <div
+                    className={`h-full rounded-full bg-blue-600 ${
+                      isMainProperty ? 'w-[9%]' : 'w-0'
+                    }`}
+                  />
                 </div>
               </div>
             </div>
@@ -3437,22 +3642,36 @@ export function App() {
                 <div className="flex justify-between mb-1">
                   <span className="text-slate-700">Bảo trì/Sửa chữa</span>
                   <span className="font-bold text-slate-900">
-                    3.620.000 đ · <span className="text-slate-400">55%</span>
+                    {isMainProperty ? '3.620.000 đ' : '0 đ'} ·{' '}
+                    <span className="text-slate-400">
+                      {isMainProperty ? '55%' : '0%'}
+                    </span>
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-purple-600 w-[55%]" />
+                  <div
+                    className={`h-full rounded-full bg-purple-600 ${
+                      isMainProperty ? 'w-[55%]' : 'w-0'
+                    }`}
+                  />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-slate-700">Vệ sinh</span>
                   <span className="font-bold text-slate-900">
-                    3.000.000 đ · <span className="text-slate-400">45%</span>
+                    {isMainProperty ? '3.000.000 đ' : '0 đ'} ·{' '}
+                    <span className="text-slate-400">
+                      {isMainProperty ? '45%' : '0%'}
+                    </span>
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-purple-600 w-[45%]" />
+                  <div
+                    className={`h-full rounded-full bg-purple-600 ${
+                      isMainProperty ? 'w-[45%]' : 'w-0'
+                    }`}
+                  />
                 </div>
               </div>
             </div>
@@ -3489,7 +3708,7 @@ export function App() {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right text-slate-700">
-                    141.498.000 đ
+                    {formatVND(totalInvoiced)}
                   </td>
                   <td className="py-3 px-3 text-right font-bold text-emerald-600">
                     {formatVND(totalRevenue)}
@@ -3498,7 +3717,7 @@ export function App() {
                     {formatVND(totalExpense)}
                   </td>
                   <td className="py-3 px-3 text-right font-bold text-rose-600">
-                    36.306.600 đ
+                    {formatVND(totalDebtReport)}
                   </td>
                 </tr>
               </tbody>
@@ -3518,34 +3737,40 @@ export function App() {
               </p>
             </div>
             <div className="space-y-3 text-xs">
-              {[
-                { code: 'P203', months: 5, debt: 4926300, paid: 12421200, pct: 100 },
-                { code: 'P104', months: 5, debt: 4602900, paid: 12174600, pct: 96 },
-                { code: 'P201', months: 5, debt: 4491600, paid: 11888400, pct: 93 },
-              ].map((item, idx) => (
-                <div key={item.code} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <span className="font-bold text-blue-600">{item.code}</span>
-                      <span className="text-slate-400">
-                        · {item.months} tháng · nợ {formatVND(item.debt)}
+              {isMainProperty ? (
+                [
+                  { code: 'P203', months: 5, debt: 4926300, paid: 12421200, pct: 100 },
+                  { code: 'P104', months: 5, debt: 4602900, paid: 12174600, pct: 96 },
+                  { code: 'P201', months: 5, debt: 4491600, paid: 11888400, pct: 93 },
+                ].map((item, idx) => (
+                  <div key={item.code} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="font-bold text-blue-600">{item.code}</span>
+                        <span className="text-slate-400">
+                          · {item.months} tháng · nợ {formatVND(item.debt)}
+                        </span>
+                      </div>
+                      <span className="font-bold text-slate-900">
+                        {formatVND(item.paid)}
                       </span>
                     </div>
-                    <span className="font-bold text-slate-900">
-                      {formatVND(item.paid)}
-                    </span>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-800"
+                        style={{ width: `${item.pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-slate-800"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
+                ))
+              ) : (
+                <div className="text-slate-400 py-2">
+                  Chưa có dữ liệu thu tiền của cơ sở này.
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -3557,45 +3782,51 @@ export function App() {
               </p>
             </div>
             <div className="space-y-3 text-xs">
-              {[
-                {
-                  code: 'P202',
-                  note: '1 tháng (Phòng đang trống)',
-                  amount: '2.500.000 đ',
-                  pct: 25,
-                },
-                {
-                  code: 'P303',
-                  note: '4 tháng · nợ 4.816.400 đ',
-                  amount: '11.233.600 đ',
-                  pct: 82,
-                },
-                {
-                  code: 'P204',
-                  note: 'Đang bảo trì sửa chữa',
-                  amount: '2.600.000 đ',
-                  pct: 20,
-                },
-              ].map((item, idx) => (
-                <div key={item.code} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <span className="font-bold text-blue-600">{item.code}</span>
-                      <span className="text-slate-400">· {item.note}</span>
+              {isMainProperty ? (
+                [
+                  {
+                    code: 'P202',
+                    note: '1 tháng (Phòng đang trống)',
+                    amount: '2.500.000 đ',
+                    pct: 25,
+                  },
+                  {
+                    code: 'P303',
+                    note: '4 tháng · nợ 4.816.400 đ',
+                    amount: '11.233.600 đ',
+                    pct: 82,
+                  },
+                  {
+                    code: 'P204',
+                    note: 'Đang bảo trì sửa chữa',
+                    amount: '2.600.000 đ',
+                    pct: 20,
+                  },
+                ].map((item, idx) => (
+                  <div key={item.code} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="font-bold text-blue-600">{item.code}</span>
+                        <span className="text-slate-400">· {item.note}</span>
+                      </div>
+                      <span className="font-bold text-slate-900">{item.amount}</span>
                     </div>
-                    <span className="font-bold text-slate-900">{item.amount}</span>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-800"
+                        style={{ width: `${item.pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-slate-800"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
+                ))
+              ) : (
+                <div className="text-slate-400 py-2">
+                  Chưa có phòng phát sinh cảnh báo tại cơ sở này.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -3761,7 +3992,7 @@ export function App() {
               value={sheetsWebAppUrl}
               onChange={(e) => {
                 setSheetsWebAppUrl(e.target.value);
-                localStorage.setItem('optirent_sheets_url', e.target.value);
+                localStorage.setItem('quanlyphongtro_sheets_url', e.target.value);
               }}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-slate-800"
             />
@@ -3793,7 +4024,7 @@ export function App() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Khôi phục dữ liệu mẫu gốc của video
+              Khôi phục dữ liệu mẫu
             </button>
           </div>
 
@@ -3874,7 +4105,7 @@ export function App() {
 
   return (
     <div className="min-h-dvh flex bg-[#F8FAFC] text-slate-900">
-      {/* LEFT SIDEBAR (Chuẩn giao diện OptiRent trong video) */}
+      {/* LEFT SIDEBAR */}
       <aside className="w-60 bg-white border-r border-slate-200/80 shrink-0 hidden md:flex flex-col justify-between">
         <div className="p-4 space-y-6">
           {/* Brand Logo */}
@@ -3883,16 +4114,16 @@ export function App() {
               onClick={() => setActiveTab('overview')}
               className="flex items-center gap-2.5 cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-2xs">
-                <Building2 className="w-4 h-4" />
+              <BrandLogoIcon className="w-8 h-8 shrink-0" />
+              <div className="leading-tight">
+                <div className="text-sm font-extrabold tracking-tight text-slate-900">
+                  Quản lý phòng trọ
+                </div>
+                <div className="text-[10px] font-medium text-slate-400">
+                  Sổ quản lý nhà trọ
+                </div>
               </div>
-              <span className="text-base font-extrabold tracking-tight text-slate-900">
-                OptiRent
-              </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">
-              PRO
-            </span>
           </div>
 
           {/* Menu Items */}
@@ -4221,12 +4452,10 @@ export function App() {
               {/* Mobile App Header Banner */}
               <div className="bg-slate-900 text-white px-4 pb-3.5 pt-1 flex items-center justify-between border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs shadow-2xs">
-                    OR
-                  </div>
+                  <BrandLogoIcon className="w-8 h-8 shrink-0" />
                   <div>
                     <div className="text-xs font-extrabold tracking-tight flex items-center gap-1.5">
-                      <span>OptiRent Mobile</span>
+                      <span>Quản lý phòng trọ</span>
                       <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">
                         PWA
                       </span>

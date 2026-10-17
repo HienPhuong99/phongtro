@@ -429,10 +429,10 @@ export default function App() {
       <View style={styles.topbar}>
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>OR</Text>
+            <Text style={styles.logoText}>🏠</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>OptiRent Mobile</Text>
+            <Text style={styles.brandTitle}>Quản lý phòng trọ</Text>
             <Text style={styles.brandSub}>Nhà trọ Bình An · 12 phòng · 3 tầng</Text>
           </View>
         </View>

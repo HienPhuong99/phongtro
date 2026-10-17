@@ -1,5 +1,5 @@
 /**
- * OptiRent — Quản lý nhà trọ thông minh
+ * Quản lý phòng trọ — Hệ thống quản lý phòng trọ, hợp đồng, điện nước và công nợ
  * Google Sheets + Google Apps Script Backend & Web App
  *
  * Tự động khởi tạo 7 trang tính (Sheets):
@@ -28,8 +28,8 @@ var SHEET_NAMES = {
 function onOpen() {
   try {
     SpreadsheetApp.getUi()
-      .createMenu('🏠 OptiRent Quản Lý Trọ')
-      .addItem('🚀 Khởi tạo / Làm mới dữ liệu mẫu', 'setupOptiRentSheets')
+      .createMenu('🏠 Quản lý phòng trọ')
+      .addItem('🚀 Khởi tạo / Làm mới dữ liệu mẫu', 'setupPhongTroSheets')
       .addItem('📊 Xem báo cáo tổng quan', 'showQuickSummary')
       .addSeparator()
       .addItem('🌐 Mở giao diện Web App', 'openWebAppModal')
@@ -51,10 +51,10 @@ function doGet(e) {
   var format = params.format || '';
 
   if (action === 'init') {
-    var initResult = setupOptiRentSheets();
+    var initResult = setupPhongTroSheets();
     return jsonResponse({
       ok: true,
-      message: 'Đã khởi tạo thành công 7 bảng dữ liệu OptiRent trên Google Sheets',
+      message: 'Đã khởi tạo thành công 7 bảng dữ liệu Quản lý phòng trọ trên Google Sheets',
       spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
       result: initResult
     });
@@ -75,7 +75,7 @@ function doGet(e) {
   ensureSheetsInitialized();
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('OptiRent — Quản lý nhà trọ thông minh')
+    .setTitle('Quản lý phòng trọ')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
@@ -101,7 +101,7 @@ function doPost(e) {
     }
 
     if (action === 'resetSeed') {
-      setupOptiRentSheets();
+      setupPhongTroSheets();
       return jsonResponse({
         ok: true,
         action: 'resetSeed',
@@ -133,14 +133,14 @@ function ensureSheetsInitialized() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var roomSheet = ss.getSheetByName(SHEET_NAMES.ROOMS);
   if (!roomSheet || roomSheet.getLastRow() < 2) {
-    setupOptiRentSheets();
+    setupPhongTroSheets();
   }
 }
 
 /**
- * Khởi tạo toàn bộ 7 sheet với dữ liệu chuẩn từ video Phongtro.mp4
+ * Khởi tạo toàn bộ 7 sheet với dữ liệu mẫu mặc định
  */
-function setupOptiRentSheets() {
+function setupPhongTroSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var seed = getDefaultSeedData();
   writeStateToSheets(seed);
@@ -423,7 +423,7 @@ function showQuickSummary() {
   var totalDebt = unpaid.reduce(function(sum, i) { return sum + Number(i.remainingAmount || 0); }, 0);
 
   SpreadsheetApp.getUi().alert(
-    '📊 Thống kê nhanh OptiRent — Nhà trọ Bình An\n\n' +
+    '📊 Thống kê nhanh Quản lý phòng trọ — Nhà trọ Bình An\n\n' +
     '• Tỷ lệ lấp đầy: ' + rented + '/' + totalRooms + ' phòng (' + Math.round((rented / totalRooms) * 100) + '%)\n' +
     '• Tổng khách thuê: ' + (state.tenants || []).length + ' người\n' +
     '• Hóa đơn chưa thu: ' + unpaid.length + ' hóa đơn\n' +
@@ -436,11 +436,11 @@ function openWebAppModal() {
     .evaluate()
     .setWidth(1200)
     .setHeight(780);
-  SpreadsheetApp.getUi().showModalDialog(html, 'OptiRent — Quản lý nhà trọ thông minh');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Quản lý phòng trọ');
 }
 
 /**
- * Dữ liệu gốc khớp 100% với video Phongtro.mp4
+ * Dữ liệu mẫu mặc định của hệ thống Quản lý phòng trọ
  */
 function getDefaultSeedData() {
   var rooms = [

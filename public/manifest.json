@@ -1,10 +1,18 @@
 {
-  "name": "OptiRent — Quản lý nhà trọ thông minh",
-  "short_name": "OptiRent",
-  "description": "Phần mềm quản lý nhà trọ, phòng, khách thuê, hợp đồng, hóa đơn điện nước VietQR & thu tiền FIFO",
+  "name": "Quản lý phòng trọ",
+  "short_name": "Phòng trọ",
+  "description": "Phần mềm quản lý phòng trọ, khách thuê, hợp đồng, hóa đơn điện nước VietQR & thu tiền FIFO",
   "start_url": "./?mode=mobile",
   "display": "standalone",
   "background_color": "#0F172A",
-  "theme_color": "#0D9488",
-  "orientation": "portrait"
+  "theme_color": "#2563EB",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

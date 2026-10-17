@@ -152,7 +152,7 @@ async function main() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(settingsRows), 'CaiDat');
 
   const xlsxBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  const localXlsxPath = path.join(ROOT_DIR, 'apps-script', 'OptiRent-Database.xlsx');
+  const localXlsxPath = path.join(ROOT_DIR, 'apps-script', 'QuanLyPhongTro-Database.xlsx');
   fs.writeFileSync(localXlsxPath, xlsxBuffer);
   console.log(`Đã xuất file Excel 7 trang tính tại: ${localXlsxPath}`);
 

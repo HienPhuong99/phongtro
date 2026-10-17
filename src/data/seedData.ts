@@ -253,7 +253,7 @@ export const SEED_ROOMS: Room[] = [
   },
 ];
 
-// 26 khách thuê đúng chuẩn video (gồm cả Đại diện và Ở cùng)
+// Danh sách 26 khách thuê (gồm cả Đại diện và Ở cùng)
 export const SEED_TENANTS: Tenant[] = [
   {
     id: 't-01',
@@ -699,7 +699,7 @@ export const SEED_TENANTS: Tenant[] = [
   },
 ];
 
-// 9 xe đang gửi đúng chuẩn video (frame_22s.png)
+// Danh sách 9 xe đang gửi tại khu trọ
 export const SEED_VEHICLES: Vehicle[] = [
   {
     id: 'v-01',
@@ -1094,7 +1094,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 1,
     vehicleAmount: 111500,
     totalAmount: 3070500,
-    paidAmount: 1842300, // Còn nợ 1.228.200 đ (khớp frame_20s.png!)
+    paidAmount: 1842300, // Còn nợ 1.228.200 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1128,7 +1128,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 2,
     vehicleAmount: 240000,
     totalAmount: 3278500,
-    paidAmount: 1952100, // Còn nợ 1.326.400 đ (cộng 3.276.500 = 4.602.900 đ khớp frame_20s.png!)
+    paidAmount: 1952100, // Còn nợ 1.326.400 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1162,7 +1162,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 1,
     vehicleAmount: 120000,
     totalAmount: 3148000,
-    paidAmount: 1853400, // Còn nợ 1.294.600 đ (cộng 3.197.000 = 4.491.600 đ khớp frame_20s.png!)
+    paidAmount: 1853400, // Còn nợ 1.294.600 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1196,7 +1196,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 2,
     vehicleAmount: 240000,
     totalAmount: 3457500,
-    paidAmount: 2038700, // Còn nợ 1.418.800 đ (cộng 3.507.500 = 4.926.300 đ khớp frame_20s.png!)
+    paidAmount: 2038700, // Còn nợ 1.418.800 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1230,7 +1230,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 1,
     vehicleAmount: 120000,
     totalAmount: 3212000,
-    paidAmount: 1907000, // Còn nợ 1.305.000 đ (cộng 3.223.000 = 4.528.000 đ khớp frame_20s.png!)
+    paidAmount: 1907000, // Còn nợ 1.305.000 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1298,7 +1298,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleCount: 2,
     vehicleAmount: 240000,
     totalAmount: 3399000,
-    paidAmount: 2011600, // Còn nợ 1.387.400 đ (cộng 3.429.000 = 4.816.400 đ khớp frame_46s.png!)
+    paidAmount: 2011600, // Còn nợ 1.387.400 đ
     status: 'partial',
     sentZalo: true,
     isOverdue: true,
@@ -1403,7 +1403,7 @@ export const SEED_INVOICES: Invoice[] = [
     vehicleAmount: 0,
     totalAmount: 3031000,
     paidAmount: 0,
-    status: 'draft', // Nháp — điền chỉ số (khớp frame_08s.png!)
+    status: 'draft', // Hóa đơn nháp — chờ điền chỉ số
     sentZalo: false,
     isOverdue: false,
   },
@@ -1612,7 +1612,7 @@ export const SEED_INVOICES: Invoice[] = [
     isOverdue: false,
   },
 
-  // ==================== KỲ 2026-11 (9 hóa đơn = 28.313.500 đ khớp frame_36s.png!) ====================
+  // ==================== KỲ 2026-11 (9 hóa đơn = 28.313.500 đ) ====================
   {
     id: 'inv-11-p101',
     code: 'HD-IV-00089',
@@ -2168,7 +2168,7 @@ export const SEED_TRANSACTIONS: CashTransaction[] = [
 ];
 
 // Tổng thu ban đầu: 17.078.600 (T9) + 28.450.000 (T8) + 28.621.000 (T7) + 5.000.000 (Cọc T7) + 21.080.000 (T6) + 4.850.000 (Cọc T6) = 105.079.600 / 105.191.400
-// Dữ liệu lịch sử chuẩn hiển thị trên biểu đồ Báo cáo kinh doanh (frame_46s.png)
+// Dữ liệu lịch sử hiển thị trên biểu đồ Báo cáo kinh doanh
 export const SEED_MONTHLY_CHART = [
   { month: 'T6/2026', income: 22191000, expense: 1650000, profit: 20541000 },
   { month: 'T7/2026', income: 28750000, expense: 1350000, profit: 27400000 },

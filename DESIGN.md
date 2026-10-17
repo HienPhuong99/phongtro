@@ -1,7 +1,7 @@
 ---
 version: alpha
-name: OptiRent Design System
-description: Design Engineering specification for OptiRent Web App, Mobile PWA, and React Native Expo Go app, governed by ui-skills.com (baseline-ui, fixing-accessibility, fixing-motion-performance).
+name: Quản lý phòng trọ Design System
+description: Design Engineering specification for Quản lý phòng trọ Web App, Mobile PWA, and React Native Expo Go app, governed by ui-skills.com (baseline-ui, fixing-accessibility, fixing-motion-performance).
 colors:
   background-canvas: "#F8FAFC"
   background-surface: "#FFFFFF"
@@ -43,7 +43,7 @@ spacing:
 
 ## Overview
 
-OptiRent is a property, contract, utility billing, and FIFO payment management system built for both Desktop Web (`src/`) and Mobile PWA / React Native Expo Go (`mobile-expo/`). Its visual language follows `ui-skills.com` (`baseline-ui`, `fixing-accessibility`, `fixing-motion-performance`): high-contrast financial hierarchy, `tabular-nums` alignment for all monetary and meter values, restrained semantic accents, and zero-jank compositor transitions.
+**Quản lý phòng trọ** is a property, contract, utility billing, and FIFO payment management system built for both Desktop Web (`src/`) and Mobile PWA / React Native Expo Go (`mobile-expo/`). Its visual language follows `ui-skills.com` (`baseline-ui`, `fixing-accessibility`, `fixing-motion-performance`): high-contrast financial hierarchy, `tabular-nums` alignment for all monetary and meter values, restrained semantic accents, and zero-jank compositor transitions.
 
 ## Colors
 
@@ -68,6 +68,7 @@ OptiRent is a property, contract, utility billing, and FIFO payment management s
 
 ## Components
 
+- **Brand Logo (`public/logo.svg`)**: Custom house-roof & room-window mark on a `#2563EB → #1D4ED8` rounded square with an emerald status badge (`#10B981`).
 - **Room Cards**: Display room code, status pill, monthly rent in `tabular-nums`, one-click `Sửa giá` trigger, tenant/occupancy summary, and deposit/utility metadata.
 - **Modals**: Trap and restore focus, close on `Escape` or backdrop click, and keep header/footer sticky while scrolling body content.
 - **Icon-Only Controls**: Every icon-only button must provide an explicit `aria-label`.

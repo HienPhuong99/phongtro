@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "OptiRent — Quản Lý Trọ",
-    "slug": "optirent-phongtro",
+    "name": "Quản lý phòng trọ",
+    "slug": "quan-ly-phong-tro",
     "version": "1.0.0",
-    "scheme": "optirent",
+    "scheme": "phongtro",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.phuonghihi.optirent"
+      "bundleIdentifier": "com.phuonghihi.phongtro"
     },
     "android": {
-      "package": "com.phuonghihi.optirent",
+      "package": "com.phuonghihi.phongtro",
       "adaptiveIcon": {
-        "backgroundColor": "#F0FDFA",
+        "backgroundColor": "#EFF6FF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

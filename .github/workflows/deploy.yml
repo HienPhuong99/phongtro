@@ -1,4 +1,4 @@
-name: Deploy OptiRent to GitHub Pages
+name: Deploy Quan ly phong tro to GitHub Pages
 
 on:
   push:

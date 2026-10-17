@@ -320,7 +320,7 @@ export default function App() {
 
   // Đồng bộ Google Sheets đang tắt: dữ liệu demo của app này khác schema Web App (RoomItem.name,
   // status 'rented', ...) nên gửi syncState sẽ ghi đè dữ liệu thật của Web App bằng các dòng không tương thích.
-  // Apps Script cũng từ chối gói dữ liệu không có SYNC_TOKEN và schema 'optirent-web-v1'.
+  // Apps Script cũng từ chối gói dữ liệu không có SYNC_TOKEN và schema 'quanlyphongtro-web-v1'.
   const handleSyncGoogleSheets = () => {
     Alert.alert(
       '☁️ Chưa hỗ trợ đồng bộ',
@@ -410,10 +410,10 @@ export default function App() {
       <View style={styles.topbar}>
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>OR</Text>
+            <Text style={styles.logoText}>🏠</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>OptiRent Mobile</Text>
+            <Text style={styles.brandTitle}>Quản lý phòng trọ</Text>
             <Text style={styles.brandSub}>Nhà trọ Bình An · 12 phòng · 3 tầng</Text>
           </View>
         </View>

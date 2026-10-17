@@ -14,4 +14,20 @@ Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
 
 ## Deploy
 
-Chưa cấu hình.
+- **Lệnh triển khai toàn diện (Google Sheets 7 trang tính + Apps Script Web App + GitHub Pages + Kiểm thử E2E `agent-browser`)**:
+  ```bash
+  npm run deploy
+  ```
+- **Các lệnh thành phần**:
+  - `npm run deploy:sheets` — Build single-file `apps-script/Index.html`, đồng bộ 7 bảng dữ liệu lên Google Sheets (`19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g`) và phát hành Google Apps Script Web App qua `clasp`.
+  - `npm run deploy:web` — Build production bundle `dist/` và kích hoạt GitHub Pages workflow (`.github/workflows/deploy.yml`).
+  - `npm run test:e2e` — Chạy kiểm thử tự động E2E toàn bộ 8 màn hình + Mobile + Expo Go QR bằng `agent-browser` và xuất 14 ảnh chụp màn hình vào `docs/screenshots/`.
+  - `cd mobile-expo && npx expo start --port 8081` — Khởi chạy máy chủ **Expo Go** (`exp://192.168.0.23:8081`) cho ứng dụng di động React Native.
+
+### Đường dẫn triển khai thực tế (100% Miễn phí — Không dùng Netlify)
+- **🌐 Live Web App (GitHub Pages)**: https://hienphuong99.github.io/phongtro/
+- **📱 Live Mobile PWA (`?mode=mobile`)**: https://hienphuong99.github.io/phongtro/?mode=mobile
+- **📲 Native Mobile App (Expo Go)**: `exp://192.168.0.23:8081` (thư mục `mobile-expo/`)
+- **🏛️ Google Sites Embed (`google-sites/`)**: `https://sites.google.com/view/phuonghihi-phongtro` (nhúng toàn trang từ `google-sites/embed-web-admin.html` & `google-sites/embed-mobile-app.html`)
+- **⚡ Google Apps Script Web App (Single-File HTML)**: https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec
+- **📊 Google Sheets Database (7 bảng tính)**: https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit

@@ -80,7 +80,7 @@ Từ 30 khung hình trích xuất độ phân giải cao của video `Phongtro.m
 | Script | Lệnh chạy | Chức năng |
 | :--- | :--- | :--- |
 | [`scripts/deploy-sheets.mjs`](./scripts/deploy-sheets.mjs) | `npm run deploy:sheets` | Build React App thành 1 file độc lập `apps-script/Index.html`, đồng bộ 7 trang tính lên Google Sheets và deploy Apps Script Web App qua `clasp` |
-| [`scripts/populate-sheets-drive.mjs`](./scripts/populate-sheets-drive.mjs) | `node scripts/populate-sheets-drive.mjs` | Xuất file Excel 7 trang tính (`apps-script/OptiRent-Database.xlsx`) và đẩy trực tiếp lên Google Spreadsheet qua Google Drive API v3 |
+| [`scripts/populate-sheets-drive.mjs`](./scripts/populate-sheets-drive.mjs) | `npm run seed:sheets` (chạy riêng, ghi đè dữ liệu Sheet) | Xuất file Excel 7 trang tính (`apps-script/OptiRent-Database.xlsx`) và đẩy trực tiếp lên Google Spreadsheet qua Google Drive API v3 |
 | [`scripts/deploy-web.mjs`](./scripts/deploy-web.mjs) | `npm run deploy:web` | Build bản Production `dist/` và cấu hình GitHub Pages + Google Sites |
 | [`scripts/verify-e2e.mjs`](./scripts/verify-e2e.mjs) | `npm run test:e2e` | Chạy `agent-browser` kiểm thử tự động toàn bộ 8 màn hình, các modal Pro-rata, Ghi điện nước, Thu tiền FIFO, Khung Mobile, Mã QR Expo Go và lưu 14 ảnh vào `docs/screenshots/` |
 | [`scripts/deploy-all.mjs`](./scripts/deploy-all.mjs) | `npm run deploy` | Chạy trọn gói toàn bộ quy trình Build + Deploy Sheets + Deploy Web + Verify E2E |

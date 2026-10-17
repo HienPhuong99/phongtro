@@ -19,7 +19,8 @@ Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
   npm run deploy
   ```
 - **Các lệnh thành phần**:
-  - `npm run deploy:sheets` — Build single-file `apps-script/Index.html`, đồng bộ 7 bảng dữ liệu lên Google Sheets (`19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g`) và phát hành Google Apps Script Web App qua `clasp`.
+  - `npm run deploy:sheets` — Build single-file `apps-script/Index.html`, đẩy mã Apps Script và phát hành Web App qua `clasp`. **Không** đụng tới dữ liệu trên Google Sheets.
+  - `npm run seed:sheets` — ⚠️ Ghi đè toàn bộ 7 bảng trên Google Sheets (`19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g`) bằng dữ liệu mẫu, mất dữ liệu thật. Chỉ chạy khi người dùng yêu cầu rõ ràng, không chạy trong quy trình deploy tự động.
   - `npm run deploy:web` — Build production bundle `dist/` và kích hoạt GitHub Pages workflow (`.github/workflows/deploy.yml`).
   - `npm run test:e2e` — Chạy kiểm thử tự động E2E toàn bộ 8 màn hình + Mobile + Expo Go QR bằng `agent-browser` và xuất 14 ảnh chụp màn hình vào `docs/screenshots/`.
   - `cd mobile-expo && npx expo start --port 8081` — Khởi chạy máy chủ **Expo Go** (`exp://192.168.0.23:8081`) cho ứng dụng di động React Native.

@@ -40,39 +40,35 @@ function onOpen() {
 }
 
 /**
- * Xử lý HTTP GET:
- * - ?action=getState hoặc ?format=json => Trả về JSON dữ liệu cho Web App
- * - ?action=init => Khởi tạo dữ liệu trên Google Sheets và trả về kết quả JSON
- * - Mặc định => Render giao diện Web App từ Index.html
+ * Bảo mật API (từ 18/10/2026):
+ * - Mọi thao tác đọc/ghi dữ liệu đều cần mã bí mật SYNC_TOKEN.
+ *   Cách đặt: Apps Script editor → Project Settings → Script Properties → thêm khóa SYNC_TOKEN
+ *   (chuỗi ngẫu nhiên ≥ 24 ký tự). Chưa đặt thì mọi thao tác dữ liệu đều bị từ chối.
+ * - Web App gửi mã này trong body POST (trường "token"). Không ghi mã vào code hay repo.
+ * - Các hàm nội bộ kết thúc bằng "_" để google.script.run và trình duyệt không gọi trực tiếp được.
+ *
+ * HTTP GET:
+ * - Mặc định => Render giao diện Web App từ Index.html (chỉ có dữ liệu mẫu trong trình duyệt)
+ * - ?action=getState&token=... => Trả về JSON dữ liệu (nên dùng POST để mã không nằm trên URL)
+ *
+ * HTTP POST (body JSON, Content-Type text/plain):
+ * - { action: 'getState', token }
+ * - { action: 'syncState', token, state }
+ * - { action: 'resetSeed', token }
  */
 function doGet(e) {
   var params = (e && e.parameter) ? e.parameter : {};
   var action = params.action || '';
-  var format = params.format || '';
 
-  if (action === 'init') {
-    var initResult = setupOptiRentSheets();
-    return jsonResponse({
-      ok: true,
-      message: 'Đã khởi tạo thành công 7 bảng dữ liệu OptiRent trên Google Sheets',
-      spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
-      result: initResult
-    });
+  if (action || params.format === 'json') {
+    if (action !== 'getState' && params.format !== 'json') {
+      return jsonResponse_({ ok: false, error: 'Action không hợp lệ qua GET: ' + action });
+    }
+    var authError = checkToken_(params.token);
+    if (authError) return jsonResponse_(authError);
+    return jsonResponse_(buildStateResponse_());
   }
 
-  if (action === 'getState' || format === 'json') {
-    ensureSheetsInitialized();
-    var state = readStateFromSheets();
-    return jsonResponse({
-      ok: true,
-      spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
-      updatedAt: new Date().toISOString(),
-      state: state
-    });
-  }
-
-  ensureSheetsInitialized();
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('OptiRent — Quản lý nhà trọ thông minh')
@@ -81,18 +77,27 @@ function doGet(e) {
 }
 
 /**
- * Xử lý HTTP POST (Đồng bộ dữ liệu 2 chiều từ Web App về Google Sheets)
+ * Xử lý HTTP POST (đồng bộ dữ liệu từ Web App về Google Sheets)
  */
 function doPost(e) {
   try {
-    ensureSheetsInitialized();
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
-    var action = payload.action || 'syncState';
+    var authError = checkToken_(payload.token);
+    if (authError) return jsonResponse_(authError);
 
-    if (action === 'syncState' && payload.state) {
-      writeStateToSheets(payload.state);
-      return jsonResponse({
+    var action = payload.action || '';
+
+    if (action === 'getState') {
+      return jsonResponse_(buildStateResponse_());
+    }
+
+    if (action === 'syncState') {
+      if (!payload.state || typeof payload.state !== 'object') {
+        return jsonResponse_({ ok: false, error: 'Thiếu dữ liệu state' });
+      }
+      writeStateToSheets_(payload.state);
+      return jsonResponse_({
         ok: true,
         action: 'syncState',
         updatedAt: new Date().toISOString(),
@@ -101,27 +106,64 @@ function doPost(e) {
     }
 
     if (action === 'resetSeed') {
-      setupOptiRentSheets();
-      return jsonResponse({
-        ok: true,
-        action: 'resetSeed',
-        state: readStateFromSheets()
-      });
+      setupSheets_();
+      return jsonResponse_({ ok: true, action: 'resetSeed', state: readStateFromSheets_() });
     }
 
-    return jsonResponse({
-      ok: false,
-      error: 'Action không hợp lệ: ' + action
-    });
+    return jsonResponse_({ ok: false, error: 'Action không hợp lệ: ' + action });
   } catch (err) {
-    return jsonResponse({
-      ok: false,
-      error: String(err)
-    });
+    return jsonResponse_({ ok: false, error: String(err) });
   }
 }
 
-function jsonResponse(obj) {
+/**
+ * Trả về null nếu mã hợp lệ, ngược lại trả về object lỗi để gửi cho client.
+ */
+function checkToken_(token) {
+  var expected = PropertiesService.getScriptProperties().getProperty('SYNC_TOKEN');
+  if (!expected) {
+    return { ok: false, code: 'NOT_CONFIGURED', error: 'Máy chủ chưa đặt SYNC_TOKEN trong Script Properties' };
+  }
+  if (typeof token !== 'string' || !safeEquals_(token, expected)) {
+    return { ok: false, code: 'UNAUTHORIZED', error: 'Sai mã đồng bộ' };
+  }
+  return null;
+}
+
+/** So sánh chuỗi không dừng sớm ở ký tự khác đầu tiên. */
+function safeEquals_(a, b) {
+  if (a.length !== b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function buildStateResponse_() {
+  ensureSheetsInitialized_();
+  return {
+    ok: true,
+    spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
+    spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
+    updatedAt: new Date().toISOString(),
+    state: readStateFromSheets_()
+  };
+}
+
+/**
+ * Hàm gọi từ menu trên Google Sheets phải chạy trong giao diện bảng tính.
+ * SpreadsheetApp.getUi() ném lỗi khi bị gọi từ Web App / google.script.run.
+ */
+function assertSheetUi_() {
+  try {
+    SpreadsheetApp.getUi();
+  } catch (err) {
+    throw new Error('Chỉ chạy được từ menu trong Google Sheets');
+  }
+}
+
+function jsonResponse_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -129,21 +171,29 @@ function jsonResponse(obj) {
 /**
  * Đảm bảo Google Sheets đã có đủ các bảng dữ liệu
  */
-function ensureSheetsInitialized() {
+function ensureSheetsInitialized_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var roomSheet = ss.getSheetByName(SHEET_NAMES.ROOMS);
   if (!roomSheet || roomSheet.getLastRow() < 2) {
-    setupOptiRentSheets();
+    setupSheets_();
   }
+}
+
+/**
+ * Menu "Khởi tạo / Làm mới dữ liệu mẫu" (chỉ chạy được trong Google Sheets)
+ */
+function setupOptiRentSheets() {
+  assertSheetUi_();
+  return setupSheets_();
 }
 
 /**
  * Khởi tạo toàn bộ 7 sheet với dữ liệu chuẩn từ video Phongtro.mp4
  */
-function setupOptiRentSheets() {
+function setupSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var seed = getDefaultSeedData();
-  writeStateToSheets(seed);
+  var seed = getDefaultSeedData_();
+  writeStateToSheets_(seed);
 
   // Xóa Sheet1 mặc định nếu còn trống
   var defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('Trang tính1');
@@ -166,8 +216,10 @@ function setupOptiRentSheets() {
 /**
  * Ghi toàn bộ trạng thái ứng dụng xuống 7 sheet trên Google Sheets
  */
-function writeStateToSheets(state) {
+function writeStateToSheets_(state) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rawState = state;
+  state = toSheetShape_(state);
 
   // 1. Bảng Phong
   var roomRows = (state.rooms || []).map(function(r) {
@@ -190,7 +242,7 @@ function writeStateToSheets(state) {
       r.note || ''
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.ROOMS,
     [
@@ -220,7 +272,7 @@ function writeStateToSheets(state) {
       t.moveInDate || ''
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.TENANTS,
     [
@@ -245,7 +297,7 @@ function writeStateToSheets(state) {
       v.note || ''
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.VEHICLES,
     ['ID', 'Mã Phòng', 'Tên Phòng', 'Cơ Sở', 'Mã Khách', 'Chủ Xe', 'Loại Xe', 'Biển Số', 'Ghi Chú'],
@@ -272,7 +324,7 @@ function writeStateToSheets(state) {
       c.refundNote || ''
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.CONTRACTS,
     [
@@ -312,7 +364,7 @@ function writeStateToSheets(state) {
       inv.status
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.INVOICES,
     [
@@ -343,7 +395,7 @@ function writeStateToSheets(state) {
       tx.note || ''
     ];
   });
-  writeTable(
+  writeTable_(
     ss,
     SHEET_NAMES.TRANSACTIONS,
     [
@@ -354,46 +406,139 @@ function writeStateToSheets(state) {
     txRows
   );
 
-  // 7. Bảng CaiDat & State JSON
+  // 7. Bảng CaiDat & State JSON (mỗi ô Google Sheets tối đa 50.000 ký tự nên JSON được chia nhiều dòng)
+  var prop = rawState.property || {};
   var settingsRows = [
-    ['TEN_CO_SO', 'Nhà trọ Bình An', 'Tên nhà trọ chính'],
-    ['DIA_CHI', '128 Nguyễn Văn Thương, Bình Thạnh, TP.HCM', 'Địa chỉ cơ sở'],
-    ['GIA_DIEN_KWH', 3500, 'Đơn giá điện (VNĐ/kWh)'],
-    ['GIA_NUOC_M3', 18000, 'Đơn giá nước (VNĐ/m3)'],
-    ['PHI_RAC_THANG', 30000, 'Phí rác sinh hoạt (VNĐ/tháng)'],
-    ['PHI_WIFI_THANG', 100000, 'Phí Internet/Wifi (VNĐ/tháng)'],
-    ['NGAN_HANG_VIETQR', 'Vietcombank - 1029384756 - NGUYEN QUAN LY TRO', 'Tài khoản nhận thanh toán QR'],
-    ['CAP_NHAT_CUOI', new Date().toISOString(), 'Thời điểm đồng bộ gần nhất'],
-    ['RAW_STATE_JSON', JSON.stringify(state), 'Dữ liệu JSON đồng bộ 2 chiều với Web App']
+    ['TEN_CO_SO', prop.name || 'Nhà trọ Bình An', 'Tên nhà trọ chính'],
+    ['DIA_CHI', prop.address || '128 Nguyễn Văn Thương, Bình Thạnh, TP.HCM', 'Địa chỉ cơ sở'],
+    ['GIA_DIEN_KWH', prop.electricityRate || 3500, 'Đơn giá điện (VNĐ/kWh)'],
+    ['GIA_NUOC_M3', prop.waterRate || 18000, 'Đơn giá nước (VNĐ/m3)'],
+    ['PHI_RAC_THANG', prop.trashFee || 30000, 'Phí rác sinh hoạt (VNĐ/tháng)'],
+    ['PHI_WIFI_THANG', prop.internetFee || 100000, 'Phí Internet/Wifi (VNĐ/tháng)'],
+    ['NGAN_HANG_VIETQR', prop.bankName ? (prop.bankName + ' - ' + prop.bankAccount + ' - ' + prop.bankOwner) : 'Vietcombank - 1029384756 - NGUYEN QUAN LY TRO', 'Tài khoản nhận thanh toán QR'],
+    ['CAP_NHAT_CUOI', new Date().toISOString(), 'Thời điểm đồng bộ gần nhất']
   ];
-  writeTable(ss, SHEET_NAMES.SETTINGS, ['Khóa Cấu Hình', 'Giá Trị', 'Mô Tả'], settingsRows);
+  var json = JSON.stringify(rawState);
+  var CHUNK = 45000;
+  for (var part = 0; part * CHUNK < json.length; part++) {
+    settingsRows.push([
+      'RAW_STATE_JSON_' + (part + 1),
+      json.slice(part * CHUNK, (part + 1) * CHUNK),
+      'Dữ liệu JSON đồng bộ với Web App (phần ' + (part + 1) + ')'
+    ]);
+  }
+  writeTable_(ss, SHEET_NAMES.SETTINGS, ['Khóa Cấu Hình', 'Giá Trị', 'Mô Tả'], settingsRows);
 }
 
 /**
  * Đọc trạng thái ứng dụng từ Google Sheets
  */
-function readStateFromSheets() {
+function readStateFromSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
   if (settingsSheet && settingsSheet.getLastRow() >= 2) {
     var values = settingsSheet.getDataRange().getValues();
+    var legacy = '';
+    var parts = [];
     for (var i = 1; i < values.length; i++) {
-      if (values[i][0] === 'RAW_STATE_JSON' && values[i][1]) {
-        try {
-          return JSON.parse(String(values[i][1]));
-        } catch (err) {
-          Logger.log('Lỗi parse RAW_STATE_JSON: ' + err);
-        }
+      var key = String(values[i][0]);
+      if (key === 'RAW_STATE_JSON') legacy = String(values[i][1] || '');
+      var m = /^RAW_STATE_JSON_(\d+)$/.exec(key);
+      if (m) parts[Number(m[1]) - 1] = String(values[i][1] || '');
+    }
+    var json = parts.length ? parts.join('') : legacy;
+    if (json) {
+      try {
+        return JSON.parse(json);
+      } catch (err) {
+        Logger.log('Lỗi parse RAW_STATE_JSON: ' + err);
       }
     }
   }
-  return getDefaultSeedData();
+  return getDefaultSeedData_();
+}
+
+/**
+ * Bảng trên Sheets dùng cấu trúc cũ (của app Expo). Dữ liệu từ Web App (Room.code, Invoice.billingMonth...)
+ * được đổi sang cấu trúc đó trước khi ghi; JSON gốc vẫn được lưu nguyên trong CaiDat.
+ */
+function toSheetShape_(state) {
+  var rooms = state.rooms || [];
+  var isWebShape = rooms.length > 0 && rooms[0].code !== undefined && rooms[0].name === undefined;
+  if (!isWebShape) return state;
+
+  var building = (state.property && state.property.name) || 'Nhà trọ Bình An';
+  var vehicleFee = (state.property && state.property.vehicleFee) || 0;
+  var invoices = state.invoices || [];
+  var contracts = state.contracts || [];
+  var tenants = state.tenants || [];
+  var txs = state.transactions || [];
+  var remaining = function(i) { return Math.max(0, (i.totalAmount || 0) - (i.paidAmount || 0)); };
+  var statusMap = { occupied: 'rented', vacant: 'vacant', maintenance: 'maintenance', deposited: 'deposited', moving_in: 'moving_in' };
+
+  return {
+    rooms: rooms.map(function(r) {
+      var contract = contracts.filter(function(c) { return c.code === r.contractCode; })[0];
+      return {
+        id: r.id, name: r.code, floor: r.floor, building: building,
+        status: statusMap[r.status] || r.status, price: r.price || 0, deposit: r.deposit || 0,
+        tenantName: r.tenantName || '', tenantPhone: r.tenantPhone || '',
+        occupantsCount: tenants.filter(function(t) { return t.roomCode === r.code && t.status === 'active'; }).length,
+        maxOccupants: 3, vehiclesCount: r.vehicleCount || 0,
+        contractCode: r.contractCode || '', contractEnd: contract ? contract.endDate : '',
+        debt: invoices.filter(function(i) { return i.roomCode === r.code; }).reduce(function(s, i) { return s + remaining(i); }, 0),
+        note: r.notes || ''
+      };
+    }),
+    tenants: tenants.map(function(t) {
+      return {
+        id: t.id, code: t.code, name: t.name, phone: t.phone || '', cccd: t.cccd || '',
+        roomId: t.roomCode || '', roomName: t.roomCode || '', building: building,
+        role: t.role, status: t.status, contractCode: t.contractCode || '',
+        totalPaid: 0, debt: 0, moveInDate: ''
+      };
+    }),
+    vehicles: (state.vehicles || []).map(function(v) {
+      return {
+        id: v.id, roomId: v.roomCode, roomName: v.roomCode, building: building,
+        tenantId: '', tenantName: v.ownerName || '', type: v.vehicleType || '', licensePlate: v.plate || '', note: ''
+      };
+    }),
+    contracts: contracts.map(function(c) {
+      return {
+        id: c.id, code: c.code, roomId: c.roomCode, roomName: c.roomCode, building: building,
+        tenantId: c.tenantId || '', tenantName: c.tenantName || '', tenantPhone: c.tenantPhone || '',
+        startDate: c.startDate || '', endDate: c.endDate || '', rentPrice: c.rentAmount || 0, deposit: c.depositAmount || 0,
+        status: c.status, refundDue: c.depositRefundAmount || 0, refundNote: c.depositRefunded ? 'Đã hoàn cọc' : ''
+      };
+    }),
+    invoices: invoices.map(function(i) {
+      return {
+        id: i.id, code: i.code, period: i.billingMonth, periodLabel: i.periodLabel || '',
+        roomId: i.roomCode, roomName: i.roomCode, building: building,
+        tenantName: i.tenantName || '', tenantPhone: i.tenantPhone || '', rentAmount: i.rentAmount || 0,
+        oldElec: i.elecOld || 0, newElec: i.elecNew || 0, elecUsage: i.elecUsage || 0, elecAmount: i.elecAmount || 0,
+        oldWater: i.waterOld || 0, newWater: i.waterNew || 0, waterUsage: i.waterUsage || 0, waterAmount: i.waterAmount || 0,
+        serviceAmount: (i.trashAmount || 0) + (i.internetAmount || 0) + (i.vehicleAmount || (i.vehicleCount || 0) * vehicleFee),
+        totalAmount: i.totalAmount || 0, paidAmount: i.paidAmount || 0, remainingAmount: remaining(i),
+        dueDate: i.dueDate || '', status: i.status
+      };
+    }),
+    transactions: txs.map(function(x) {
+      return {
+        id: x.id, code: x.invoiceCode || x.id, date: x.date, type: x.type, category: x.category,
+        title: x.description || '', roomName: x.roomCode || '', tenantName: '', building: building,
+        amount: x.amount || 0, paymentMethod: x.method || '', fund: x.method === 'Tiền mặt' ? 'Quỹ tiền mặt' : 'Tài khoản ngân hàng',
+        invoiceCode: x.invoiceCode || '', note: ''
+      };
+    })
+  };
 }
 
 /**
  * Hàm tiện ích ghi bảng dữ liệu và định dạng đẹp mắt
  */
-function writeTable(ss, sheetName, headers, rows) {
+function writeTable_(ss, sheetName, headers, rows) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
@@ -416,7 +561,8 @@ function writeTable(ss, sheetName, headers, rows) {
 }
 
 function showQuickSummary() {
-  var state = readStateFromSheets();
+  assertSheetUi_();
+  var state = readStateFromSheets_();
   var rented = (state.rooms || []).filter(function(r) { return r.status === 'rented'; }).length;
   var totalRooms = (state.rooms || []).length;
   var unpaid = (state.invoices || []).filter(function(i) { return i.status === 'unpaid'; });
@@ -432,6 +578,7 @@ function showQuickSummary() {
 }
 
 function openWebAppModal() {
+  assertSheetUi_();
   var html = HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setWidth(1200)
@@ -442,7 +589,7 @@ function openWebAppModal() {
 /**
  * Dữ liệu gốc khớp 100% với video Phongtro.mp4
  */
-function getDefaultSeedData() {
+function getDefaultSeedData_() {
   var rooms = [
     { id: 'P101', name: 'Phòng P101', floor: 1, building: 'Nhà trọ Bình An', status: 'rented', price: 2500000, deposit: 2500000, tenantId: 'KH-00001', tenantName: 'Trần Văn Nam', tenantPhone: '0971770075', occupantsCount: 2, maxOccupants: 3, vehiclesCount: 2, contractCode: 'HD-00001', contractStart: '2026-01-21', contractEnd: '2027-01-21', debt: 6961800 },
     { id: 'P102', name: 'Phòng P102', floor: 1, building: 'Nhà trọ Bình An', status: 'rented', price: 2500000, deposit: 2500000, tenantId: 'KH-00003', tenantName: 'Phạm Văn Đức', tenantPhone: '0971317972', occupantsCount: 2, maxOccupants: 3, vehiclesCount: 2, contractCode: 'HD-00002', contractStart: '2026-04-21', contractEnd: '2027-04-21', debt: 7378400 },

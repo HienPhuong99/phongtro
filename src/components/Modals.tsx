@@ -28,6 +28,11 @@ import {
   formatNumberInput,
   readMoneyWordsVN,
   getVietQrUrl,
+  APP_TODAY,
+  parseDateVN,
+  formatDateVN,
+  vnToIsoDate,
+  isoToVnDate,
 } from '../utils/format';
 
 // ============================================================================
@@ -82,11 +87,17 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
     defaultRoom?.code || 'P202'
   );
   const [tenantName, setTenantName] = useState<string>('');
-  const [tenantPhone, setTenantPhone] = useState<string>('0918668899');
-  const [tenantCccd, setTenantCccd] = useState<string>('079201008899');
-  const [startDate, setStartDate] = useState<string>('11/10/2026');
-  const [endDate, setEndDate] = useState<string>('11/10/2027');
-  const [signDate, setSignDate] = useState<string>('11/10/2026');
+  const [tenantPhone, setTenantPhone] = useState<string>('');
+  const [tenantCccd, setTenantCccd] = useState<string>('');
+  // Ngày lưu dạng YYYY-MM-DD cho <input type="date">, đổi về DD/MM/YYYY khi gửi đi
+  const [startDate, setStartDate] = useState<string>(vnToIsoDate(APP_TODAY));
+  const [endDate, setEndDate] = useState<string>(() => {
+    const d = parseDateVN(APP_TODAY);
+    if (!d) return '';
+    d.setFullYear(d.getFullYear() + 1);
+    return vnToIsoDate(formatDateVN(d));
+  });
+  const [signDate, setSignDate] = useState<string>(vnToIsoDate(APP_TODAY));
   const [paymentCycle, setPaymentCycle] = useState<string>('Hàng tháng');
   const [billingCycle, setBillingCycle] = useState<'calendar_month' | 'move_in_date'>(
     'calendar_month'
@@ -103,7 +114,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
 
   // Tính toán kỳ đầu tự động chia theo số ngày ở thật (ví dụ 11/10 -> 31/10 = 21/31 ngày = 1.693.548 đ)
   const proRataInfo = useMemo(() => {
-    const parts = startDate.split('/');
+    const parts = isoToVnDate(startDate).split('/');
     let day = 11;
     let month = 10;
     let year = 2026;
@@ -154,18 +165,29 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
     )
     .slice(0, 4);
 
+  const endBeforeStart = Boolean(startDate && endDate && endDate <= startDate);
+
+  const handleTenantNameChange = (value: string) => {
+    setTenantName(value);
+    const known = tenants.find((t) => t.name === value.trim());
+    if (known) {
+      setTenantPhone(known.phone);
+      setTenantCccd(known.cccd);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalName = tenantName.trim();
-    if (!finalName || currentRoom?.status === 'occupied') return;
+    if (!finalName || currentRoom?.status === 'occupied' || endBeforeStart) return;
     onCreateContract({
       roomCode: selectedRoomCode,
       tenantName: finalName,
-      tenantPhone,
-      tenantCccd,
-      startDate,
-      endDate,
-      signDate,
+      tenantPhone: tenantPhone.trim(),
+      tenantCccd: tenantCccd.trim(),
+      startDate: isoToVnDate(startDate),
+      endDate: isoToVnDate(endDate),
+      signDate: isoToVnDate(signDate),
       paymentCycle,
       billingCycle,
       rentAmount,
@@ -226,15 +248,14 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 list="tenant-suggestions"
                 required
                 value={tenantName}
-                onChange={(e) => setTenantName(e.target.value)}
+                onChange={(e) => handleTenantNameChange(e.target.value)}
                 placeholder="Chọn hoặc gõ tên khách..."
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
               />
               <datalist id="tenant-suggestions">
-                <option value="Đoàn Minh Khang" />
-                <option value="Nguyễn Văn An" />
-                <option value="Trần Thị Bình" />
-                <option value="Lê Hữu Cường" />
+                {Array.from(new Set(tenants.map((t) => t.name))).map((name) => (
+                  <option key={name} value={name} />
+                ))}
               </datalist>
             </div>
             <div>
@@ -242,9 +263,47 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày bắt đầu *
               </label>
               <input
-                type="text"
+                type="date"
+                required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* SĐT & CCCD khách đại diện (dùng cho Zalo và khai báo tạm trú) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="contract-tenant-phone" className="block text-xs font-medium text-slate-600 mb-1.5">
+                Số điện thoại *
+              </label>
+              <input
+                id="contract-tenant-phone"
+                type="tel"
+                inputMode="numeric"
+                required
+                pattern="0\d{9}"
+                title="10 chữ số, bắt đầu bằng 0"
+                value={tenantPhone}
+                onChange={(e) => setTenantPhone(e.target.value.replace(/\s/g, ''))}
+                placeholder="09xxxxxxxx"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label htmlFor="contract-tenant-cccd" className="block text-xs font-medium text-slate-600 mb-1.5">
+                Số CCCD
+              </label>
+              <input
+                id="contract-tenant-cccd"
+                type="text"
+                inputMode="numeric"
+                pattern="\d{12}"
+                title="12 chữ số"
+                value={tenantCccd}
+                onChange={(e) => setTenantCccd(e.target.value.replace(/\s/g, ''))}
+                placeholder="12 chữ số"
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
               />
             </div>
@@ -257,11 +316,21 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày kết thúc *
               </label>
               <input
-                type="text"
+                type="date"
+                required
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
+                aria-invalid={endBeforeStart}
+                aria-describedby={endBeforeStart ? 'contract-end-error' : undefined}
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none ${
+                  endBeforeStart ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-blue-600'
+                }`}
               />
+              {endBeforeStart && (
+                <p id="contract-end-error" className="mt-1 text-xs text-rose-600">
+                  Ngày kết thúc phải sau ngày bắt đầu.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
@@ -286,7 +355,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày ký
               </label>
               <input
-                type="text"
+                type="date"
                 value={signDate}
                 onChange={(e) => setSignDate(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
@@ -671,13 +740,32 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
     setEnteredRooms((prev) => ({ ...prev, [currentRoom.code]: true }));
   };
 
+  const elecInvalid = currentReading.elecNew < currentReading.elecOld;
+  const waterInvalid = currentReading.waterNew < currentReading.waterOld;
+  const invalidRoomCodes = activeRooms
+    .map((r) => r.code)
+    .filter((code) => {
+      const r = readings[code];
+      return r && (r.elecNew < r.elecOld || r.waterNew < r.waterOld);
+    });
+
+  // Không cho lưu khi còn phòng có chỉ số mới nhỏ hơn chỉ số cũ: nhảy tới phòng lỗi đầu tiên
+  const saveAllIfValid = () => {
+    if (invalidRoomCodes.length > 0) {
+      const idx = activeRooms.findIndex((r) => r.code === invalidRoomCodes[0]);
+      if (idx >= 0) setCurrentIndex(idx);
+      return;
+    }
+    onSaveReadingsAndCreateInvoices(readings);
+    onClose();
+  };
+
   const handleNext = () => {
     setEnteredRooms((prev) => ({ ...prev, [currentRoom.code]: true }));
     if (currentIndex < activeRooms.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      onSaveReadingsAndCreateInvoices(readings);
-      onClose();
+      saveAllIfValid();
     }
   };
 
@@ -733,11 +821,22 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
               onChange={(e) =>
                 updateReading('elecNew', parseInt(e.target.value, 10) || 0)
               }
-              className="w-full rounded-xl border border-slate-200 py-3 px-4 text-center text-2xl font-extrabold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+              aria-invalid={elecInvalid}
+              className={`w-full rounded-xl border py-3 px-4 text-center text-2xl font-extrabold text-slate-900 focus:ring-2 focus:outline-none ${
+                elecInvalid
+                  ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
+                  : 'border-slate-200 focus:border-blue-600 focus:ring-blue-100'
+              }`}
             />
-            <div className="text-center text-xs text-slate-500">
-              Tiêu thụ: <strong className="text-slate-700">{elecUsage} kWh</strong>
-            </div>
+            {elecInvalid ? (
+              <p className="text-center text-xs font-semibold text-rose-600">
+                Chỉ số mới nhỏ hơn chỉ số cũ ({currentReading.elecOld})
+              </p>
+            ) : (
+              <div className="text-center text-xs text-slate-500">
+                Tiêu thụ: <strong className="text-slate-700">{elecUsage} kWh</strong>
+              </div>
+            )}
           </div>
 
           {/* Nước */}
@@ -760,11 +859,20 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
               onChange={(e) =>
                 updateReading('waterNew', parseInt(e.target.value, 10) || 0)
               }
-              className="w-full rounded-xl border-2 border-blue-500 py-3 px-4 text-center text-2xl font-extrabold text-slate-900 focus:outline-none"
+              aria-invalid={waterInvalid}
+              className={`w-full rounded-xl border-2 py-3 px-4 text-center text-2xl font-extrabold text-slate-900 focus:outline-none ${
+                waterInvalid ? 'border-rose-400' : 'border-blue-500'
+              }`}
             />
-            <div className="text-center text-xs text-slate-500">
-              Tiêu thụ: <strong className="text-slate-700">{waterUsage} m³</strong>
-            </div>
+            {waterInvalid ? (
+              <p className="text-center text-xs font-semibold text-rose-600">
+                Chỉ số mới nhỏ hơn chỉ số cũ ({currentReading.waterOld})
+              </p>
+            ) : (
+              <div className="text-center text-xs text-slate-500">
+                Tiêu thụ: <strong className="text-slate-700">{waterUsage} m³</strong>
+              </div>
+            )}
           </div>
 
           {/* Chụp ảnh đồng hồ */}
@@ -834,13 +942,15 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
                 />
               ))}
             </div>
+            {invalidRoomCodes.length > 0 && (
+              <p role="alert" className="text-xs font-semibold text-rose-600">
+                Chưa lưu được: chỉ số mới nhỏ hơn chỉ số cũ ở phòng {invalidRoomCodes.join(', ')}.
+              </p>
+            )}
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  onSaveReadingsAndCreateInvoices(readings);
-                  onClose();
-                }}
+                onClick={saveAllIfValid}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline"
               >
                 Lưu & Lập hóa đơn tất cả phòng ngay

@@ -16,9 +16,6 @@ import {
 
 type MobileTab = 'overview' | 'rooms' | 'invoices' | 'finance' | 'tenants';
 
-const APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
-
 interface RoomItem {
   id: string;
   name: string;
@@ -187,7 +184,7 @@ export default function App() {
   const [selectedPeriod, setSelectedPeriod] = useState<'2026-09' | '2026-10' | '2026-11'>('2026-11');
   const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [syncing, setSyncing] = useState<boolean>(false);
+  const syncing = false;
 
   // Modal Thu tiền FIFO
   const [fifoRoomId, setFifoRoomId] = useState<string | null>(null);
@@ -322,29 +319,13 @@ export default function App() {
     );
   };
 
+  // Tạm tắt đồng bộ: app Expo dùng dữ liệu mẫu riêng, khác cấu trúc với bản web.
+  // Gửi lên sẽ ghi đè dữ liệu web trên Google Sheets. Chỉ bật lại khi app đọc chung một nguồn dữ liệu.
   const handleSyncGoogleSheets = async () => {
-    setSyncing(true);
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'syncState',
-          state: { rooms, tenants, vehicles, invoices, transactions },
-        }),
-      });
-      Alert.alert(
-        '☁️ Đồng bộ Google Sheets thành công',
-        'Dữ liệu Phòng, Khách thuê, Hóa đơn và Sổ thu chi đã được đồng bộ 2 chiều lên Google Sheets!'
-      );
-    } catch {
-      Alert.alert(
-        '☁️ Đã gửi đồng bộ',
-        'Đã gửi gói dữ liệu lên Google Apps Script Web App.'
-      );
-    } finally {
-      setSyncing(false);
-    }
+    Alert.alert(
+      'Đồng bộ đang tạm tắt',
+      'Bản Expo đang dùng dữ liệu mẫu riêng. Hãy dùng bản web (hoặc ?mode=mobile) để đồng bộ Google Sheets.'
+    );
   };
 
   const handleCreateContract = () => {

@@ -55,7 +55,7 @@ import {
   SEED_MONTHLY_CHART,
   SEED_CALENDAR_EVENTS,
 } from './data/seedData';
-import { formatVND, formatNumberInput, removeAccents } from './utils/format';
+import { formatVND, formatNumberInput, removeAccents, APP_TODAY, daysBetweenVN, parseDateVN, formatDateVN } from './utils/format';
 import {
   CreateContractModal,
   MeterReadingModal,
@@ -67,6 +67,10 @@ import {
 } from './components/Modals';
 
 const STORAGE_KEY = 'optirent_state_v1';
+const SYNC_TOKEN_KEY = 'optirent_sync_token';
+// Giá bán lẻ điện sinh hoạt bậc cao nhất 3.460 đ/kWh (QĐ 1279/QĐ-BCT, theo báo chí 05/2026).
+// Thu cao hơn giá bán lẻ có thể bị phạt 20–30 triệu theo NĐ 133/2026 (hiệu lực 25/05/2026).
+const ELECTRICITY_RATE_CAP = 3460;
 
 // URL Web App Google Apps Script (sẽ tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
@@ -120,7 +124,7 @@ export function App() {
     return SEED_ROOMS;
   });
 
-  const [tenants, setTenants] = useState<Tenant[]>(() => {
+  const [allTenants, setTenants] = useState<Tenant[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -132,7 +136,7 @@ export function App() {
     return SEED_TENANTS;
   });
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+  const [allVehicles, setVehicles] = useState<Vehicle[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -144,7 +148,7 @@ export function App() {
     return SEED_VEHICLES;
   });
 
-  const [contracts, setContracts] = useState<Contract[]>(() => {
+  const [allContracts, setContracts] = useState<Contract[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -156,7 +160,7 @@ export function App() {
     return SEED_CONTRACTS;
   });
 
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+  const [allInvoices, setInvoices] = useState<Invoice[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -168,7 +172,7 @@ export function App() {
     return SEED_INVOICES;
   });
 
-  const [transactions, setTransactions] = useState<CashTransaction[]>(() => {
+  const [allTransactions, setTransactions] = useState<CashTransaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -184,6 +188,9 @@ export function App() {
     return localStorage.getItem('optirent_sheets_url') || DEFAULT_APPS_SCRIPT_URL;
   });
   const [syncStatus, setSyncStatus] = useState<string>('');
+  const [syncFailed, setSyncFailed] = useState<boolean>(false);
+  // Mã SYNC_TOKEN chỉ lưu trên trình duyệt này, không đưa vào code vì repo và bản build là công khai
+  const [syncToken, setSyncToken] = useState<string>(() => localStorage.getItem(SYNC_TOKEN_KEY) || '');
 
   // Sub-filters & view states
   const [roomViewMode, setRoomViewMode] = useState<'floor' | 'list'>('floor');
@@ -191,9 +198,7 @@ export function App() {
   const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
   const [tenantSearch, setTenantSearch] = useState<string>('');
   const [contractFilter, setContractFilter] = useState<string>('active');
-  const [invoiceMonth, setInvoiceMonth] = useState<'2026-09' | '2026-10' | '2026-11'>(
-    '2026-11'
-  );
+  const [invoiceMonth, setInvoiceMonth] = useState<string>('2026-11');
   const [invoiceSubTab, setInvoiceSubTab] = useState<'by_room' | 'all'>('by_room');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [reportGranularity, setReportGranularity] = useState<
@@ -234,14 +239,14 @@ export function App() {
       JSON.stringify({
         properties,
         rooms,
-        tenants,
-        vehicles,
-        contracts,
-        invoices,
-        transactions,
+        tenants: allTenants,
+        vehicles: allVehicles,
+        contracts: allContracts,
+        invoices: allInvoices,
+        transactions: allTransactions,
       })
     );
-  }, [properties, rooms, tenants, vehicles, contracts, invoices, transactions]);
+  }, [properties, rooms, allTenants, allVehicles, allContracts, allInvoices, allTransactions]);
 
   // Hỗ trợ phím Escape đóng hộp thoại đang mở (Chuẩn ui-skills fixing-accessibility)
   useEffect(() => {
@@ -263,6 +268,28 @@ export function App() {
   const currentProperty = useMemo(
     () => properties.find((p) => p.id === selectedPropertyId) || properties[0],
     [properties, selectedPropertyId]
+  );
+
+  // Dữ liệu của cơ sở đang chọn. Mảng đầy đủ all* chỉ dùng khi lưu/đồng bộ và đánh mã mới.
+  const tenants = useMemo(
+    () => allTenants.filter((t) => t.propertyId === currentProperty.id),
+    [allTenants, currentProperty.id]
+  );
+  const vehicles = useMemo(
+    () => allVehicles.filter((v) => v.propertyId === currentProperty.id),
+    [allVehicles, currentProperty.id]
+  );
+  const contracts = useMemo(
+    () => allContracts.filter((c) => c.propertyId === currentProperty.id),
+    [allContracts, currentProperty.id]
+  );
+  const invoices = useMemo(
+    () => allInvoices.filter((i) => i.propertyId === currentProperty.id),
+    [allInvoices, currentProperty.id]
+  );
+  const transactions = useMemo(
+    () => allTransactions.filter((t) => t.propertyId === currentProperty.id),
+    [allTransactions, currentProperty.id]
   );
 
   // Các dữ liệu tính toán động cho Tổng quan & các trang
@@ -475,9 +502,9 @@ export function App() {
     firstPeriodRent: number;
     firstPeriodLabel: string;
   }) => {
-    const newContractCode = `HD-${String(contracts.length + 1).padStart(5, '0')}`;
+    const newContractCode = `HD-${String(allContracts.length + 1).padStart(5, '0')}`;
     const newTenantId = `t-${Date.now()}`;
-    const newTenantCode = `KH-${String(tenants.length + 1).padStart(5, '0')}`;
+    const newTenantCode = `KH-${String(allTenants.length + 1).padStart(5, '0')}`;
 
     const newContract: Contract = {
       id: `c-${Date.now()}`,
@@ -497,7 +524,7 @@ export function App() {
       depositAmount: payload.depositAmount,
       depositMode: payload.depositMode,
       status: 'active',
-      daysRemaining: 365,
+      daysRemaining: daysBetweenVN(APP_TODAY, payload.endDate),
     };
 
     setContracts((prev) => [newContract, ...prev]);
@@ -505,7 +532,7 @@ export function App() {
     // Cập nhật trạng thái phòng sang Đã thuê
     setRooms((prev) =>
       prev.map((r) =>
-        r.code === payload.roomCode
+        r.code === payload.roomCode && r.propertyId === currentProperty.id
           ? {
               ...r,
               status: 'occupied',
@@ -540,6 +567,69 @@ export function App() {
       ...prev,
     ]);
 
+    // Hóa đơn kỳ đầu (pro-rata) để khoản này hiện ở Hóa đơn và Công nợ
+    const room = propertyRooms.find((r) => r.code === payload.roomCode);
+    const start = parseDateVN(payload.startDate);
+    if (room && start) {
+      const billingMonth = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+      const alreadyBilled = invoices.some(
+        (i) => i.roomCode === room.code && i.billingMonth === billingMonth && i.status !== 'draft'
+      );
+      if (!alreadyBilled) {
+        const nextInvoiceNo =
+          allInvoices.reduce((max, i) => Math.max(max, Number(i.code.replace(/\D/g, '')) || 0), 0) + 1;
+        const vehicleAmount = room.vehicleCount * currentProperty.vehicleFee;
+        const due = new Date(start);
+        due.setDate(due.getDate() + 10);
+        const firstInvoice: Invoice = {
+          id: `inv-${Date.now()}`,
+          code: `HD-IV-${String(nextInvoiceNo).padStart(5, '0')}`,
+          propertyId: currentProperty.id,
+          roomCode: room.code,
+          floor: room.floor,
+          tenantName: payload.tenantName,
+          tenantPhone: payload.tenantPhone,
+          contractCode: newContractCode,
+          billingMonth,
+          periodLabel: payload.firstPeriodLabel,
+          issueDate: APP_TODAY,
+          dueDate: formatDateVN(due),
+          rentAmount: payload.firstPeriodRent,
+          elecOld: room.elecIndex,
+          elecNew: room.elecIndex,
+          elecUsage: 0,
+          elecRate: currentProperty.electricityRate,
+          elecAmount: 0,
+          waterOld: room.waterIndex,
+          waterNew: room.waterIndex,
+          waterUsage: 0,
+          waterRate: currentProperty.waterRate,
+          waterAmount: 0,
+          trashAmount: room.trashFee,
+          internetAmount: room.internetFee,
+          vehicleCount: room.vehicleCount,
+          vehicleAmount,
+          totalAmount: payload.firstPeriodRent + room.trashFee + room.internetFee + vehicleAmount,
+          paidAmount: 0,
+          status: 'unpaid',
+          sentZalo: false,
+          isOverdue: false,
+        };
+        setInvoices((prev) => [
+          ...prev.filter(
+            (i) =>
+              !(
+                i.propertyId === currentProperty.id &&
+                i.roomCode === room.code &&
+                i.billingMonth === billingMonth &&
+                i.status === 'draft'
+              )
+          ),
+          firstInvoice,
+        ]);
+      }
+    }
+
     // Nếu vừa nhận tiền cọc hôm nay, ghi vào sổ thu chi
     if (payload.depositMode === 'received_today' && payload.depositAmount > 0) {
       setTransactions((prev) => [
@@ -572,7 +662,7 @@ export function App() {
   ) => {
     setInvoices((prev) =>
       prev.map((inv) => {
-        if (inv.billingMonth !== invoiceMonth) return inv;
+        if (inv.propertyId !== currentProperty.id || inv.billingMonth !== invoiceMonth) return inv;
         const rData = readings[inv.roomCode];
         if (!rData) {
           return inv.status === 'draft' ? { ...inv, status: 'unpaid' } : inv;
@@ -722,39 +812,66 @@ export function App() {
     );
   };
 
-  // 5. Đồng bộ 2 chiều với Google Sheets Web App (Apps Script)
+  // 5. Đồng bộ lên Google Sheets qua Apps Script Web App (cần mã SYNC_TOKEN)
   const handleSyncGoogleSheets = async () => {
+    const fail = (message: string) => {
+      setSyncFailed(true);
+      setSyncStatus(message);
+      showToast(message);
+    };
+    if (!sheetsWebAppUrl.startsWith('https://script.google.com/')) {
+      fail('URL Web App phải bắt đầu bằng https://script.google.com/');
+      return;
+    }
+    if (!syncToken.trim()) {
+      setActiveTab('settings');
+      fail('Chưa nhập mã đồng bộ. Nhập mã SYNC_TOKEN ở mục 2 trang Cài đặt rồi bấm đồng bộ lại.');
+      return;
+    }
+    setSyncFailed(false);
     setSyncStatus('Đang đồng bộ lên Google Sheets...');
     try {
-      const payload = {
-        action: 'SYNC_ALL',
-        timestamp: new Date().toISOString(),
-        property: currentProperty,
-        rooms,
-        tenants,
-        vehicles,
-        contracts,
-        invoices,
-        transactions,
-      };
-      if (sheetsWebAppUrl && sheetsWebAppUrl.startsWith('https://script.google.com')) {
-        await fetch(sheetsWebAppUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
-        });
+      const res = await fetch(sheetsWebAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'syncState',
+          token: syncToken.trim(),
+          state: {
+            property: currentProperty,
+            properties,
+            rooms,
+            tenants: allTenants,
+            vehicles: allVehicles,
+            contracts: allContracts,
+            invoices: allInvoices,
+            transactions: allTransactions,
+            syncedAt: new Date().toISOString(),
+          },
+        }),
+      });
+      const data: { ok?: boolean; code?: string; error?: string } = await res.json();
+      if (!data.ok) {
+        throw new Error(
+          data.code === 'UNAUTHORIZED'
+            ? 'sai mã đồng bộ'
+            : data.code === 'NOT_CONFIGURED'
+            ? 'máy chủ chưa đặt SYNC_TOKEN'
+            : data.error || 'máy chủ trả lỗi'
+        );
       }
-      setSyncStatus('Đã đồng bộ thành công với Google Sheets lúc ' + new Date().toLocaleTimeString('vi-VN'));
-      showToast('Đã đồng bộ toàn bộ 6 phân hệ lên Google Sheets!');
-    } catch {
-      setSyncStatus('Đã lưu cục bộ & hàng đợi đồng bộ Google Sheets.');
-      showToast('Đã lưu dữ liệu đồng bộ!');
+      setSyncFailed(false);
+      setSyncStatus('Đã đồng bộ lên Google Sheets lúc ' + new Date().toLocaleTimeString('vi-VN'));
+      showToast('Đã đồng bộ dữ liệu lên Google Sheets');
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'không kết nối được';
+      fail(`Đồng bộ thất bại (${reason}). Dữ liệu vẫn được lưu trên trình duyệt này.`);
     }
   };
 
   // 6. Khôi phục dữ liệu mẫu gốc của video
   const handleResetDemoData = () => {
+    if (!window.confirm('Xoá toàn bộ dữ liệu đang có và nạp lại dữ liệu mẫu? Không hoàn tác được.')) return;
     localStorage.removeItem(STORAGE_KEY);
     setProperties(SEED_PROPERTIES);
     setRooms(SEED_ROOMS);
@@ -781,7 +898,7 @@ export function App() {
     setRooms((prev) =>
       prev.map((r) => {
         const up = updateByCode[r.code];
-        if (!up) return r;
+        if (!up || r.propertyId !== currentProperty.id) return r;
         return {
           ...r,
           price: up.price,
@@ -800,7 +917,7 @@ export function App() {
       setContracts((prev) =>
         prev.map((c) => {
           const up = updateByCode[c.roomCode];
-          if (!up || c.status !== 'active') return c;
+          if (!up || c.status !== 'active' || c.propertyId !== currentProperty.id) return c;
           return {
             ...c,
             rentAmount: up.price,
@@ -817,6 +934,7 @@ export function App() {
           const up = updateByCode[inv.roomCode];
           if (
             !up ||
+            inv.propertyId !== currentProperty.id ||
             inv.status === 'paid' ||
             (inv.billingMonth !== '2026-10' && inv.billingMonth !== '2026-11')
           ) {
@@ -2323,18 +2441,14 @@ export function App() {
       return true;
     });
 
-    const monthLabelMap: Record<'2026-09' | '2026-10' | '2026-11', string> = {
+    const monthLabelMap: Record<string, string> = {
       '2026-09': 'tháng 09 2026',
       '2026-10': 'tháng 10 2026',
       '2026-11': 'tháng 11 2026',
     };
 
     const stepMonth = (dir: -1 | 1) => {
-      const order: Array<'2026-09' | '2026-10' | '2026-11'> = [
-        '2026-09',
-        '2026-10',
-        '2026-11',
-      ];
+      const order = Array.from(new Set(['2026-09', '2026-10', '2026-11', ...invoices.map((i) => i.billingMonth)])).sort();
       const idx = order.indexOf(invoiceMonth);
       const next = order[idx + dir];
       if (next) setInvoiceMonth(next);
@@ -2417,7 +2531,7 @@ export function App() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Từng phòng đang ở đâu ({monthLabelMap[invoiceMonth]})
+                Từng phòng đang ở đâu ({monthLabelMap[invoiceMonth] ?? invoiceMonth.split('-').reverse().join('/')})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Bấm thẳng vào ô cần làm. Mỗi phòng theo chu kỳ tính tiền của hợp đồng phòng
@@ -2572,7 +2686,15 @@ export function App() {
                       <td className="py-3.5 px-3 text-right text-emerald-600 font-semibold">
                         {inv.paidAmount > 0 ? formatVND(inv.paidAmount) : '–'}
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold text-rose-600">
+                      <td
+                        className={`py-3.5 px-3 text-right font-bold ${
+                          inv.status === 'draft'
+                            ? 'text-slate-400'
+                            : rem > 0
+                            ? 'text-rose-600'
+                            : 'text-emerald-600'
+                        }`}
+                      >
                         {inv.status === 'draft'
                           ? 'Chưa lập'
                           : rem > 0
@@ -3675,8 +3797,19 @@ export function App() {
                     )
                   );
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+                aria-describedby="elec-rate-note"
+                className={`w-full rounded-xl border px-3.5 py-2 text-slate-900 font-semibold ${
+                  currentProperty.electricityRate > ELECTRICITY_RATE_CAP ? 'border-amber-400' : 'border-slate-200'
+                }`}
               />
+              {currentProperty.electricityRate > ELECTRICITY_RATE_CAP && (
+                <p id="elec-rate-note" className="mt-1.5 text-amber-700">
+                  Cao hơn giá bán lẻ bậc cao nhất ({formatVND(ELECTRICITY_RATE_CAP)}/kWh). Thu tiền điện
+                  cao hơn giá bán lẻ có thể bị phạt 20–30 triệu theo NĐ 133/2026. Đối chiếu với hóa đơn
+                  EVN; các khoản điện dùng chung, bơm nước, vệ sinh nên ghi thành phí dịch vụ riêng
+                  trong hợp đồng.
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">
@@ -3767,6 +3900,32 @@ export function App() {
             />
           </div>
 
+          <div className="space-y-2 text-xs">
+            <label htmlFor="sync-token" className="block font-medium text-slate-600">
+              Mã đồng bộ (SYNC_TOKEN)
+            </label>
+            <input
+              id="sync-token"
+              type="password"
+              autoComplete="off"
+              value={syncToken}
+              onChange={(e) => {
+                setSyncToken(e.target.value);
+                try {
+                  localStorage.setItem(SYNC_TOKEN_KEY, e.target.value);
+                } catch {
+                  // trình duyệt chặn lưu trữ: mã chỉ giữ trong phiên này
+                }
+              }}
+              placeholder="Dán mã đã đặt trong Script Properties của Apps Script"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-mono text-slate-800"
+            />
+            <p className="text-slate-500">
+              Mã chỉ lưu trên trình duyệt này. Đặt mã trong Apps Script: Project Settings → Script
+              Properties → khóa <code className="font-mono">SYNC_TOKEN</code>.
+            </p>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
@@ -3798,8 +3957,11 @@ export function App() {
           </div>
 
           {syncStatus && (
-            <div className="text-xs text-emerald-600 font-medium pt-1">
-              ✓ {syncStatus}
+            <div
+              role="status"
+              className={`text-xs font-medium pt-1 ${syncFailed ? 'text-rose-600' : 'text-emerald-600'}`}
+            >
+              {syncFailed ? '✕' : '✓'} {syncStatus}
             </div>
           )}
         </div>
@@ -4081,6 +4243,13 @@ export function App() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
+        <div
+          role="note"
+          className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900"
+        >
+          <strong>Bản demo.</strong> Dữ liệu chỉ lưu trên trình duyệt này. Không nhập họ tên, SĐT hay
+          CCCD của khách thuê thật.
+        </div>
         {/* TOPBAR */}
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">

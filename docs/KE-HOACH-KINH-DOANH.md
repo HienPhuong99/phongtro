@@ -1,6 +1,6 @@
 # Kế hoạch kinh doanh OptiRent — bản v2 (11/2026 → 10/2027)
 
-Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.
+Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện (tóm tắt và phản hồi ở **Phụ lục A**) và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.
 
 Số liệu thị trường lấy từ báo chí và trang của đối thủ, đăng trong năm 2026 (danh sách nguồn ở cuối). Văn bản luật mới đọc qua báo, **chưa đối chiếu văn bản gốc**. Chỗ có dấu ⚠️ là số liệu mâu thuẫn hoặc chưa kiểm chứng.
 
@@ -35,9 +35,7 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 | Hỗ trợ mùng 1–5 | Chưa tính | Có kế hoạch riêng (mục 7) | Hỗ trợ dồn vào đúng giờ đi làm |
 | Kênh môi giới | Hoa hồng 20–30% năm đầu | Bỏ | Khoảng 300k không đủ hấp dẫn môi giới |
 
-**Hai điểm bản v2 không làm theo bản đánh giá:**
-- **Không làm tính năng đổi tên tiền điện thu vượt thành "phí hao hụt".** Nếu khoản phí đó thực chất vẫn là tiền điện thì vẫn vi phạm NĐ 133/2026, người thuê khiếu nại được. App sẽ giúp chủ trọ tính lại giá theo cách hợp pháp: tiền điện đúng giá cộng 10% hao hụt theo hướng dẫn EVN, cộng phí dịch vụ thật (vệ sinh, bảo trì, điện hành lang, bơm nước) có ghi trong hợp đồng và tách dòng riêng trên phiếu. Như vậy chủ trọ giữ được gần như nguyên thu nhập.
-- **Không làm "tối ưu thuế" theo nghĩa giấu doanh thu.** Báo cáo doanh thu chỉ để chủ trọ tự xem hoặc tự chứng minh mình dưới ngưỡng miễn thuế. Báo cáo chỉ tạo khi chủ trọ tự bấm, và không chia sẻ cho ai.
+Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm: chi phí SePay, cách xử lý tiền điện, cách xử lý thuế. Chi tiết ở **Phụ lục A**.
 
 ---
 
@@ -63,7 +61,17 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 1. **Đăng nhập và tách dữ liệu theo chủ trọ.** Hiện cả hệ thống dùng chung một Google Sheet.
 2. **Dữ liệu chỉ nằm trong trình duyệt.** Đồng bộ Sheets mới chỉ là bản sao lưu một chiều.
 3. **Ngày và kỳ bị gắn cứng.** "Hôm nay" luôn là 11/10/2026. Bộ chọn kỳ chỉ có 09–11/2026, cộng thêm kỳ của hóa đơn mới tạo.
-4. **Bản khóa API chưa chạy trên server.** Môi trường làm việc này không có quyền `clasp`. Bạn cần tự chạy `npm run deploy:sheets` rồi tạo mã bằng menu 🔑 trên Google Sheets (mục 9). Trước khi làm, Web App đang chạy vẫn là bản cũ, ai có link cũng đọc được dữ liệu.
+4. **Bản vá mới nhất của Apps Script chưa chạy trên server** (xem mục 2.3).
+
+### 2.3 Trạng thái triển khai (19/10/2026)
+
+| Thành phần | Trạng thái | Ghi chú |
+|---|---|---|
+| Code trên `main` | Đã merge (PR #1, commit `e3966f9`) | Gộp bản sửa của 2 phiên làm việc: giữ bản của `main`, thêm phần còn thiếu |
+| Web (GitHub Pages) | **Đã triển khai** | Workflow chạy thành công ngày 19/10; https://hienphuong99.github.io/phongtro/ đang chạy bản mới |
+| Apps Script Web App | **Chưa triển khai bản mới** | Bản đang chạy (17/10) đã chặn đọc dữ liệu qua URL khi thiếu mã (đã thử ngày 19/10: trả về `UNAUTHORIZED`), nhưng vẫn để lộ hàm nội bộ qua `google.script.run`, người lạ có thể lấy được `SYNC_TOKEN`. Cần chạy `npm run deploy:sheets` trên máy đã đăng nhập `clasp`, có thể giao cho Antigravity (lệnh soạn sẵn ở **Phụ lục B**) |
+| Mã `SYNC_TOKEN` | **Cần đổi** sau khi triển khai | Mã cũ có thể đã bị lộ. Xoá khóa trong Script Properties, rồi tạo lại bằng menu 🔑 trên Google Sheets |
+| Dữ liệu Google Sheets | Không đổi | Không chạy `seed:sheets` |
 
 ---
 
@@ -223,9 +231,9 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 ### 18/10 – 31/10/2026: Không code thêm, đi phỏng vấn
 
 - **Kỹ thuật (khoảng 1 giờ):**
-  - Chạy `npm run deploy:sheets` để triển khai bản khóa API.
-  - Mở Google Sheets → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ**, chép mã vào trang Cài đặt của web.
-  - Web lên GitHub Pages tự động khi merge vào `main` (đã merge ngày 19/10).
+  - Merge và triển khai web: đã xong ngày 19/10.
+  - Triển khai Apps Script: `npm run deploy:sheets`, tự làm hoặc giao cho Antigravity (Phụ lục B).
+  - Đổi mã: xoá `SYNC_TOKEN` trong Script Properties → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ** → chép mã vào trang Cài đặt của web.
   - Thử lại: mở `.../exec?action=getState` không kèm mã phải bị từ chối.
 - **Phỏng vấn 15 chủ trọ** đúng phân khúc mới, dùng bản demo đang chạy (bộ câu hỏi ở mục 11).
   - Ở câu về giá điện và thuế: **quan sát thái độ**. Họ lo và muốn làm đúng, hay tìm cách né?
@@ -343,8 +351,9 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 
 ## 10. Việc cần làm ngay
 
-- [ ] Chạy `npm run deploy:sheets` để triển khai bản khóa API.
-- [ ] Trên Google Sheets: menu 🔑 Tạo / xem mã đồng bộ, rồi dán mã vào trang Cài đặt của web.
+- [x] Merge PR #1 vào `main`, triển khai web lên GitHub Pages (19/10).
+- [ ] Triển khai Apps Script bằng `npm run deploy:sheets` (tự làm hoặc giao cho Antigravity, Phụ lục B).
+- [ ] Đổi mã: xoá `SYNC_TOKEN` cũ, tạo lại bằng menu 🔑 trên Google Sheets, dán vào trang Cài đặt của web.
 - [ ] Thử: `.../exec?action=getState` không kèm mã phải trả về `UNAUTHORIZED`.
 - [ ] Danh sách 30 chủ trọ 20–60 phòng (hoặc nhiều khu) để chọn 15 người phỏng vấn.
 - [ ] Nhắn SePay và Casso hỏi về OAuth cho phần mềm nhiều chủ nhà.
@@ -384,7 +393,7 @@ Không bán hàng trong buổi phỏng vấn. Sau 15 cuộc thì tổng hợp: 3
 
 ---
 
-## 13. Nguồn tham khảo (đọc ngày 17–18/10/2026)
+## 13. Nguồn tham khảo (đọc ngày 17–19/10/2026)
 
 **Thị trường**
 - [Nhà Tốt — giá thuê phòng trọ TP.HCM T10/2026](https://www.nhatot.com/thue-phong-tro-tp-ho-chi-minh)
@@ -413,3 +422,77 @@ Không bán hàng trong buổi phỏng vấn. Sau 15 cuộc thì tổng hợp: 3
 - [Báo Văn Hóa — quy định lưu trú từ 1/7/2026](https://baovanhoa.vn/doi-song/chinh-thuc-tu-17-quy-dinh-moi-ve-luu-tru-qua-dem-tat-ca-nguoi-dan-can-nam-ro-242324.html)
 - [The Leader — làm lộ dữ liệu cá nhân bị phạt tới 3 tỷ](https://theleader.vn/lam-lo-du-lieu-ca-nhan-nguoi-khac-bi-phat-toi-3-ty-dong-d40915.html)
 - [Bảng giá ZNS (nhà cung cấp, 2026)](https://www.smsthuonghieu.com/gia-zns/)
+
+---
+
+## Phụ lục A. Bản đánh giá phản biện (18/10/2026) và phản hồi
+
+Ngày 18/10/2026, bản v1 nhận được một bản đánh giá phản biện thẳng thắn. Bản đánh giá khen 4 điểm: nhập liệu hộ, bỏ app native, gạch nợ FIFO và chỉnh giá hàng loạt, điều kiện đi tiếp theo từng tháng. Nó cũng chỉ ra 5 "tử huyệt" có thể khiến 6 tháng làm việc chỉ đổi lại dưới 10 khách trả tiền. Dưới đây là tóm tắt từng ý và phản hồi.
+
+### A.1 Tóm tắt bản đánh giá và phản hồi
+
+| # | Bản đánh giá nói | Phản hồi | Thay đổi trong v2 |
+|---|---|---|---|
+| 1 | **Định vị sai.** Chủ trọ né chuyện luật chứ không mua vì luật. Cảnh báo giá điện chẳng khác gì nhắc họ "đang phạm pháp". Họ sợ lộ doanh thu với cơ quan thuế. Luật dữ liệu cá nhân là rủi ro của bên làm phần mềm, không phải nỗi đau của chủ trọ | **Đồng ý** với hướng định vị. **Không đồng ý** với cách xử lý điện và thuế (xem A.2) | Thông điệp mới: "Chốt sổ nhanh, không nhầm nợ, không dò sao kê". Luật chuyển thành tính năng chạy ngầm |
+| 2 | **Phân khúc sai.** Nhà 15 phòng chỉ mất khoảng 1,5 giờ/tháng. Người 45–65 tuổi có nhiều thời gian. Từ 0đ lên 99k là bức tường lớn khi đối thủ miễn phí ≤15 phòng | **Đồng ý.** Ví dụ chính MONA dùng (26 phòng, 3 nhà) cũng thuộc nhóm lớn hơn | Phân khúc 20–60 phòng hoặc nhiều khu, 30–45 tuổi, vẫn đi làm. Giá: miễn phí ≤10, 149k ≤30, 249k ≤60 |
+| 3 | **Tháng 11 quá tải.** 80–100 giờ không đủ cho Supabase + RLS + viết lại tầng dữ liệu + onboarding + nhập Excel + phỏng vấn + giấy tờ. Khả năng trễ mốc 20/01 trên 80% | **Đồng ý** | Tháng 11 chỉ làm đăng nhập + RLS + chuyển dữ liệu + test tính tiền. Nhập liệu hộ bằng script. Mốc tháng 1 là beta, không phải khách trả phí |
+| 4a | **SePay/Casso** có thể ăn mất một nửa gói 99k, và hướng dẫn chủ trọ liên kết ngân hàng là cực hình | **Đồng ý một phần** (xem A.2) | Khớp sao kê (0đ) là cách chính, SePay OAuth chỉ là tùy chọn |
+| 4b | **Hỗ trợ mùng 1–5** dồn vào giờ đi làm, chưa có phương án | **Đồng ý** | Thêm mục 7: giới hạn khách, không phát hành bản mới từ 25 tới mùng 5, cho khách tự sửa hóa đơn, nhóm Zalo chung, xin nghỉ mùng 1–2 |
+| 4c | **Hoa hồng môi giới** khoảng 300k/năm không đủ hấp dẫn người quen ăn 2–4 triệu/giao dịch | **Đồng ý** | Bỏ kênh môi giới. Kênh kế toán chỉ thử |
+| 5 | **Việc cần làm ngay:** dừng code 2 tuần, khóa Apps Script, mang demo đi phỏng vấn 15 người, hỏi SePay/Casso ngay | **Đồng ý.** Đã kiểm tra bảng giá SePay ngay hôm đó; phần khóa Apps Script đã làm xong trong code | Mục 9: hai tuần cuối tháng 10 không viết thêm tính năng |
+
+### A.2 Ba điểm phản biện
+
+**1. Chi phí SePay thấp hơn bản đánh giá lo ngại.** Bảng giá SePay (đọc ngày 18/10/2026):
+- Gói FREE: 50 giao dịch/tháng, không giới hạn số tài khoản ngân hàng, hỗ trợ 12 ngân hàng (Vietcombank, BIDV, VietinBank, MB, ACB, TPBank…). Gói STARTUP từ 120k/tháng.
+- SePay có OAuth 2.0 cho đối tác: chủ trọ tự có tài khoản SePay miễn phí và ủy quyền cho app đọc giao dịch. Mình không trả phí theo từng chủ trọ, nhưng cần SePay duyệt `client_id`.
+- Nhà ≤50 phòng thường ≤50 giao dịch/tháng, nên phí bằng 0. Nhà trên 50 phòng tốn 120k/tháng, đã tính vào gói 249k.
+- **Bản đánh giá đúng ở điểm hỗ trợ:** liên kết ngân hàng là rào cản lớn. Vì vậy v2 dùng cách bản đánh giá đề xuất làm cách chính: VietQR có mã hóa đơn, chủ trọ tải file sao kê lên để app tự khớp.
+
+**2. Tiền điện: không "hợp thức hóa" bằng cách đổi tên khoản thu vượt.** Bản đánh giá đề xuất tách phiếu thành "tiền điện đúng giá" + "phí hao hụt/quản lý" để chủ trọ thu đủ số tiền cũ. Nếu khoản phí đó thực chất vẫn là tiền điện thì vẫn là thu vượt giá theo NĐ 133/2026: người thuê khiếu nại được, chủ trọ vẫn bị phạt 20–30 triệu và phải hoàn tiền. App làm vậy là dẫn khách vào chỗ bị phạt. Cách làm của v2:
+- Tiền điện đúng giá, cộng 10% hao hụt và điện dùng chung như EVN hướng dẫn.
+- Phí dịch vụ **thật** (vệ sinh, bảo trì, bơm nước, điện hành lang) ghi trong hợp đồng, tách dòng riêng trên phiếu.
+- App tính sẵn cơ cấu giá mới để chủ trọ giữ gần như nguyên thu nhập.
+
+Kết quả gần giống ý bản đánh giá ("là đồng minh của chủ trọ"), nhưng minh bạch và đứng vững nếu bị kiểm tra.
+
+**3. Thuế: không làm "tối ưu thuế" theo nghĩa giấu doanh thu.** Đồng ý bỏ thuế khỏi thông điệp bán hàng. Lo ngại về lộ dữ liệu là đúng, nên phải cam kết: dữ liệu là của chủ trọ, xuất hoặc xóa được bất cứ lúc nào, không chia sẻ với ai. Nếu ngưỡng miễn thuế là 1 tỷ/năm ⚠️, phần lớn nhà 20–40 phòng nằm dưới ngưỡng. Khi đó báo cáo doanh thu có lợi cho chủ trọ vì giúp họ **chứng minh mình được miễn thuế**. Báo cáo chỉ tạo khi chủ trọ tự bấm.
+
+Thêm một ý về dữ liệu cá nhân: đúng là rủi ro của bên làm phần mềm. Nhưng chính vì vậy nó vẫn nằm trong P0, dù không dùng để bán hàng.
+
+### A.3 Việc cần kiểm chứng qua phỏng vấn
+
+Một số điểm cả hai bên đều mới dựa trên suy luận. 15 cuộc phỏng vấn cuối tháng 10 phải trả lời được:
+- Nhóm 20–60 phòng có thật sự mất nhiều thời gian đầu tháng và chịu trả 149–249k không?
+- Thái độ với giá điện và thuế: lo và muốn làm đúng, hay né? (câu 5–6 ở mục 11)
+- Mức độ ngại để dữ liệu doanh thu lên app.
+- Bao nhiêu người chịu liên kết ngân hàng, và bao nhiêu người chỉ chịu tải sao kê lên.
+
+---
+
+## Phụ lục B. Lệnh triển khai Apps Script (giao cho Antigravity hoặc tự chạy)
+
+Dán nguyên khối dưới đây vào Antigravity, mở trong thư mục repo `phongtro` trên máy đã đăng nhập Google. Sau khi chạy xong, **tự đổi mã `SYNC_TOKEN`** (mục 2.3). Không giao bước đổi mã cho công cụ khác, vì bước đó hiển thị mã bí mật.
+
+```text
+Nhiệm vụ: triển khai bản Apps Script mới nhất của repo phongtro lên Google Apps Script.
+Web (GitHub Pages) đã triển khai xong, KHÔNG cần làm lại.
+
+1. git checkout main && git pull origin main
+   grep -c "function assertSheetUi_" apps-script/Code.gs   (phải ra 1)
+2. npx @google/clasp --version; chưa đăng nhập thì npx @google/clasp login
+   apps-script/.clasp.json phải có scriptId 1F8VbvEXaKWRxLeHQ5MpQXxdWt32tJicY36mz8GTJ-wR5ecg7hT74FhtL.
+   Thiếu file này thì DỪNG và báo lại, không để script tạo dự án mới.
+3. npm ci && npm run deploy:sheets
+   Phải cập nhật deployment AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea, không tạo URL mới.
+4. Kiểm tra (URL = .../macros/s/AKfycby47.../exec):
+   a. curl -sL "$URL?action=getState"  → phải chứa UNAUTHORIZED
+   b. curl -sL -X POST -H "Content-Type: text/plain" -d '{"action":"getState","token":"sai-ma"}' "$URL"  → phải chứa UNAUTHORIZED
+   c. clasp pull vào thư mục tạm (không ghi đè apps-script/): setupSyncToken phải gọi assertSheetUi_() đầu tiên và không còn "return token".
+   d. Có agent-browser thì chạy npm run test:e2e
+5. Có file thay đổi thì commit trên nhánh task/deploy-apps-script,
+   merge --no-ff vào main, push, xoá nhánh task.
+
+KHÔNG chạy npm run seed:sheets. KHÔNG in/ghi log/commit giá trị SYNC_TOKEN. KHÔNG sửa apps-script/Code.gs.
+Báo lại kết quả từng bước, deploymentId, số version mới, output của 4a và 4b.
+```

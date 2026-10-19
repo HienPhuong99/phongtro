@@ -175,3 +175,15 @@ export interface CalendarEventItem {
   roomCode?: string;
   actionTab: NavTab;
 }
+
+export interface RoomPriceUpdateItem {
+  roomCode: string;
+  price: number;
+  deposit: number;
+  trashFee: number;
+  internetFee: number;
+  vehicleCount: number;
+  status: RoomStatus;
+  notes?: string;
+}
+

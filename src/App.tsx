@@ -55,7 +55,14 @@ import {
   SEED_MONTHLY_CHART,
   SEED_CALENDAR_EVENTS,
 } from './data/seedData';
-import { formatVND, formatNumberInput, removeAccents } from './utils/format';
+import { formatVND, formatNumberInput, removeAccents, vnToIsoDate } from './utils/format';
+import {
+  computeDaysRemaining,
+  extractBillingMonth,
+  calculateInvoiceFromReadings,
+  allocatePaymentFIFO,
+  applyRoomPricingToInvoice,
+} from './utils/billing';
 import {
   CreateContractModal,
   MeterReadingModal,
@@ -81,46 +88,6 @@ export const DEFAULT_APPS_SCRIPT_URL =
 const MOBILE_WEB_URL = 'https://hienphuong99.github.io/phongtro/?mode=mobile';
 export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
-
-function parseAppDate(str: string): Date | null {
-  const s = str.trim();
-  if (!s) return null;
-  if (s.includes('/')) {
-    const parts = s.split('/');
-    if (parts.length !== 3) return null;
-    const d = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const y = parseInt(parts[2], 10);
-    if (!d || !m || !y || y < 1900) return null;
-    return new Date(y, m - 1, d);
-  }
-  if (s.includes('-')) {
-    const parts = s.split('-');
-    if (parts.length !== 3) return null;
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    if (!d || !m || !y || y < 1900) return null;
-    return new Date(y, m - 1, d);
-  }
-  return null;
-}
-
-function computeDaysRemainingFromAppDate(endDateStr: string): number {
-  const end = parseAppDate(endDateStr);
-  if (!end) return 365;
-  const appToday = new Date(2026, 9, 11); // 11/10/2026
-  const diffMs = end.getTime() - appToday.getTime();
-  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-}
-
-function extractBillingMonth(dateStr: string): string {
-  const d = parseAppDate(dateStr);
-  if (!d) return '2026-10';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-}
 
 const BrandLogoIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8' }) => (
   <div
@@ -502,48 +469,22 @@ export function App() {
     [allUnpaidInvoices]
   );
 
-  // Tính công nợ và đã thu theo từng phòng (hiển thị ở bảng Khách thuê & Báo cáo)
+  // Tính công nợ và đã thu theo từng phòng từ hóa đơn thực tế (khớp với màn Công nợ & Báo cáo)
   const roomFinancialStats = useMemo(() => {
     const map: Record<string, { paid: number; debt: number }> = {};
-    // Tiền đã thu lịch sử (từ tháng 5 -> tháng 9)
-    const historicalPaidByRoom: Record<string, number> = {
-      P101: 11773000,
-      P102: 17221800,
-      P103: 11020800,
-      P104: 12174600,
-      P201: 11888400,
-      P203: 12421200,
-      P301: 11037000,
-      P302: 10421000,
-      P303: 11233600,
-      A204: 11773000,
-      A205: 17221800,
-    };
-
-    rooms.forEach((r) => {
-      map[r.code] = {
-        paid: historicalPaidByRoom[r.code] || 0,
-        debt: 0,
-      };
+    propertyRooms.forEach((r) => {
+      map[r.code] = { paid: 0, debt: 0 };
     });
-
-    // Cộng công nợ từ các kỳ 2026-09 và 2026-10
     invoices.forEach((inv) => {
       if (inv.status === 'draft') return;
-      if (inv.billingMonth === '2026-09' || inv.billingMonth === '2026-10') {
-        const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
-        if (!map[inv.roomCode]) {
-          map[inv.roomCode] = { paid: 0, debt: 0 };
-        }
-        map[inv.roomCode].debt += rem;
+      if (!map[inv.roomCode]) {
+        map[inv.roomCode] = { paid: 0, debt: 0 };
       }
+      map[inv.roomCode].paid += inv.paidAmount;
+      map[inv.roomCode].debt += Math.max(0, inv.totalAmount - inv.paidAmount);
     });
-
-    if (!map['A204']) map['A204'] = { paid: 11773000, debt: 6236000 };
-    if (!map['A205']) map['A205'] = { paid: 17221800, debt: 6670700 };
-
     return map;
-  }, [rooms, invoices]);
+  }, [propertyRooms, invoices]);
 
   // ============================================================================
   // HÀNH ĐỘNG NGHIỆP VỤ (Tạo HĐ, Ghi điện nước, Thu tiền FIFO, Hoàn cọc, Đồng bộ)
@@ -570,7 +511,7 @@ export function App() {
     const newContractCode = `HD-${String(allContracts.length + 1).padStart(5, '0')}`;
     const newTenantId = `t-${Date.now()}`;
     const newTenantCode = `KH-${String(allTenants.length + 1).padStart(5, '0')}`;
-    const realDaysRemaining = computeDaysRemainingFromAppDate(payload.endDate);
+    const realDaysRemaining = computeDaysRemaining(payload.endDate);
 
     const newContract: Contract = {
       id: `c-${Date.now()}`,
@@ -693,7 +634,7 @@ export function App() {
           id: `tx-dep-${Date.now()}`,
           propertyId: currentProperty.id,
           date: payload.signDate,
-          isoDate: '2026-10-11',
+          isoDate: vnToIsoDate(payload.signDate) || '2026-10-11',
           type: 'income',
           category: 'Thu tiền cọc',
           roomCode: payload.roomCode,
@@ -725,29 +666,17 @@ export function App() {
         if (!rData) {
           return inv.status === 'draft' ? { ...inv, status: 'unpaid' } : inv;
         }
-        const elecUsage = Math.max(0, rData.elecNew - inv.elecOld);
-        const waterUsage = Math.max(0, rData.waterNew - inv.waterOld);
-        const elecAmount = elecUsage * inv.elecRate;
-        const waterAmount = waterUsage * inv.waterRate;
-        const totalAmount =
-          inv.rentAmount +
-          elecAmount +
-          waterAmount +
-          inv.trashAmount +
-          inv.internetAmount +
-          inv.vehicleAmount;
-
+        const calc = calculateInvoiceFromReadings(inv, rData);
         return {
           ...inv,
           elecNew: rData.elecNew,
-          elecUsage,
-          elecAmount,
+          elecUsage: calc.elecUsage,
+          elecAmount: calc.elecAmount,
           waterNew: rData.waterNew,
-          waterUsage,
-          waterAmount,
-          totalAmount,
-          status:
-            inv.paidAmount >= totalAmount ? 'paid' : inv.paidAmount > 0 ? 'partial' : 'unpaid',
+          waterUsage: calc.waterUsage,
+          waterAmount: calc.waterAmount,
+          totalAmount: calc.totalAmount,
+          status: calc.status,
           meterPhoto: rData.photo || inv.meterPhoto,
         };
       })
@@ -764,57 +693,24 @@ export function App() {
     note: string;
     billImage?: string;
   }): FifoAllocatedItem[] => {
-    // Lấy danh sách hóa đơn chưa thu đủ của phòng đó, sắp xếp từ kỳ cũ nhất (2026-09 -> 2026-10 -> 2026-11)
-    const roomUnpaid = invoices
-      .filter(
-        (i) =>
-          i.roomCode === payload.roomCode &&
-          i.status !== 'draft' &&
-          i.totalAmount - i.paidAmount > 0
-      )
-      .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
+    const roomInvoices = invoices.filter((i) => i.roomCode === payload.roomCode);
+    const { allocatedItems, updatedMap } = allocatePaymentFIFO(roomInvoices, payload.amount);
+    const txIsoDate = vnToIsoDate(payload.paymentDate) || '2026-10-11';
 
-    let remainingMoney = payload.amount;
-    const allocatedItems: FifoAllocatedItem[] = [];
-    const updatedMap: Record<string, { addPaid: number; newStatus: Invoice['status'] }> =
-      {};
-    const newTxList: CashTransaction[] = [];
-
-    for (const inv of roomUnpaid) {
-      if (remainingMoney <= 0) break;
-      const needed = Math.max(0, inv.totalAmount - inv.paidAmount);
-      const take = Math.min(remainingMoney, needed);
-      if (take > 0) {
-        remainingMoney -= take;
-        const newPaid = inv.paidAmount + take;
-        const fullyPaid = newPaid >= inv.totalAmount;
-        updatedMap[inv.id] = {
-          addPaid: take,
-          newStatus: fullyPaid ? 'paid' : 'partial',
-        };
-        allocatedItems.push({
-          invoiceId: inv.id,
-          invoiceCode: inv.code,
-          monthLabel: inv.billingMonth.replace('-', '/'),
-          amountAllocated: take,
-          fullyPaid,
-        });
-        newTxList.push({
-          id: `tx-${inv.code}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          propertyId: currentProperty.id,
-          date: payload.paymentDate,
-          isoDate: '2026-10-11',
-          type: 'income',
-          category: 'Thu tiền hóa đơn',
-          roomCode: payload.roomCode,
-          invoiceCode: inv.code,
-          description: `Thu tiền phòng ${payload.roomCode} - HĐ ${inv.code}`,
-          amount: take,
-          method: payload.method,
-          billImage: payload.billImage,
-        });
-      }
-    }
+    const newTxList: CashTransaction[] = allocatedItems.map((item) => ({
+      id: `tx-${item.invoiceCode}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      propertyId: currentProperty.id,
+      date: payload.paymentDate,
+      isoDate: txIsoDate,
+      type: 'income',
+      category: 'Thu tiền hóa đơn',
+      roomCode: payload.roomCode,
+      invoiceCode: item.invoiceCode,
+      description: `Thu tiền phòng ${payload.roomCode} - HĐ ${item.invoiceCode}`,
+      amount: item.amountAllocated,
+      method: payload.method,
+      billImage: payload.billImage,
+    }));
 
     setInvoices((prev) =>
       prev.map((inv) => {
@@ -1004,23 +900,7 @@ export function App() {
           ) {
             return inv;
           }
-          const vehicleAmount = up.vehicleCount * currentProperty.vehicleFee;
-          const newTotal =
-            up.price +
-            inv.elecAmount +
-            inv.waterAmount +
-            up.trashFee +
-            up.internetFee +
-            vehicleAmount;
-          return {
-            ...inv,
-            rentAmount: up.price,
-            trashAmount: up.trashFee,
-            internetAmount: up.internetFee,
-            vehicleCount: up.vehicleCount,
-            vehicleAmount,
-            totalAmount: newTotal,
-          };
+          return applyRoomPricingToInvoice(inv, up, currentProperty.vehicleFee);
         })
       );
     }
@@ -2120,7 +2000,9 @@ export function App() {
                   </span>
                   <span>Đã chuyển đi</span>
                 </div>
-                <div className="text-2xl font-extrabold text-slate-900">0</div>
+                <div className="text-2xl font-extrabold text-slate-900">
+                  {tenants.filter((t) => t.status === 'moved_out').length}
+                </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
@@ -2166,8 +2048,14 @@ export function App() {
                           <div className="text-[11px] text-slate-400">{t.code}</div>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className="inline-flex px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
-                            Đang thuê
+                          <span
+                            className={`inline-flex px-2.5 py-1 rounded-lg text-[11px] font-semibold ${
+                              t.status === 'active'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {t.status === 'active' ? 'Đang thuê' : 'Đã chuyển đi'}
                           </span>
                         </td>
                         <td className="py-3.5 px-3 font-bold text-blue-600">
@@ -2311,6 +2199,7 @@ export function App() {
   // 4. HỢP ĐỒNG
   const renderContracts = () => {
     const activeContracts = contracts.filter((c) => c.status === 'active');
+    const endedContracts = contracts.filter((c) => c.status === 'ended');
     const terminatedContracts = contracts.filter((c) => c.status === 'terminated');
     const expiringSoonContracts = activeContracts.filter(
       (c) => c.daysRemaining <= 60
@@ -2370,7 +2259,12 @@ export function App() {
               count: activeContracts.length,
               dot: '',
             },
-            { id: 'ended', label: 'Đã kết thúc', count: 0, dot: '' },
+            {
+              id: 'ended',
+              label: 'Đã kết thúc',
+              count: endedContracts.length,
+              dot: '',
+            },
             {
               id: 'terminated',
               label: 'Đã thanh lý',
@@ -2440,7 +2334,9 @@ export function App() {
               </span>
               <span>Sắp hết hạn / quá hạn</span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900">0</div>
+            <div className="text-2xl font-extrabold text-slate-900">
+              {expiringSoonContracts.length}
+            </div>
           </div>
         </div>
 

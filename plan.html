@@ -1,0 +1,783 @@
+<!doctype html><html lang='vi'><head><meta charset='utf-8'><title>Kế hoạch kinh doanh OptiRent</title><style>
+@page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+body { font-family: 'Inter', 'DejaVu Sans', sans-serif; font-size: 10.2pt; line-height: 1.5; color: #1f2933; }
+h1 { font-size: 21pt; color: #0b4f6c; border-bottom: 3px solid #0b4f6c; padding-bottom: 6px; margin-top: 0; }
+h2 { font-size: 15pt; color: #0b4f6c; margin-top: 22px; border-bottom: 1px solid #c9d6df; padding-bottom: 3px; page-break-after: avoid; }
+h3 { font-size: 12pt; color: #134e4a; margin-top: 16px; page-break-after: avoid; background: #eef6f5; padding: 4px 8px; border-left: 4px solid #14b8a6; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-size: 8.8pt; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th { background: #0b4f6c; color: #fff; text-align: left; padding: 5px 6px; }
+td { border: 1px solid #d5dde3; padding: 4px 6px; vertical-align: top; }
+tr:nth-child(even) td { background: #f6f9fb; }
+code { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.6pt; background: #f1f4f7; padding: 0 3px; border-radius: 3px; }
+a { color: #0b6e99; text-decoration: none; word-break: break-word; }
+blockquote { border-left: 4px solid #f59e0b; background: #fffbeb; margin: 8px 0; padding: 6px 12px; }
+.warn { color: #b45309; font-weight: 700; }
+li { margin: 2px 0; }
+li.todo { list-style: none; margin-left: -18px; }
+hr { border: none; border-top: 1px dashed #c9d6df; margin: 18px 0; }
+</style></head><body><h1>Kế hoạch kinh doanh OptiRent — bản v2 (11/2026 → 10/2027)</h1>
+<p>Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.</p>
+<p>Số liệu thị trường lấy từ báo chí và trang của đối thủ, đăng trong năm 2026 (danh sách nguồn ở cuối). Văn bản luật mới đọc qua báo, <strong>chưa đối chiếu văn bản gốc</strong>. Chỗ có dấu <span class="warn">⚠</span> là số liệu mâu thuẫn hoặc chưa kiểm chứng.</p>
+<hr />
+<h2>0. Tóm tắt</h2>
+<ol>
+<li><strong>Thông điệp bán hàng mới: "Chốt sổ 20–60 phòng trong vài phút qua Zalo, không nhầm nợ cũ, không phải dò sao kê."</strong> Chủ trọ trả tiền cho 3 việc: lấp phòng trống nhanh, thu đủ tiền, đỡ mệt mỗi đầu tháng. Họ không trả tiền để "tuân thủ luật". Các quy định 2026 (giá điện, thuế, lưu trú, dữ liệu cá nhân) vẫn có trong app nhưng chạy ngầm, không dùng để quảng cáo.</li>
+<li><strong>Khách hàng mục tiêu mới: chủ trọ 30–45 tuổi, quản lý 20–60 phòng hoặc 2–3 khu, vẫn đang đi làm.</strong> Dưới 20 phòng thì sổ tay + Zalo vẫn đủ dùng và miễn phí. Nhóm mới thiếu thời gian, quen công nghệ, và trả 150–250k/tháng không phải đắn đo nhiều.</li>
+<li>
+<p><strong>App vẫn là bản demo.</strong> Đợt sửa ngày 18–19/10 đã:</p>
+<ul>
+<li>Khóa API Apps Script bằng mã bí mật, và chặn việc gọi thẳng hàm nội bộ qua <code>google.script.run</code> (trước đó người lạ lấy được cả mã bí mật).</li>
+<li>Sửa đồng bộ Google Sheets cho chạy thật.</li>
+<li>Tắt đồng bộ của app Expo.</li>
+<li>Sửa cả 7 lỗi đã ghi nhận.</li>
+</ul>
+<p>Vẫn chưa có đăng nhập, chưa tách dữ liệu theo từng chủ trọ, dữ liệu vẫn nằm trong trình duyệt.</p>
+</li>
+<li>
+<p><strong>Hai tuần tới không viết thêm tính năng.</strong> Việc cần làm là triển khai bản khóa API (khoảng 15 phút), rồi mang bản demo đi gặp 15 chủ trọ. Tháng 11 chỉ làm phần nền: đăng nhập, phân quyền dữ liệu, chuyển sang database thật, kiểm thử phần tính tiền.</p>
+</li>
+<li><strong>Mục tiêu thực tế sau 12 tháng: 60–100 chủ trọ trả phí, trung bình khoảng 180k/khách/tháng, tức khoảng 11–18 triệu/tháng.</strong> Không đặt mục tiêu có khách trả phí trước Tết (06/02/2027). Mốc tháng 1/2027 là 5 chủ trọ beta chạy được kỳ thu tiền thật. Mở bán chính thức sau Tết, đúng mùa chuyển trọ.</li>
+</ol>
+<hr />
+<h2>1. Thay đổi so với bản v1</h2>
+<table>
+<thead>
+<tr>
+<th>Chủ đề</th>
+<th>Bản v1</th>
+<th>Bản v2</th>
+<th>Lý do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Thông điệp</td>
+<td>"Quản lý trọ đúng luật 2026"</td>
+<td>"Chốt sổ nhanh, không nhầm nợ, không dò sao kê"</td>
+<td>Chủ trọ né chuyện luật chứ không mua vì luật</td>
+</tr>
+<tr>
+<td>Phân khúc</td>
+<td>Chủ trọ gia đình 8–30 phòng, 45–65 tuổi</td>
+<td>20–60 phòng hoặc nhiều khu, 30–45 tuổi, vẫn đi làm</td>
+<td>Dưới 20 phòng chỉ mất khoảng 1,5 giờ/tháng, khó bán</td>
+</tr>
+<tr>
+<td>Giá</td>
+<td>99k (≤20 phòng)</td>
+<td>Miễn phí ≤10 phòng · 149k ≤30 · 249k ≤60</td>
+<td>Không cạnh tranh với gói miễn phí ≤15 phòng của đối thủ; nhóm mới trả được cao hơn</td>
+</tr>
+<tr>
+<td>Tháng 11</td>
+<td>Backend + nhập Excel trên web + onboarding đầy đủ</td>
+<td>Chỉ đăng nhập + phân quyền + chuyển dữ liệu + kiểm thử tính tiền; nhập liệu hộ bằng script</td>
+<td>80–100 giờ không đủ làm hết</td>
+</tr>
+<tr>
+<td>Mốc 20/01/2027</td>
+<td>Có khách trả phí trước Tết</td>
+<td>5 chủ trọ beta chạy kỳ thu tiền thật</td>
+<td>Khả năng trễ quá cao</td>
+</tr>
+<tr>
+<td>Báo có tự động</td>
+<td>SePay/Casso, giá chưa rõ</td>
+<td>Làm 2 cách: tải sao kê lên để khớp (0đ) trước, SePay OAuth sau</td>
+<td>SePay miễn phí ≤50 giao dịch/tháng nhưng hướng dẫn liên kết ngân hàng rất vất vả</td>
+</tr>
+<tr>
+<td>Hỗ trợ mùng 1–5</td>
+<td>Chưa tính</td>
+<td>Có kế hoạch riêng (mục 7)</td>
+<td>Hỗ trợ dồn vào đúng giờ đi làm</td>
+</tr>
+<tr>
+<td>Kênh môi giới</td>
+<td>Hoa hồng 20–30% năm đầu</td>
+<td>Bỏ</td>
+<td>Khoảng 300k không đủ hấp dẫn môi giới</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hai điểm bản v2 không làm theo bản đánh giá:</strong></p>
+<ul>
+<li><strong>Không làm tính năng đổi tên tiền điện thu vượt thành "phí hao hụt".</strong> Nếu khoản phí đó thực chất vẫn là tiền điện thì vẫn vi phạm NĐ 133/2026, người thuê khiếu nại được. App sẽ giúp chủ trọ tính lại giá theo cách hợp pháp: tiền điện đúng giá cộng 10% hao hụt theo hướng dẫn EVN, cộng phí dịch vụ thật (vệ sinh, bảo trì, điện hành lang, bơm nước) có ghi trong hợp đồng và tách dòng riêng trên phiếu. Như vậy chủ trọ giữ được gần như nguyên thu nhập.</li>
+<li><strong>Không làm "tối ưu thuế" theo nghĩa giấu doanh thu.</strong> Báo cáo doanh thu chỉ để chủ trọ tự xem hoặc tự chứng minh mình dưới ngưỡng miễn thuế. Báo cáo chỉ tạo khi chủ trọ tự bấm, và không chia sẻ cho ai.</li>
+</ul>
+<hr />
+<h2>2. Hiện trạng sản phẩm (19/10/2026)</h2>
+<h3>2.1 Những gì đã có</h3>
+<table>
+<thead>
+<tr>
+<th>Phân hệ</th>
+<th>Đã có</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tổng quan, Lịch</td>
+<td>Lấp đầy, thu hôm nay, lợi nhuận, việc cần làm, lịch ghi số / hạn thu / hết hạn hợp đồng</td>
+<td>Dùng tốt để demo</td>
+</tr>
+<tr>
+<td>Phòng</td>
+<td>Sơ đồ theo tầng, chỉnh giá lẻ/hàng loạt, đồng bộ sang hợp đồng và hóa đơn chưa thu</td>
+<td>Hợp với mùa tăng giá sau Tết</td>
+</tr>
+<tr>
+<td>Khách thuê &amp; xe</td>
+<td>Khách đại diện/ở cùng, CCCD, xe, mẫu CT01</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Hợp đồng</td>
+<td>Tạo hợp đồng, có ô SĐT/CCCD, kiểm tra ngày, tự sinh hóa đơn kỳ đầu theo số ngày ở</td>
+<td>Lỗi #4–#6 đã sửa</td>
+</tr>
+<tr>
+<td>Hóa đơn</td>
+<td>Ghi chỉ số hàng loạt (chặn khi chỉ số mới &lt; cũ), phiếu báo VietQR, tin Zalo soạn sẵn</td>
+<td>Lỗi #3 đã sửa</td>
+</tr>
+<tr>
+<td>Tài chính</td>
+<td>Sổ thu chi, quỹ, công nợ, cọc phải trả, thu tiền FIFO</td>
+<td>FIFO là điểm mạnh thật</td>
+</tr>
+<tr>
+<td>Báo cáo</td>
+<td>Doanh thu, chi phí, lợi nhuận, xếp hạng phòng</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Nhiều cơ sở</td>
+<td>Đổi cơ sở thì mọi màn hình chỉ hiện dữ liệu cơ sở đó</td>
+<td>Lỗi #1 đã sửa, quan trọng với phân khúc nhiều khu</td>
+</tr>
+<tr>
+<td>Đồng bộ Google Sheets</td>
+<td>Gửi kèm mã <code>SYNC_TOKEN</code>, báo lỗi thật, dữ liệu web được ghi đúng cột</td>
+<td>Sửa ngày 18–19/10, cần triển khai lại Apps Script</td>
+</tr>
+<tr>
+<td>Cảnh báo</td>
+<td>Thanh "Bản demo" ở đầu trang; cảnh báo khi giá điện &gt; 3.460 đ/kWh</td>
+<td>Dữ liệu mẫu vẫn để 3.500 đ/kWh để khớp video demo</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 Còn thiếu để bán được</h3>
+<ol>
+<li><strong>Đăng nhập và tách dữ liệu theo chủ trọ.</strong> Hiện cả hệ thống dùng chung một Google Sheet.</li>
+<li><strong>Dữ liệu chỉ nằm trong trình duyệt.</strong> Đồng bộ Sheets mới chỉ là bản sao lưu một chiều.</li>
+<li><strong>Ngày và kỳ bị gắn cứng.</strong> "Hôm nay" luôn là 11/10/2026. Bộ chọn kỳ chỉ có 09–11/2026, cộng thêm kỳ của hóa đơn mới tạo.</li>
+<li><strong>Bản khóa API chưa chạy trên server.</strong> Môi trường làm việc này không có quyền <code>clasp</code>. Bạn cần tự chạy <code>npm run deploy:sheets</code> rồi tạo mã bằng menu 🔑 trên Google Sheets (mục 9). Trước khi làm, Web App đang chạy vẫn là bản cũ, ai có link cũng đọc được dữ liệu.</li>
+</ol>
+<hr />
+<h2>3. Khách hàng</h2>
+<h3>3.1 Chân dung mục tiêu</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Mô tả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ai</td>
+<td>30–45 tuổi, quản lý 20–60 phòng hoặc 2–3 khu (thường của gia đình), vẫn đi làm hành chính hoặc kinh doanh khác</td>
+</tr>
+<tr>
+<td>Đang dùng</td>
+<td>Excel/Google Sheets tự làm, nhóm Zalo với khách, app ngân hàng để dò tiền</td>
+</tr>
+<tr>
+<td>Nỗi đau</td>
+<td>Mất nửa ngày đến 1 ngày đầu tháng; nhầm ai đã trả ai chưa khi khách trả lẻ hoặc trả gộp nhiều tháng; nhiều khu thì phải mở nhiều file; người nhà quản lý giúp thì không biết số liệu</td>
+</tr>
+<tr>
+<td>Sẵn sàng trả</td>
+<td>150–250k/tháng nếu thật sự đỡ được thời gian đầu tháng</td>
+</tr>
+<tr>
+<td>Rào cản</td>
+<td>Ngại nhập liệu lại từ đầu; sợ lộ doanh thu; sợ liên kết tài khoản ngân hàng với app lạ</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Không nhắm tới (năm đầu):</strong> chủ trọ dưới 15 phòng (dùng gói miễn phí nếu muốn), CHDV cao cấp trên 100 phòng (đã có SmartOS, cần booking).</p>
+<h3>3.2 Hành vi cần thiết kế theo</h3>
+<ul>
+<li><strong>Chu kỳ tháng:</strong> ghi số từ mùng 1–5, gửi phiếu ngay sau đó, thu đến khoảng ngày 10. Ngoài những ngày này, chủ trọ gần như không mở app.</li>
+<li><strong>Người thuê không cài app.</strong> Mọi thứ gửi cho người thuê là link mở trong Zalo.</li>
+<li><strong>Đối soát chuyển khoản là việc mất thời gian nhất</strong> với nhà trên 20 phòng: khách ghi nội dung lung tung, trả thiếu, trả gộp.</li>
+<li><strong>Rất cảnh giác về dữ liệu.</strong> Phải nói rõ: dữ liệu là của chủ trọ, xuất hoặc xóa được bất cứ lúc nào, không chia sẻ cho ai, kể cả cơ quan thuế.</li>
+<li><strong>Mùa vụ:</strong><ul>
+<li>Sau Tết là mùa chuyển trọ và tăng giá (đầu 2026: lượt tìm phòng ở TP.HCM tăng 130%, phòng bình dân 2–4 triệu tăng 10–20%).</li>
+<li>Tháng 6–7 sinh viên trả phòng.</li>
+<li>Tháng 8–9 mùa nhập học.</li>
+</ul>
+</li>
+</ul>
+<h3>3.3 Quy định 2026: tính năng chạy ngầm, không làm mồi bán hàng</h3>
+<table>
+<thead>
+<tr>
+<th>Quy định (theo báo chí)</th>
+<th>Cách app xử lý</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>NĐ 133/2026</strong> (từ 25/5/2026): phạt 20–30 triệu nếu thu tiền điện cao hơn giá bán lẻ, buộc hoàn trả</td>
+<td>Đã có cảnh báo ở trang Cài đặt. Sẽ thêm công cụ "tính lại cơ cấu giá": điện đúng giá + 10% hao hụt, cộng phí dịch vụ thật có trong hợp đồng, tách dòng trên phiếu, giữ gần nguyên thu nhập</td>
+</tr>
+<tr>
+<td><strong>Thuế cho thuê nhà 2026</strong>: bỏ khoán, tự kê khai; ngưỡng miễn thuế <span class="warn">⚠</span> 500 triệu hay 1 tỷ/năm (NĐ 141/2026)</td>
+<td>Báo cáo doanh thu theo kỳ, chỉ tạo khi chủ trọ bấm. Không làm mồi bán hàng</td>
+</tr>
+<tr>
+<td><strong>Luật Cư trú sửa đổi</strong> (từ 1/7/2026): thông báo lưu trú, phạt 500k–1 triệu/người</td>
+<td>Danh sách "ai chưa khai báo", xuất các trường cần khai. Không hứa tích hợp VNeID</td>
+</tr>
+<tr>
+<td><strong>Luật BVDLCN</strong> (từ 1/1/2026): phạt tới 3 tỷ</td>
+<td>Đây là rủi ro của mình (bên cung cấp phần mềm), không phải lý do chủ trọ mua. Vẫn bắt buộc làm: phân quyền dữ liệu, mã hóa ảnh CCCD, phiếu đồng ý, xóa dữ liệu khi khách trả phòng lâu</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>4. Đối thủ và định vị</h2>
+<table>
+<thead>
+<tr>
+<th>Đối thủ</th>
+<th>Giá công khai (đọc 10/2026)</th>
+<th>Mạnh</th>
+<th>Khe hở cho OptiRent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MONA House</td>
+<td>Thử 30 ngày; 11–20 phòng 490k, 21–50 phòng 890k/tháng</td>
+<td>Báo có tự động khoảng 5 giây, OCR đồng hồ, khoảng 700 chủ trọ</td>
+<td>Đắt với nhà 20–50 phòng</td>
+</tr>
+<tr>
+<td>Quản Lý Trọ</td>
+<td>Miễn phí ≤15 phòng, bản có phí không công bố giá</td>
+<td>Gói miễn phí rộng</td>
+<td>Bản miễn phí có quảng cáo, gửi Zalo thủ công</td>
+</tr>
+<tr>
+<td>SmartOS</td>
+<td>360k (20 phòng), 1,5 triệu (100 phòng)</td>
+<td>CHDV, booking</td>
+<td>Nặng với nhà trọ</td>
+</tr>
+<tr>
+<td>Room Easy</td>
+<td>90k/tháng (20 phòng)</td>
+<td>Rẻ</td>
+<td>Không thấy báo có tự động</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Định vị:</strong> <em>OptiRent: chốt sổ 20–60 phòng trong vài phút, gạch nợ đúng thứ tự (FIFO), không phải dò sao kê. Giá bằng khoảng 1/3 MONA.</em></p>
+<p>Điểm khác biệt có thật trong code: gạch nợ FIFO khi khách trả gộp hoặc trả thiếu, chỉnh giá hàng loạt đồng bộ sang hợp đồng, xem riêng từng khu, tính tiền kỳ đầu theo ngày ở.</p>
+<hr />
+<h2>5. Tính năng (theo thứ tự ưu tiên)</h2>
+<h3>5.1 Đã xong ngày 18–19/10/2026</h3>
+<ul>
+<li>Khóa API Apps Script bằng <code>SYNC_TOKEN</code>. Các hàm nội bộ đổi sang dạng private để <code>google.script.run</code> không gọi được. Các hàm của menu (kể cả hàm tạo mã) chỉ chạy được trong Google Sheets và không trả mã về cho người gọi.</li>
+<li>Đồng bộ Sheets chạy thật và báo lỗi thật. Dữ liệu web được ghi đúng cột. JSON được chia nhiều dòng để tránh giới hạn 50.000 ký tự mỗi ô.</li>
+<li>Tắt đồng bộ của app Expo.</li>
+<li>Sửa 7 lỗi trong danh sách dogfood. Thêm thanh "Bản demo" và cảnh báo giá điện.</li>
+</ul>
+<h3>5.2 P0: tháng 11/2026 (chỉ phần nền)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Hạng mục</th>
+<th>Ước lượng</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Supabase: schema Postgres + Auth (đăng nhập Google hoặc email) + Row Level Security theo <code>owner_id</code>. Viết test cho RLS: tài khoản A không đọc được dữ liệu B</td>
+<td>1,5–2 tuần</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Chuyển đọc/ghi từ <code>localStorage</code> sang Supabase: trạng thái đang tải, báo lỗi, không mất dữ liệu khi mạng chập chờn</td>
+<td>1–1,5 tuần</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Kiểm thử tự động cho phần tính tiền: hóa đơn, FIFO, pro-rata, hoàn cọc, chỉnh giá. Sai 1 đồng là mất khách</td>
+<td>3–4 ngày</td>
+</tr>
+<tr>
+<td>4</td>
+<td>"Hôm nay" theo ngày thật, kỳ hóa đơn sinh theo tháng (gỡ các chỗ gắn cứng <code>'2026-10'</code>)</td>
+<td>2–3 ngày</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Script nhập liệu hộ chạy trên máy của bạn: nhận file Excel hoặc ảnh sổ qua Zalo, đẩy thẳng vào Supabase. <strong>Không làm giao diện nhập Excel trên web</strong></td>
+<td>2 ngày</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Không làm trong tháng 11:</strong> giao diện onboarding đầy đủ, nhập Excel trên web, báo có tự động, app native.</p>
+<h3>5.3 P1: tháng 12/2026 – 3/2027</h3>
+<ol>
+<li><strong>Khớp chuyển khoản không tốn phí bên thứ ba.</strong> VietQR có sẵn mã hóa đơn trong nội dung chuyển khoản. Chủ trọ tải file sao kê (Excel/CSV từ app ngân hàng) lên, app tự khớp theo mã và số tiền rồi gạch nợ FIFO. Dòng nào không khớp thì cho chủ trọ chọn tay.</li>
+<li><strong>Tự sửa/huỷ hóa đơn, gửi lại phiếu</strong> mà không cần gọi hỗ trợ (giảm tải mùng 1–5).</li>
+<li><strong>Trang hóa đơn cho người thuê</strong> mở trong Zalo: phiếu báo, QR, ảnh đồng hồ, lịch sử trả tiền.</li>
+<li><strong>Tổng quan nhiều khu:</strong> một màn hình xem tất cả khu (đã thu / còn nợ / phòng trống).</li>
+<li><strong>Tài khoản phụ cho người nhà hoặc người quản lý:</strong> chỉ ghi số và thu tiền, không xem báo cáo lợi nhuận.</li>
+<li><strong>Công cụ tính lại cơ cấu giá điện</strong> (mục 3.3).</li>
+<li><strong>SePay OAuth</strong> (sau khi SePay duyệt <code>client_id</code>): chủ trọ tự có tài khoản SePay. Gói FREE 50 giao dịch/tháng, không giới hạn số tài khoản ngân hàng, hỗ trợ 12 ngân hàng. App đọc giao dịch thay chủ trọ. Chỉ bật cho người tự nguyện, vì liên kết ngân hàng là rào cản lớn.</li>
+</ol>
+<h3>5.4 P2: từ tháng 4/2027, khi có trên 40 khách trả phí</h3>
+<ul>
+<li>Đăng tin phòng trống từ dữ liệu phòng.</li>
+<li>Nhắc nợ qua Zalo ZNS (khoảng 200–300đ/tin <span class="warn">⚠</span>).</li>
+<li>Danh sách lưu trú.</li>
+<li>Báo cáo doanh thu theo kỳ khai thuế.</li>
+<li>OCR đồng hồ.</li>
+</ul>
+<p><strong>Không làm năm đầu:</strong> app native trên store, sàn tìm phòng, thu hộ tiền (cần giấy phép), AI chatbot.</p>
+<hr />
+<h2>6. Doanh thu và chi phí</h2>
+<h3>6.1 Bảng giá đề xuất (kiểm chứng khi phỏng vấn và lúc mở beta)</h3>
+<table>
+<thead>
+<tr>
+<th>Gói</th>
+<th>Giá</th>
+<th>Giới hạn</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Miễn phí</td>
+<td>0đ</td>
+<td>≤ 10 phòng, 1 khu</td>
+<td>Không có khớp sao kê, không có tài khoản phụ</td>
+</tr>
+<tr>
+<td><strong>Tiêu chuẩn</strong></td>
+<td><strong>149k/tháng</strong> (1,49 triệu/năm)</td>
+<td>≤ 30 phòng, 3 khu</td>
+<td>Đầy đủ P1</td>
+</tr>
+<tr>
+<td><strong>Chuyên nghiệp</strong></td>
+<td><strong>249k/tháng</strong> (2,49 triệu/năm)</td>
+<td>≤ 60 phòng, không giới hạn khu</td>
+<td>+ tài khoản phụ, SePay (nếu vượt 50 giao dịch thì phí SePay đã tính trong giá)</td>
+</tr>
+<tr>
+<td>Trên 60 phòng</td>
+<td>Từ 399k/tháng</td>
+<td>Thỏa thuận</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Nhập liệu hộ</td>
+<td>Miễn phí cho 30 khách đầu, sau đó 300–500k/lần</td>
+<td>—</td>
+<td>Cũng là cách hiểu các trường hợp đặc biệt</td>
+</tr>
+</tbody>
+</table>
+<p>Ước tính trung bình khoảng 180k/khách/tháng (phần lớn ở gói 149k, một phần ở gói 249k).</p>
+<h3>6.2 Chi phí cố định (<span class="warn">⚠</span> quy đổi khoảng 26.000đ/USD, cần kiểm tra lại)</h3>
+<table>
+<thead>
+<tr>
+<th>Khoản</th>
+<th>Chi phí</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Supabase Pro (khi có khách thật)</td>
+<td>khoảng 25 USD ≈ 650k/tháng</td>
+</tr>
+<tr>
+<td>Tên miền + email</td>
+<td>khoảng 300–800k/năm</td>
+</tr>
+<tr>
+<td>Hosting web</td>
+<td>0đ</td>
+</tr>
+<tr>
+<td>Khớp sao kê tự làm</td>
+<td>0đ</td>
+</tr>
+<tr>
+<td>SePay</td>
+<td>0đ nếu chủ trọ dùng gói FREE của chính họ (≤50 giao dịch/tháng); 120k/tháng cho gói STARTUP nếu vượt</td>
+</tr>
+<tr>
+<td>Luật sư rà chính sách bảo mật và điều khoản</td>
+<td>khoảng 2–5 triệu (một lần)</td>
+</tr>
+<tr>
+<td>Marketing</td>
+<td>1–3 triệu/tháng (chủ yếu in ấn, quà giới thiệu)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tổng chi cố định khoảng 1–1,5 triệu/tháng, chưa tính công của bạn.</strong> Hòa vốn tiền mặt ở khoảng 10–15 khách trả phí.</p>
+<hr />
+<h2>7. Hỗ trợ khách mùng 1–5 (người làm bán thời gian)</h2>
+<p>Hỗ trợ sẽ dồn vào mùng 1–5, đúng giờ bạn đi làm. Cách xử lý:</p>
+<ol>
+<li><strong>Giới hạn số khách:</strong> tối đa 10 khách beta tới hết tháng 1/2027, tối đa 40 khách tới tháng 6/2027.</li>
+<li><strong>Không phát hành bản mới từ ngày 25 tới mùng 5.</strong> Chỉ sửa lỗi chặn.</li>
+<li><strong>Cho khách tự xử lý:</strong> tự sửa/huỷ hóa đơn, tự gửi lại phiếu, tự chỉnh chỉ số (P1 #2). Có trang câu hỏi thường gặp và video 1 phút cho từng thao tác.</li>
+<li><strong>Trang trạng thái và tin nhắn chung:</strong> khi có lỗi chung, nhắn một tin vào nhóm Zalo khách hàng thay vì trả lời từng người.</li>
+<li><strong>3 tháng đầu xin nghỉ hoặc làm từ xa mùng 1–2.</strong> Dành sẵn buổi tối mùng 1–5 cho hỗ trợ.</li>
+<li><strong>Hẹn giờ phản hồi rõ ràng:</strong> trong 2 giờ với lỗi chặn thu tiền, trong 24 giờ với câu hỏi thường.</li>
+</ol>
+<hr />
+<h2>8. Kênh bán hàng</h2>
+<ol>
+<li><strong>Phỏng vấn và gặp trực tiếp:</strong> người quen, người quen giới thiệu, chủ CHDV/chung cư mini quanh khu công nghiệp và làng đại học.</li>
+<li><strong>Nhóm Facebook/Zalo của chủ nhà trọ, CHDV:</strong> nội dung thực dụng như "chốt sổ 30 phòng trong 10 phút", "khách trả gộp 3 tháng thì gạch nợ thế nào", "tăng giá sau Tết đúng hợp đồng".</li>
+<li><strong>Giới thiệu bạn bè:</strong> mỗi lần giới thiệu thành công, cả hai được tặng 1 tháng.</li>
+<li><strong>Kế toán dịch vụ cho hộ kinh doanh:</strong> chỉ thử với 1–2 văn phòng. Không trông vào kênh này.</li>
+<li><strong>Quảng cáo trả tiền:</strong> chưa chạy trước tháng 4/2027.</li>
+</ol>
+<p>Đã bỏ: hoa hồng cho môi giới.</p>
+<hr />
+<h2>9. Kế hoạch từng tháng</h2>
+<p>Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code bằng Claude Code. Không đạt điều kiện đi tiếp thì kéo dài tháng đó, không chạy theo lịch.</p>
+<h3>18/10 – 31/10/2026: Không code thêm, đi phỏng vấn</h3>
+<ul>
+<li><strong>Kỹ thuật (khoảng 1 giờ):</strong><ul>
+<li>Chạy <code>npm run deploy:sheets</code> để triển khai bản khóa API.</li>
+<li>Mở Google Sheets → menu <strong>🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ</strong>, chép mã vào trang Cài đặt của web.</li>
+<li>Web lên GitHub Pages tự động khi merge vào <code>main</code> (đã merge ngày 19/10).</li>
+<li>Thử lại: mở <code>.../exec?action=getState</code> không kèm mã phải bị từ chối.</li>
+</ul>
+</li>
+<li><strong>Phỏng vấn 15 chủ trọ</strong> đúng phân khúc mới, dùng bản demo đang chạy (bộ câu hỏi ở mục 11).<ul>
+<li>Ở câu về giá điện và thuế: <strong>quan sát thái độ</strong>. Họ lo và muốn làm đúng, hay tìm cách né?</li>
+<li>Ghi lại nguyên văn họ mô tả đầu tháng của mình.</li>
+</ul>
+</li>
+<li><strong>Hỏi SePay:</strong> nhắn bộ phận hỗ trợ: <em>"Tôi làm phần mềm quản lý trọ cho khoảng 50 chủ nhà, mỗi người một tài khoản ngân hàng. Điều kiện cấp OAuth client và chi phí thế nào?"</em> Hỏi Casso câu tương tự.</li>
+<li><strong>Pháp lý:</strong> chọn tên thương hiệu ("Quản lý phòng trọ" là tên chung, không đăng ký nhãn hiệu được), tra trùng (Cục SHTT, WIPO), mua tên miền.</li>
+<li><strong>KPI:</strong> 15 cuộc phỏng vấn; ≥ 5 người đồng ý dùng thử từ tháng 12; ≥ 3 người nói trả được ≥ 149k.</li>
+<li><strong>Điều kiện đi tiếp:</strong> có ≥ 5 người đồng ý dùng thử. Nếu kết quả phỏng vấn cho thấy nỗi đau khác hẳn giả định, sửa kế hoạch trước khi code.</li>
+</ul>
+<h3>Tháng 11/2026: Làm phần nền (P0)</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> 5 hạng mục P0 (mục 5.2), không làm gì thêm.</li>
+<li><strong>Khách hàng:</strong> nhận file hoặc ảnh sổ của 5 người beta, nhập hộ bằng script vào cuối tháng.</li>
+<li><strong>Pháp lý:</strong> đăng ký hộ kinh doanh (lệ phí môn bài đã bỏ từ 2026), mở tài khoản ngân hàng riêng, soạn chính sách bảo mật và điều khoản.</li>
+<li><strong>KPI:</strong><ul>
+<li>Test RLS qua (tài khoản A không đọc được dữ liệu B).</li>
+<li>Test tính tiền qua.</li>
+<li>Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.</li>
+</ul>
+</li>
+<li><strong>Ngân sách:</strong> khoảng 1–3 triệu.</li>
+<li><strong>Nếu trễ:</strong> dời beta sang kỳ tháng 1. Không cắt phần test.</li>
+</ul>
+<h3>Tháng 12/2026: Beta trên dữ liệu thật</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> khớp sao kê (P1 #1), tự sửa/huỷ hóa đơn (P1 #2), sửa lỗi phát sinh.</li>
+<li><strong>Khách hàng:</strong><ul>
+<li>3–5 chủ trọ chạy kỳ thu tiền tháng 12.</li>
+<li>Có mặt trực tiếp hoặc gọi video ngày họ chốt sổ.</li>
+<li>Đo: số phút chốt sổ, tỷ lệ giao dịch khớp tự động, số lần phải gọi hỗ trợ.</li>
+</ul>
+</li>
+<li><strong>Vận hành:</strong> nhóm Zalo hỗ trợ; quy tắc không phát hành bản mới từ 25 tới mùng 5 bắt đầu áp dụng.</li>
+<li><strong>KPI:</strong> chốt sổ ≤ 15 phút cho 30 phòng; ≥ 70% giao dịch tự khớp; mức hài lòng ≥ 8/10.</li>
+</ul>
+<h3>Tháng 1/2027: Beta mở rộng + bán trước</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> trang hóa đơn cho người thuê (P1 #3), tổng quan nhiều khu (P1 #4), luồng trả phòng trước Tết.</li>
+<li><strong>Khách hàng:</strong><ul>
+<li>Mở thêm tới 10 người beta.</li>
+<li><strong>Bán trước gói năm</strong> cho người beta với giá ưu đãi (ví dụ 1,2 triệu/năm cho gói Tiêu chuẩn, giữ giá trọn đời). Có từ 3 người trả trước trở lên là tín hiệu thật.</li>
+</ul>
+</li>
+<li><strong>Tết 06/02/2027:</strong> không phát hành bản mới từ khoảng 25/01.</li>
+<li><strong>KPI:</strong> 5–10 người dùng kỳ tháng 1; ≥ 3 người trả trước.</li>
+</ul>
+<h3>Tháng 2/2027: Tết + mở bán</h3>
+<ul>
+<li><strong>Nửa đầu tháng:</strong> trực hỗ trợ.</li>
+<li><strong>Sau Tết (mùa chuyển trọ):</strong><ul>
+<li>Mở bán chính thức với bảng giá ở mục 6.1.</li>
+<li>Nội dung "tăng giá sau Tết đúng hợp đồng" (dùng tính năng chỉnh giá hàng loạt có sẵn).</li>
+</ul>
+</li>
+<li><strong>KPI:</strong> 10 khách trả phí.</li>
+</ul>
+<h3>Tháng 3/2027</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> tài khoản phụ cho người nhà/quản lý (P1 #5), công cụ tính lại giá điện (P1 #6).</li>
+<li><strong>Khách hàng:</strong> khởi động chương trình giới thiệu bạn bè; thử với 1–2 văn phòng kế toán.</li>
+<li><strong>KPI:</strong> 20 khách trả phí; tỷ lệ huỷ &lt; 5%/tháng.</li>
+</ul>
+<h3>Tháng 4/2027</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> SePay OAuth cho người tự nguyện (P1 #7), nếu SePay đã duyệt.</li>
+<li><strong>Khách hàng:</strong> gọi cho mọi khách không đăng nhập trong kỳ mùng 1–10. Thử quảng cáo 2–3 triệu nếu tỷ lệ chuyển sang trả phí từ dùng thử ≥ 20%.</li>
+<li><strong>KPI:</strong> 28 khách trả phí.</li>
+</ul>
+<h3>Tháng 5/2027</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> bắt đầu P2 theo nhu cầu khách (đăng tin phòng trống hoặc nhắc nợ ZNS).</li>
+<li><strong>KPI:</strong> 35 khách trả phí.</li>
+</ul>
+<h3>Tháng 6/2027: Chuẩn bị mùa sinh viên trả phòng</h3>
+<ul>
+<li><strong>Sản phẩm:</strong> trả phòng hàng loạt, đăng tin phòng trống.</li>
+<li><strong>KPI:</strong> 42 khách trả phí. Giới hạn số khách hỗ trợ được: 40–50.</li>
+</ul>
+<h3>Tháng 7/2027</h3>
+<ul>
+<li><strong>Vận hành:</strong> rà lại các quy định đã đổi (thuế, điện, cư trú), cập nhật app nếu cần.</li>
+<li><strong>Khách hàng:</strong> chiến dịch "lấp phòng trước mùa nhập học".</li>
+<li><strong>KPI:</strong> 50 khách trả phí.</li>
+</ul>
+<h3>Tháng 8/2027: Mùa nhập học</h3>
+<ul>
+<li><strong>Khách hàng:</strong> chiến dịch lớn nhất năm, đẩy mạnh giới thiệu bạn bè.</li>
+<li><strong>KPI:</strong> 62 khách trả phí.</li>
+</ul>
+<h3>Tháng 9/2027</h3>
+<ul>
+<li><strong>KPI:</strong> 72 khách trả phí; tỷ lệ huỷ &lt; 4%/tháng.</li>
+<li><strong>Quyết định:</strong> có cần người hỗ trợ bán thời gian không (khi vượt khoảng 60 khách).</li>
+</ul>
+<h3>Tháng 10/2027: Tổng kết 12 tháng</h3>
+<ul>
+<li><strong>Đánh giá:</strong> doanh thu định kỳ (mục tiêu 11–18 triệu/tháng), tỷ lệ huỷ, chi phí có được một khách (CAC), giá trị vòng đời khách (LTV), số giờ bạn bỏ ra mỗi tuần.</li>
+<li><strong>Ba hướng:</strong><ol>
+<li>Tiếp tục như nguồn thu nhập phụ.</li>
+<li>Tuyển người hỗ trợ và mở rộng khu vực.</li>
+<li>Tìm đối tác.</li>
+</ol>
+</li>
+<li><strong>Ngưỡng:</strong> tỷ lệ huỷ ≤ 3%/tháng và LTV/CAC ≥ 3 thì đáng đầu tư mở rộng.</li>
+</ul>
+<h3>Bảng mục tiêu</h3>
+<table>
+<thead>
+<tr>
+<th>Tháng</th>
+<th>Khách trả phí</th>
+<th>Doanh thu định kỳ (khoảng 180k/khách)</th>
+<th>Mốc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10/2026</td>
+<td>0</td>
+<td>0</td>
+<td>Triển khai bản khóa API, 15 phỏng vấn</td>
+</tr>
+<tr>
+<td>11/2026</td>
+<td>0</td>
+<td>0</td>
+<td>Supabase + RLS + test tính tiền</td>
+</tr>
+<tr>
+<td>12/2026</td>
+<td>0 (3–5 beta)</td>
+<td>0</td>
+<td>Khớp sao kê, tự sửa hóa đơn</td>
+</tr>
+<tr>
+<td>01/2027</td>
+<td>0 (≥3 trả trước gói năm)</td>
+<td>0</td>
+<td>Trang hóa đơn cho khách, nhiều khu</td>
+</tr>
+<tr>
+<td>02/2027</td>
+<td>10</td>
+<td>khoảng 1,8 triệu</td>
+<td>Mở bán sau Tết</td>
+</tr>
+<tr>
+<td>03/2027</td>
+<td>20</td>
+<td>khoảng 3,6 triệu</td>
+<td>Tài khoản phụ, tính lại giá điện</td>
+</tr>
+<tr>
+<td>04/2027</td>
+<td>28</td>
+<td>khoảng 5 triệu</td>
+<td>SePay OAuth</td>
+</tr>
+<tr>
+<td>05/2027</td>
+<td>35</td>
+<td>khoảng 6,3 triệu</td>
+<td>P2 theo nhu cầu</td>
+</tr>
+<tr>
+<td>06/2027</td>
+<td>42</td>
+<td>khoảng 7,6 triệu</td>
+<td>Trả phòng hàng loạt</td>
+</tr>
+<tr>
+<td>07/2027</td>
+<td>50</td>
+<td>khoảng 9 triệu</td>
+<td>Cập nhật quy định</td>
+</tr>
+<tr>
+<td>08/2027</td>
+<td>62</td>
+<td>khoảng 11 triệu</td>
+<td>Mùa nhập học</td>
+</tr>
+<tr>
+<td>09/2027</td>
+<td>72</td>
+<td>khoảng 13 triệu</td>
+<td>Cân nhắc người hỗ trợ</td>
+</tr>
+<tr>
+<td>10/2027</td>
+<td>60–100</td>
+<td>11–18 triệu</td>
+<td>Tổng kết</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>10. Việc cần làm ngay</h2>
+<ul>
+<li class="todo">☐ Chạy <code>npm run deploy:sheets</code> để triển khai bản khóa API.</li>
+<li class="todo">☐ Trên Google Sheets: menu 🔑 Tạo / xem mã đồng bộ, rồi dán mã vào trang Cài đặt của web.</li>
+<li class="todo">☐ Thử: <code>.../exec?action=getState</code> không kèm mã phải trả về <code>UNAUTHORIZED</code>.</li>
+<li class="todo">☐ Danh sách 30 chủ trọ 20–60 phòng (hoặc nhiều khu) để chọn 15 người phỏng vấn.</li>
+<li class="todo">☐ Nhắn SePay và Casso hỏi về OAuth cho phần mềm nhiều chủ nhà.</li>
+<li class="todo">☐ Chọn tên thương hiệu, tra trùng, mua tên miền.</li>
+<li class="todo">☐ Hỏi 1 kế toán thuế để chốt ngưỡng 500 triệu hay 1 tỷ.</li>
+</ul>
+<hr />
+<h2>11. Bộ câu hỏi phỏng vấn (15–20 phút)</h2>
+<ol>
+<li>Anh/chị quản lý bao nhiêu phòng, mấy khu? Ai trực tiếp thu tiền? Anh/chị có đi làm không?</li>
+<li>Kể lại đầu tháng trước: từ lúc ghi điện tới lúc thu đủ mất bao lâu? Khâu nào mệt nhất?</li>
+<li>Có khách nào trả thiếu, trả gộp nhiều tháng, hoặc ghi nội dung chuyển khoản sai không? Xử lý thế nào?</li>
+<li>Đang ghi chép bằng gì? Đã thử phần mềm nào chưa, vì sao bỏ?</li>
+<li>Đang thu tiền điện bao nhiêu một số? Có biết quy định mới về giá điện cho thuê trọ không? <em>(Quan sát: lo lắng, muốn làm đúng, hay né?)</em></li>
+<li>Năm nay khai thuế cho thuê nhà thế nào? <em>(Quan sát: có ngại cho người khác thấy doanh thu không?)</em></li>
+<li>Nếu dùng app, anh/chị có ngại để dữ liệu phòng, tiền thuê lên đó không? Cần gì để yên tâm?</li>
+<li>Nếu có công cụ chốt sổ trong vài phút và tự gạch nợ khi khách chuyển khoản, bao nhiêu tiền một tháng thì hợp lý? Bao nhiêu thì quá đắt?</li>
+<li>Anh/chị có thể gửi file Excel hoặc ảnh sổ để mình nhập hộ dùng thử từ tháng 12 không?</li>
+<li>Anh/chị biết chủ trọ nào khác có thể quan tâm không?</li>
+</ol>
+<p>Không bán hàng trong buổi phỏng vấn. Sau 15 cuộc thì tổng hợp: 3 nỗi đau nhiều nhất, thái độ với luật điện/thuế, mức giá trung vị, mức độ ngại về dữ liệu.</p>
+<hr />
+<h2>12. Rủi ro</h2>
+<table>
+<thead>
+<tr>
+<th>Rủi ro</th>
+<th>Khả năng</th>
+<th>Cách giảm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phỏng vấn cho thấy nhóm 20–60 phòng cũng không đủ đau để trả tiền</td>
+<td>Trung bình</td>
+<td>Dừng code, đổi phân khúc (ví dụ CHDV) trước tháng 11</td>
+</tr>
+<tr>
+<td>Tháng 11 trễ</td>
+<td>Cao</td>
+<td>Đã cắt phạm vi; nếu trễ thì dời beta sang tháng 1, không cắt test</td>
+</tr>
+<tr>
+<td>Lỗi tính tiền</td>
+<td>Trung bình</td>
+<td>Test tự động cho phần tiền; có mặt cùng khách ở kỳ đầu</td>
+</tr>
+<tr>
+<td>Lộ dữ liệu</td>
+<td>Trung bình</td>
+<td>RLS có test, mã hóa ảnh CCCD, triển khai bản khóa API ngay</td>
+</tr>
+<tr>
+<td>Quá tải hỗ trợ mùng 1–5</td>
+<td>Cao</td>
+<td>Mục 7: giới hạn khách, không phát hành bản mới, cho khách tự xử lý</td>
+</tr>
+<tr>
+<td>Khách không chịu liên kết ngân hàng</td>
+<td>Cao</td>
+<td>Khớp sao kê là cách chính, SePay chỉ là tùy chọn</td>
+</tr>
+<tr>
+<td>Hiểu sai luật</td>
+<td>Trung bình</td>
+<td>Cho phép cấu hình ngưỡng, ghi rõ "không phải tư vấn thuế/pháp lý"</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>13. Nguồn tham khảo (đọc ngày 17–18/10/2026)</h2>
+<p><strong>Thị trường</strong></p>
+<ul>
+<li><a href="https://www.nhatot.com/thue-phong-tro-tp-ho-chi-minh">Nhà Tốt — giá thuê phòng trọ TP.HCM T10/2026</a></li>
+<li><a href="https://phongtro123.com/tinh-thanh/ha-noi">Phongtro123 — Hà Nội 2026</a></li>
+<li><a href="https://cafebiz.vn/chuyen-gi-day-phong-tro-tphcm-duoc-tim-kiem-tang-130-dau-nam-2026-thi-truong-cho-thue-soi-dong-tro-lai-176260301183439152.chn">CafeBiz — tìm phòng trọ TP.HCM tăng 130% đầu 2026</a></li>
+<li><a href="https://mogi.vn/news/bien-dong-gia-phong-tro-sau-tet-2026-284644/">Mogi — biến động giá sau Tết 2026</a></li>
+<li><a href="https://vnexpress.net/nha-tro-tp-hcm-tang-gia-truoc-mua-nhap-hoc-5110826.html">VnExpress — nhà trọ tăng giá trước mùa nhập học</a></li>
+</ul>
+<p><strong>Đối thủ</strong></p>
+<ul>
+<li><a href="https://mona.house/">MONA House</a></li>
+<li><a href="https://quanlytro.me/bang-gia.html">Quản Lý Trọ — bảng giá</a></li>
+<li><a href="https://smartos.space/gia-phan-mem-quan-ly-nha-tro-can-ho/">SmartOS — bảng giá</a></li>
+<li><a href="https://www.nhatro.app/">Room Easy</a></li>
+</ul>
+<p><strong>Thanh toán</strong></p>
+<ul>
+<li><a href="https://sepay.vn/bang-gia.html">SePay — bảng giá</a></li>
+<li><a href="https://developer.sepay.vn/en/sepay-oauth2/tong-quan">SePay OAuth 2.0</a></li>
+<li><a href="https://developer.sepay.vn/vi/bankhub/bat-dau-nhanh">SePay Bank Hub</a></li>
+<li><a href="https://developer.casso.vn/english-v2-new/casso-api">Casso API</a></li>
+</ul>
+<p><strong>Quy định</strong></p>
+<ul>
+<li><a href="https://ecn.net.vn/tin-tuc/hkd-cho-thue-phong-tro-ke-khai-thue-tncn">ECN — thuế HKD cho thuê phòng trọ, cập nhật 7/2026 (NĐ 141/2026)</a></li>
+<li><a href="https://smartos.space/blog/thue-kinh-doanh-nha-tro/">SmartOS — thuế kinh doanh nhà trọ (12/08/2026)</a></li>
+<li><a href="https://vnbusiness.vn/nguoi-thue-tro-chu-y-gia-dien-vuot-3460-dong-la-sai-quy-dinh.html">VnBusiness — giá điện vượt 3.460 đồng là sai quy định (06/05/2026)</a></li>
+<li><a href="https://tuoitre.vn/chu-tro-thu-tien-dien-sai-se-bi-phat-nang-nguoi-thue-va-chu-nha-deu-co-noi-niem-rieng-20260503075052179.htm">Tuổi Trẻ — chủ trọ thu tiền điện sai sẽ bị phạt nặng</a></li>
+<li><a href="https://baovanhoa.vn/doi-song/chinh-thuc-tu-17-quy-dinh-moi-ve-luu-tru-qua-dem-tat-ca-nguoi-dan-can-nam-ro-242324.html">Báo Văn Hóa — quy định lưu trú từ 1/7/2026</a></li>
+<li><a href="https://theleader.vn/lam-lo-du-lieu-ca-nhan-nguoi-khac-bi-phat-toi-3-ty-dong-d40915.html">The Leader — làm lộ dữ liệu cá nhân bị phạt tới 3 tỷ</a></li>
+<li><a href="https://www.smsthuonghieu.com/gia-zns/">Bảng giá ZNS (nhà cung cấp, 2026)</a></li>
+</ul></body></html>

@@ -71,6 +71,9 @@ const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
 const SHEETS_TOKEN_KEY = 'quanlyphongtro_sheets_token';
 // Phải khớp SYNC_SCHEMA trong apps-script/Code.gs
 const SHEETS_SYNC_SCHEMA = 'quanlyphongtro-web-v1';
+// Giá bán lẻ điện sinh hoạt bậc cao nhất 3.460 đ/kWh (QĐ 1279/QĐ-BCT, theo báo chí 05/2026).
+// Thu cao hơn giá bán lẻ có thể bị phạt 20–30 triệu theo NĐ 133/2026 (hiệu lực 25/05/2026).
+const ELECTRICITY_RATE_CAP = 3460;
 
 // URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
@@ -3941,8 +3944,19 @@ export function App() {
                     )
                   );
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+                aria-describedby="elec-rate-note"
+                className={`w-full rounded-xl border px-3.5 py-2 text-slate-900 font-semibold ${
+                  currentProperty.electricityRate > ELECTRICITY_RATE_CAP ? 'border-amber-400' : 'border-slate-200'
+                }`}
               />
+              {currentProperty.electricityRate > ELECTRICITY_RATE_CAP && (
+                <p id="elec-rate-note" className="mt-1.5 text-amber-700">
+                  Cao hơn giá bán lẻ bậc cao nhất ({formatVND(ELECTRICITY_RATE_CAP)}/kWh). Thu tiền điện
+                  cao hơn giá bán lẻ có thể bị phạt 20–30 triệu theo NĐ 133/2026. Đối chiếu với hóa đơn
+                  EVN; các khoản điện dùng chung, bơm nước, vệ sinh nên ghi thành phí dịch vụ riêng
+                  trong hợp đồng.
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">
@@ -4374,6 +4388,13 @@ export function App() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
+        <div
+          role="note"
+          className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900"
+        >
+          <strong>Bản demo.</strong> Dữ liệu chỉ lưu trên trình duyệt này. Không nhập họ tên, SĐT hay
+          CCCD của khách thuê thật.
+        </div>
         {/* TOPBAR */}
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">

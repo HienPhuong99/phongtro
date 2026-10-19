@@ -79,7 +79,7 @@ npm run deploy
 
 ### 4. Bật đồng bộ Google Sheets (mã `SYNC_TOKEN`)
 Apps Script chỉ đọc/ghi dữ liệu khi có mã đồng bộ dùng chung; chưa cấu hình mã thì mọi yêu cầu dữ liệu đều bị từ chối.
-1. Mở Google Sheets → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)** (hoặc chạy `setupSyncToken()` trong trình soạn thảo Apps Script). Mã được lưu trong *Script Properties*, không nằm trong repo.
+1. Mở Google Sheets → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)**. Mã được lưu trong *Script Properties*, không nằm trong repo.
 2. Trên Web App: **Cài đặt → Kết nối & Đồng bộ Google Sheets → Mã đồng bộ**, dán mã rồi bấm **Đồng bộ ngay**. Mã chỉ lưu trong `localStorage` của trình duyệt đó.
 3. API (body JSON gửi dạng `text/plain`, luôn kèm `token`): `syncState` (kèm `schema: "quanlyphongtro-web-v1"` và `state`), `getState`, `resetSeed`. `GET ?action=getState&token=...` cũng dùng được. `?action=init` đã bị bỏ — nạp dữ liệu mẫu từ menu trên Google Sheets.
 4. Đổi mã: xoá khóa `SYNC_TOKEN` trong *Project Settings → Script Properties* rồi chạy lại bước 1.

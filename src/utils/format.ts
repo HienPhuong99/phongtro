@@ -83,3 +83,42 @@ export function removeAccents(str: string): string {
     .replace(/Đ/g, 'D')
     .toLowerCase();
 }
+
+// Ngày "hôm nay" của bộ dữ liệu demo (toàn bộ dữ liệu mẫu xoay quanh kỳ 10/2026)
+export const APP_TODAY = '11/10/2026';
+
+/** Đổi 'DD/MM/YYYY' thành Date (giờ địa phương); trả về null nếu sai định dạng hoặc ngày không tồn tại. */
+export function parseDateVN(value: string): Date | null {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  if (!m) return null;
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(y, mo - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+  return date;
+}
+
+/** Số ngày từ `from` tới `to` (DD/MM/YYYY); âm nếu `to` đã qua. Sai định dạng trả về 0. */
+export function daysBetweenVN(from: string, to: string): number {
+  const a = parseDateVN(from);
+  const b = parseDateVN(to);
+  if (!a || !b) return 0;
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+/** 'DD/MM/YYYY' -> 'YYYY-MM-DD' (giá trị của <input type="date">). */
+export function vnToIsoDate(value: string): string {
+  const d = parseDateVN(value);
+  if (!d) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD' -> 'DD/MM/YYYY'. */
+export function isoToVnDate(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+/** Date -> 'DD/MM/YYYY'. */
+export function formatDateVN(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}

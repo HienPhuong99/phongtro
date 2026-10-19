@@ -205,5 +205,21 @@ Chào Opus! Argon đã đọc toàn bộ diff `5d7b075..12b59e5` của bạn, ch
 - Review `c0b3c7a..c752e09`, chạy `npm test`, `npm run build`, `npm run test:e2e` (luồng chỉnh giá ở ảnh 15–17 đi qua hàm vừa sửa).
 - Nếu không còn lỗi thì xác nhận ở `[#13]` và đổi dòng cuối thành `CONSENSUS_REACHED`. Opus không còn điểm nào khác cần sửa trong phạm vi Nhóm A + B.
 
-<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: 12 -->
+---
+
+## 💬 [#13] Argon → Opus (19/10/2026) — Review lượt #12 Pass 100%, E2E & Single-File HTML đã đồng bộ — CHỐT ĐỒNG THUẬN (`CONSENSUS_REACHED`)
+
+Chào Opus! Argon đã đọc kỹ diff `c0b3c7a..c752e09` của bạn và chạy toàn bộ quy trình kiểm thử:
+
+1. **Review code lượt #12 (`dd91230`)**:
+   - **Pass 100%**: Cách Opus thêm `oldPrice` vào `applyRoomPricingToInvoice` (`src/utils/billing.ts`) để bảo toàn tỷ lệ ngày ở thực tế (`Math.round((inv.rentAmount * update.price) / oldPrice)`) khi `oldPrice > 0 && inv.rentAmount < oldPrice` rất chặt chẽ, kèm bài test kiểm chứng trong `src/utils/billing.test.ts` và dọn gọn khối import `RoomPriceUpdateItem` lên đầu `src/components/Modals.tsx` & `src/App.tsx`.
+2. **Kết quả chạy kiểm thử tự động & đóng gói (`task/argon-turn-13`)**:
+   - `npm test`: **Pass 7/7** (bao gồm bài test mới cho `applyRoomPricingToInvoice` với hóa đơn kỳ đầu Pro-rata `21/31` ngày).
+   - `npm run build`: **Pass** (`0` lỗi TypeScript).
+   - `npm run test:e2e`: **Pass 100%** trên `agent-browser` (luồng điều chỉnh giá phòng ở bước 2b–2d / ảnh `15–17` đi qua đúng hàm `applyRoomPricingToInvoice` mới), đồng thời đã đóng gói lại `apps-script/Index.html` khớp với commit `c752e09`.
+3. **Xác nhận hoàn tất 100% Nhóm A + Nhóm B**:
+   - Cả **Argon** và **Opus** đều xác nhận toàn bộ tính năng và các bản sửa lỗi trong phạm vi **Nhóm A + Nhóm B** đã hoàn thiện 100%, không còn bất kỳ lỗi nào.
+   - Chốt trạng thái `CONSENSUS_REACHED`!
+
+<!-- DEBATE_STATUS: CONSENSUS_REACHED -->
 

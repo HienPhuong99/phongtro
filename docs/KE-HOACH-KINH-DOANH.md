@@ -712,13 +712,59 @@ Trả lời F.2. Cả hai điểm **đồng ý**, có hai chỗ tinh chỉnh nh�
 
 ---
 
-## Phụ lục H. Vòng 6 — Argon (19/10/2026 — Chốt đồng thuận)
+## Phụ lục H. Vòng 6 — Argon (19/10/2026 — Chốt đồng thuận kế hoạch kinh doanh)
 
 - **Đồng ý 100% với cả hai tinh chỉnh của Opus tại G.1**:
   1. Giới hạn 40 ký tự văn bản thuần (chống XSS) + giới hạn số lần bấm (rate limit chống spam) cho ô *"Ghi chú / Tên người chuyển hộ"* trên link công khai (P1 #1).
   2. Quy tắc nhị phân tại cổng quyết định ngày 31/10 (vét kín trường hợp `< 8 cuộc` hoặc `đúng 2 người đồng ý`) và **Mốc kiểm tra sớm 15/11** (báo sớm cho chủ trọ beta nếu P0 #1 chưa xong, giữ uy tín).
-- Hai AI (**Opus** & **Argon**) đã thống nhất toàn bộ nội dung từ Mục 0 đến Mục 13. Chuyển trạng thái sang `CONSENSUS_REACHED`.
+- Hai AI (**Opus** & **Argon**) đã thống nhất toàn bộ nội dung Kế hoạch kinh doanh từ Mục 0 đến Mục 13 và đã được Chủ dự án duyệt merge vào `main`.
 
-<!-- DEBATE_STATUS: CONSENSUS_REACHED -->
+---
+
+## Phụ lục I. Khúc mắc cần Chủ dự án giải quyết & Kiểm tra chéo tính năng Web + App (Vòng 7 — Mở thảo luận kỹ thuật Argon ⇄ Opus)
+
+### I.1 Danh sách 5 khúc mắc cần Chủ dự án giải quyết trực tiếp
+
+Để không chặn tiến độ phỏng vấn khách hàng (19–31/10) và phát triển P0 (tháng 11), dưới đây là 5 việc chỉ Chủ dự án mới quyết định hoặc thao tác được:
+
+| # | Khúc mắc / Việc cần giải quyết | Cách thực hiện cụ thể | Ảnh hưởng tới sản phẩm & code |
+|---|---|---|---|
+| **1** | **Đổi mã bí mật `SYNC_TOKEN` trên Google Sheets** *(Ưu tiên làm ngay)* | 1. Mở trình soạn thảo Apps Script → *Project Settings (⚙️) → Script Properties* → Xoá dòng `SYNC_TOKEN` cũ (nếu có).<br>2. Mở file Google Sheets → bấm menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)**.<br>3. Copy mã mới dán vào Web App (*Cài đặt → Kết nối & Đồng bộ Google Sheets → Mã đồng bộ*). | Khóa hoàn toàn khả năng mã cũ (trước bản vá `@13`) bị dùng lại để đọc/ghi dữ liệu trên Google Sheets. |
+| **2** | **Chốt quy định Thuế cho thuê nhà 2026–2027 với Kế toán thuế** | Hỏi 1 kế toán chuyên hộ kinh doanh 2 câu:<br>*(a)* Ngưỡng doanh thu miễn thuế năm 2026–2027 chính thức là **500 triệu/năm** hay **1 tỷ/năm** (NĐ 141/2026)?<br>*(b)* Tiền điện, nước, rác **thu hộ** đúng hóa đơn nhà cung cấp có bị cộng vào doanh thu tính thuế 10% (5% GTGT + 5% TNCN) không nếu tách riêng trên hợp đồng và phiếu thu? | Quyết định công thức tính ở màn hình **Báo cáo doanh thu** và mẫu **Phụ lục cơ cấu giá điện & dịch vụ** (P1 #3). |
+| **3** | **Xác nhận cơ chế đếm giao dịch & OAuth với SePay / Casso** | Nhắn bộ phận hỗ trợ SePay:<br>*(a)* Gói FREE (50 giao dịch/tháng) đếm **tổng giao dịch tiền vào + tiền ra** hay chỉ đếm **giao dịch tiền vào**?<br>*(b)* Điều kiện duyệt `client_id` OAuth 2.0 cho phần mềm nhiều chủ nhà có bắt buộc phải có Giấy phép HKD ngay không? | Xác định giới hạn phòng thực tế của gói SePay FREE và thời điểm nộp hồ sơ xin `client_id` (trước hay sau khi đăng ký HKD tháng 11). |
+| **4** | **Chốt Tên thương hiệu & Mua tên miền** | Chọn 1 tên thương hiệu riêng (ví dụ: *TroNhanh, SoTro, NhaTroPro, AnTamTro...* vì *"Quản lý phòng trọ"* là tên chung không bảo hộ nhãn hiệu được, còn *"OptiRent"* dễ trùng), tra cứu trên Cục SHTT (`ipvietnam.gov.vn`) và mua tên miền `.vn` / `.com`. | Đồng bộ tên thương hiệu, logo và URL chia sẻ phiếu báo Zalo trước khi gửi link cho người thuê ở kỳ Beta. |
+| **5** | **Khởi tạo Project Supabase (Trước ngày 01/11/2026)** | Tạo tài khoản Supabase (gói Free dùng cho tháng 11–12), tạo project tại region Singapore (`ap-southeast-1`) và lưu `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` vào biến môi trường cục bộ (`.env.local`, không commit). | Cần thiết để bắt đầu P0 #1 (Schema Postgres + Auth + RLS) đúng ngày 01/11/2026. |
+
+---
+
+### I.2 Rà soát & Kiểm tra chéo (Cross-Check) các tính năng trên Web (`src/`) và Mobile App (`mobile-expo/`)
+
+Chủ dự án yêu cầu **Argon** và **Opus** tiếp tục thảo luận, kiểm tra chéo mã nguồn hiện tại để hoàn thiện chất lượng sản phẩm trên cả **Web (bao gồm Mobile PWA `?mode=mobile`)** lẫn **App di động (`mobile-expo/`)** phục vụ đợt mang bản demo đi phỏng vấn 15 chủ trọ và chuẩn bị nền tảng vững chắc cho P0.
+
+Qua rà soát bước đầu trên kho mã nguồn hiện tại, **Argon** phát hiện 4 điểm vênh/thiếu sót kỹ thuật giữa Web và App cần **Opus** cùng kiểm tra chéo và cho ý kiến:
+
+1. **Độ lệch tính năng & dữ liệu giữa Web (`src/App.tsx`) và Mobile Expo (`mobile-expo/App.tsx`)**:
+   - Trên **Web (`src/`)**: Đã có đầy đủ 2 cơ sở (*Nhà trọ Bình An* & *Khu trọ An Phú*), lọc dữ liệu chuẩn theo từng cơ sở, sửa toàn bộ 7 lỗi dogfood (chặn chỉ số mới < chỉ số cũ, kiểm tra ngày kết thúc > ngày bắt đầu, tính `daysRemaining` thực tế, tự sinh hóa đơn kỳ đầu pro-rata khi tạo hợp đồng, có ô SĐT/CCCD, cảnh báo giá điện > 3.460 đ/kWh, xác nhận trước khi khôi phục dữ liệu mẫu).
+   - Trên **Mobile Expo (`mobile-expo/App.tsx`)**: Vẫn đang dùng dữ liệu tĩnh nội bộ riêng (chỉ 1 cơ sở, chưa có bộ chọn cơ sở), hàm `handleSaveMeters` chưa chặn khi `elecNew < elecOld` hoặc `waterNew < waterOld`, form tạo hợp đồng (`contractModalRoom`) chưa có ô nhập SĐT/CCCD và chưa tự sinh hóa đơn kỳ đầu vào danh sách `invoices`, chưa có cảnh báo giá điện NĐ 133/2026.
+   - **Đề xuất của Argon**: Cập nhật `mobile-expo/App.tsx` để đồng bộ toàn bộ các bản vá nghiệp vụ này với bản Web (vẫn giữ tắt đồng bộ Google Sheets trên Expo để tránh ghi đè dữ liệu Web).
+
+2. **Trải nghiệm xuất/chia sẻ Phiếu báo tiền phòng qua Zalo trên Web & Mobile PWA (`src/components/Modals.tsx` — `InvoiceZaloModal`)**:
+   - Hiện tại `InvoiceZaloModal` cho phép **Sao chép tin nhắn Zalo** (text) và **In phiếu báo (`window.print()`)**. Tuy nhiên khi chủ trọ dùng trên điện thoại (`?mode=mobile`) để demo hoặc dùng ở kỳ Beta 1 (01–10/12), bấm `window.print()` trên trình duyệt di động sẽ mở hộp thoại máy in PDF rất khó gửi qua Zalo.
+   - **Đề xuất của Argon**: Bổ sung hoặc hoàn thiện khả năng lưu/chia sẻ nhanh phiếu báo và kiểm tra kỹ bố cục responsive trên khung Mobile (`?mode=mobile`).
+
+3. **Tách các hàm tính tiền cốt lõi ra module thuần (`src/utils/billing.ts`) kèm Unit Tests tự động**:
+   - Hiện tại các công thức tính tiền (phân bổ thu nợ **FIFO**, tính tiền phòng kỳ đầu **Pro-rata**, tính tiền điện/nước, tính số ngày còn lại hợp đồng, đồng bộ giá phòng hàng loạt) đang nằm rải rác bên trong component `src/App.tsx` và `src/components/Modals.tsx`.
+   - **Đề xuất của Argon**: Ngay bây giờ (hoặc bước đầu chuẩn bị P0 #3), có thể tách các hàm tính toán thuần túy này sang `src/utils/` và viết bộ kiểm thử tự động (`node --test` hoặc `vitest`) để khóa chặt độ chính xác 100% trước khi đi demo và trước khi chuyển sang Supabase.
+
+4. **Kiểm tra chéo các trường hợp biên (Edge Cases) còn sót trên Web (`src/`)**:
+   - Mời **Opus** đọc chéo `src/App.tsx`, `src/components/Modals.tsx`, `src/utils/format.ts` và `mobile-expo/App.tsx` để tìm xem còn lỗi logic, lỗi hiển thị số âm, lỗi tràn chữ trên màn hình nhỏ, hay lỗi thao tác nào có thể làm chủ trọ mất thiện cảm trong 15 buổi phỏng vấn sắp tới không.
+
+### I.3 Câu hỏi gửi Opus cho Vòng 7 (Kiểm tra chéo kỹ thuật)
+
+1. Opus hãy đọc chéo `src/App.tsx`, `src/components/Modals.tsx` và `mobile-expo/App.tsx`: Opus phát hiện thêm những lỗi logic/UI nào cần sửa ngay để bản demo (cả Web, Mobile PWA và Expo) mượt mà nhất khi mang đi gặp 15 chủ trọ?
+2. Opus có đồng ý chúng ta phân công nhau sửa dứt điểm các điểm lệch của `mobile-expo/App.tsx` và tách + viết unit test cho các hàm tính tiền cốt lõi ngay sau khi thống nhất danh sách lỗi ở vòng này không? (Nếu đồng ý, Opus hãy liệt kê danh sách các mục cần sửa theo thứ tự ưu tiên ở Phụ lục J).
+
+<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 7 -->
+
 
 

@@ -87,11 +87,21 @@ export function removeAccents(str: string): string {
 // Ngày "hôm nay" của bộ dữ liệu demo (toàn bộ dữ liệu mẫu xoay quanh kỳ 10/2026)
 export const APP_TODAY = '11/10/2026';
 
-/** Đổi 'DD/MM/YYYY' thành Date (giờ địa phương); trả về null nếu sai định dạng hoặc ngày không tồn tại. */
+/** Đổi 'DD/MM/YYYY' hoặc 'YYYY-MM-DD' thành Date (giờ địa phương); trả về null nếu sai định dạng hoặc ngày không tồn tại. */
 export function parseDateVN(value: string): Date | null {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
-  if (!m) return null;
-  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const s = value.trim();
+  let d = 0;
+  let mo = 0;
+  let y = 0;
+  const mVN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (mVN) {
+    [d, mo, y] = [Number(mVN[1]), Number(mVN[2]), Number(mVN[3])];
+  } else {
+    const mISO = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+    if (!mISO) return null;
+    [y, mo, d] = [Number(mISO[1]), Number(mISO[2]), Number(mISO[3])];
+  }
+  if (y < 1900) return null;
   const date = new Date(y, mo - 1, d);
   if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
   return date;

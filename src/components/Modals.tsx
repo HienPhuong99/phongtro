@@ -33,6 +33,10 @@ import {
   vnToIsoDate,
   isoToVnDate,
 } from '../utils/format';
+import {
+  calculateFirstPeriodProRata,
+  calculateInvoicePayable,
+} from '../utils/billing';
 
 // ============================================================================
 // 1. MODAL TẠO HỢP ĐỒNG MỚI
@@ -113,24 +117,15 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
   }, [startDate, endDate]);
 
   // Tính toán kỳ đầu tự động chia theo số ngày ở thật (ví dụ 11/10 -> 31/10 = 21/31 ngày = 1.693.548 đ)
-  const proRataInfo = useMemo(() => {
-    const start = parseDateVN(startDate) || new Date(2026, 9, 11);
-    const day = start.getDate();
-    const month = start.getMonth() + 1;
-    const year = start.getFullYear();
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const stayDays = Math.max(1, daysInMonth - day + 1);
-    const firstAmount =
-      billingCycle === 'calendar_month'
-        ? Math.round((rentAmount * stayDays) / daysInMonth)
-        : rentAmount;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return {
-      periodText: `${pad(day)}/${pad(month)} → ${pad(daysInMonth)}/${pad(month)}`,
-      daysText: `${stayDays}/${daysInMonth} ngày`,
-      firstAmount,
-    };
-  }, [startDate, rentAmount, billingCycle]);
+  const proRataInfo = useMemo(
+    () =>
+      calculateFirstPeriodProRata({
+        startDate,
+        rentAmount,
+        billingCycle,
+      }),
+    [startDate, rentAmount, billingCycle]
+  );
 
   if (!isOpen) return null;
 
@@ -990,7 +985,7 @@ export const InvoiceZaloModal: React.FC<InvoiceZaloModalProps> = ({
   if (!isOpen || !invoice) return null;
 
   // Phải trả = phần còn thiếu của kỳ này (đã trừ tiền khách trả trước) + nợ các kỳ cũ
-  const grandTotal = Math.max(0, invoice.totalAmount - invoice.paidAmount) + previousDebtAmount;
+  const { grandTotal } = calculateInvoicePayable(invoice, previousDebtAmount);
   const qrUrl = getVietQrUrl({
     bankBin: property.bankBin,
     bankAccount: property.bankAccount,
@@ -1863,16 +1858,8 @@ export const TempResidenceModal: React.FC<TempResidenceModalProps> = ({
 // ============================================================================
 // 6. MODAL ĐIỀU CHỈNH GIÁ THUÊ & BẢNG GIÁ PHÒNG (TỪNG PHÒNG + HÀNG LOẠT)
 // ============================================================================
-export interface RoomPriceUpdateItem {
-  roomCode: string;
-  price: number;
-  deposit: number;
-  trashFee: number;
-  internetFee: number;
-  vehicleCount: number;
-  status: Room['status'];
-  notes?: string;
-}
+import type { RoomPriceUpdateItem } from '../types';
+export type { RoomPriceUpdateItem };
 
 interface RoomPricingModalProps {
   isOpen: boolean;

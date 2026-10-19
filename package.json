@@ -12,6 +12,7 @@
     "seed:sheets": "node scripts/populate-sheets-drive.mjs",
     "deploy:web": "node scripts/deploy-web.mjs",
     "deploy": "node scripts/deploy-all.mjs",
+    "test": "node --test src/utils/*.test.ts",
     "test:e2e": "node scripts/verify-e2e.mjs"
   },
   "dependencies": {

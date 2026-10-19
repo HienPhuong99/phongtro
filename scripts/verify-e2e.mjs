@@ -23,7 +23,7 @@ function ab(args) {
 }
 
 function clickBtn(label) {
-  const js = `(() => { const modalBtns = Array.from(document.querySelectorAll('.fixed.inset-0 button')); const inModal = modalBtns.find(b => b.innerText && b.innerText.includes('${label}')); if (inModal) { inModal.click(); return 'modal:${label}'; } const btns = Array.from(document.querySelectorAll('button')); const target = btns.find(b => b.innerText && b.innerText.includes('${label}')); if (target) { target.click(); return 'page:${label}'; } return false; })()`;
+  const js = `(() => { const modalBtns = Array.from(document.querySelectorAll('.fixed.inset-0 button')); const inModal = modalBtns.find(b => b.innerText && b.innerText.includes('${label}')); if (inModal) { inModal.click(); return 'modal:${label}'; } const btns = Array.from(document.querySelectorAll('button')); const target = btns.find(b => b.innerText && b.innerText.includes('${label}')); if (target) { target.click(); return 'page:${label}'; } throw new Error('Không tìm thấy nút: ${label}'); })()`;
   ab(`eval "${js}"`);
 }
 
@@ -34,6 +34,11 @@ function closeTopModal() {
 
 async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+
+  if (!process.env.VERIFY_URL) {
+    console.log('=== ĐỒNG BỘ BẢN BUILD SINGLE-FILE (apps-script/Index.html) TRƯỚC KHI CHẠY E2E ===');
+    execSync('node scripts/build-singlefile.mjs', { cwd: ROOT_DIR, stdio: 'inherit' });
+  }
 
   const singleFileHtmlPath = path.join(ROOT_DIR, 'apps-script', 'Index.html').replace(/\\/g, '/');
   const targetUrl = process.env.VERIFY_URL || `file:///${singleFileHtmlPath}`;
@@ -56,11 +61,11 @@ async function main() {
   );
   ab(`wait 300`);
   ab(
-    `eval "(() => { const text = document.body.innerText; if (text.includes('65.622.900')) throw new Error('Bug 1: Công nợ cơ sở Bình Thạnh vẫn hiển thị ở cơ sở An Phú'); return 'VERIFIED_BUG_1_PROPERTY_FILTER'; })()"`
+    `eval "(() => { const text = document.body.innerText; if (text.includes('65.622.900')) throw new Error('Bug 1: Công nợ cơ sở Bình An vẫn hiển thị ở cơ sở An Phú'); return 'VERIFIED_BUG_1_PROPERTY_FILTER'; })()"`
   );
-  // Chuyển lại về cơ sở Bình Thạnh
+  // Chuyển lại về cơ sở Bình An (prop-binh-an)
   ab(
-    `eval "(() => { const sel = document.querySelector('select[aria-label=\\"Chọn cơ sở nhà trọ\\"]'); sel.value = 'prop-binh-thanh'; sel.dispatchEvent(new Event('change', { bubbles: true })); return 'SWITCHED_BACK_BINH_THANH'; })()"`
+    `eval "(() => { const sel = document.querySelector('select[aria-label=\\"Chọn cơ sở nhà trọ\\"]'); sel.value = 'prop-binh-an'; sel.dispatchEvent(new Event('change', { bubbles: true })); return 'SWITCHED_BACK_BINH_AN'; })()"`
   );
   ab(`wait 300`);
 
@@ -159,10 +164,13 @@ async function main() {
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '13-mobile-preview.png')}"`);
   clickBtn('Mở trên điện thoại');
   ab(`wait 500`);
+  ab(
+    `eval "(() => { const modal = document.querySelector('.fixed.inset-0'); if (!modal) throw new Error('Modal Mở trên điện thoại chưa mở'); const text = modal.innerText; if (!text.includes('hienphuong99.github.io/phongtro/?mode=mobile')) throw new Error('Modal thiếu URL PWA Mobile'); if (text.includes('192.168.0.23')) throw new Error('Modal vẫn còn chứa IP LAN nội bộ 192.168.0.23'); return 'VERIFIED_PHONE_QR_MODAL_PWA'; })()"`
+  );
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-phone-qr-modal.png')}"`);
 
   ab(`close`);
-  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH & 7 BUG FIXES) ===');
+  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH & KIỂM ĐỊNH ĐẦY ĐỦ) ===');
 }
 
 main().catch((err) => {

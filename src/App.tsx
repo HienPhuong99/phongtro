@@ -87,6 +87,18 @@ const ELECTRICITY_RATE_CAP = 3460;
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
 const MOBILE_WEB_URL = 'https://hienphuong99.github.io/phongtro/?mode=mobile';
+// Thanh cuộn ngang trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
+const MOBILE_NAV: { id: NavTab; label: string }[] = [
+  { id: 'overview', label: 'Tổng quan' },
+  { id: 'calendar', label: 'Lịch' },
+  { id: 'rooms', label: 'Phòng' },
+  { id: 'tenants', label: 'Khách thuê' },
+  { id: 'contracts', label: 'Hợp đồng' },
+  { id: 'invoices', label: 'Hóa đơn' },
+  { id: 'finance-debts', label: 'Tài chính' },
+  { id: 'reports', label: 'Báo cáo' },
+  { id: 'settings', label: 'Cài đặt' },
+];
 export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
 
@@ -2997,7 +3009,7 @@ export function App() {
                             – {formatVND(c.depositDeducted || 0)}
                           </td>
                           <td className="py-3.5 px-3 text-right font-extrabold text-slate-900">
-                            {formatVND(c.depositRefundAmount || 0)}
+                            {formatVND(getContractRefundAmount(c))}
                           </td>
                           <td className="py-3.5 px-3 text-slate-600">
                             <span className="font-mono">{c.refundBankAccount}</span>{' '}
@@ -4334,17 +4346,7 @@ export function App() {
 
           {/* Mobile secondary sub-tabs pill bar (đầy đủ 9 phân hệ như menu trái trên máy tính) */}
           <div className="flex md:hidden items-center gap-1 overflow-x-auto w-full pt-1">
-            {[
-              { id: 'overview', label: 'Tổng quan' },
-              { id: 'calendar', label: 'Lịch' },
-              { id: 'rooms', label: 'Phòng' },
-              { id: 'tenants', label: 'Khách thuê' },
-              { id: 'contracts', label: 'Hợp đồng' },
-              { id: 'invoices', label: 'Hóa đơn' },
-              { id: 'finance-debts', label: 'Tài chính' },
-              { id: 'reports', label: 'Báo cáo' },
-              { id: 'settings', label: 'Cài đặt' },
-            ].map((m) => {
+            {MOBILE_NAV.map((m) => {
               const isPillActive =
                 m.id === 'finance-debts'
                   ? activeTab.startsWith('finance-')
@@ -4353,7 +4355,7 @@ export function App() {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setActiveTab(m.id as NavTab)}
+                  onClick={() => setActiveTab(m.id)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${
                     isPillActive
                       ? 'bg-blue-600 text-white'
@@ -4418,17 +4420,7 @@ export function App() {
 
               {/* Thanh cuộn ngang 9 phân hệ ngay trong Khung Mobile */}
               <div className="bg-white border-b border-slate-200/80 px-3 py-2 flex items-center gap-1 overflow-x-auto shrink-0">
-                {[
-                  { id: 'overview', label: 'Tổng quan' },
-                  { id: 'calendar', label: 'Lịch' },
-                  { id: 'rooms', label: 'Phòng' },
-                  { id: 'tenants', label: 'Khách thuê' },
-                  { id: 'contracts', label: 'Hợp đồng' },
-                  { id: 'invoices', label: 'Hóa đơn' },
-                  { id: 'finance-debts', label: 'Tài chính' },
-                  { id: 'reports', label: 'Báo cáo' },
-                  { id: 'settings', label: 'Cài đặt' },
-                ].map((m) => {
+                {MOBILE_NAV.map((m) => {
                   const isPillActive =
                     m.id === 'finance-debts'
                       ? activeTab.startsWith('finance-')
@@ -4437,7 +4429,7 @@ export function App() {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => setActiveTab(m.id as NavTab)}
+                      onClick={() => setActiveTab(m.id)}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition ${
                         isPillActive
                           ? 'bg-blue-600 text-white'

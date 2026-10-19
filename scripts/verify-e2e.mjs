@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Script kiểm thử E2E tự động bằng agent-browser cho hệ thống Quản lý phòng trọ
- * Kiểm tra toàn bộ 8 màn hình, giao diện Mobile, Mã QR Expo Go, điều chỉnh giá thuê phòng,
+ * Kiểm tra toàn bộ 8 màn hình, giao diện Mobile, mã QR mở trên điện thoại, điều chỉnh giá thuê phòng,
  * và xác thực toàn bộ 7 lỗi giao diện/nghiệp vụ đã được khắc phục triệt để.
  */
 
@@ -151,15 +151,15 @@ async function main() {
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '12-reports.png')}"`);
 
-  // 8. Kiểm tra chế độ Mobile & Modal Mã QR Expo Go
+  // 8. Kiểm tra chế độ Mobile & Modal mã QR mở trên điện thoại
   clickBtn('Khung Mobile');
   ab(`wait 300`);
   clickBtn('Phòng');
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '13-mobile-preview.png')}"`);
-  clickBtn('Chạy Expo Go');
+  clickBtn('Mở trên điện thoại');
   ab(`wait 500`);
-  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-expo-go-qr-modal.png')}"`);
+  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-phone-qr-modal.png')}"`);
 
   ab(`close`);
   console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH & 7 BUG FIXES) ===');

@@ -78,6 +78,7 @@ const ELECTRICITY_RATE_CAP = 3460;
 // URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
+const MOBILE_WEB_URL = 'https://hienphuong99.github.io/phongtro/?mode=mobile';
 export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
 
@@ -158,15 +159,11 @@ export function App() {
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'mobile'
   );
-  const [isExpoQrModalOpen, setIsExpoQrModalOpen] = useState<boolean>(false);
-  const [expoQrDataUrl, setExpoQrDataUrl] = useState<string>('');
+  const [isPhoneQrOpen, setIsPhoneQrOpen] = useState<boolean>(false);
   const [pwaQrDataUrl, setPwaQrDataUrl] = useState<string>('');
 
   useEffect(() => {
-    QRCode.toDataURL('exp://192.168.0.23:8081', { width: 220, margin: 1 })
-      .then(setExpoQrDataUrl)
-      .catch(() => {});
-    QRCode.toDataURL('https://hienphuong99.github.io/phongtro/?mode=mobile', { width: 220, margin: 1 })
+    QRCode.toDataURL(MOBILE_WEB_URL, { width: 220, margin: 1 })
       .then(setPwaQrDataUrl)
       .catch(() => {});
   }, []);
@@ -329,7 +326,7 @@ export function App() {
         setCollectModalInvoice(null);
         setIsTempResidenceOpen(false);
         setIsRoomPricingOpen(false);
-        setIsExpoQrModalOpen(false);
+        setIsPhoneQrOpen(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -2019,6 +2016,13 @@ export function App() {
         removeAccents(t.roomCode).includes(q)
       );
     });
+    const filteredVehicles = vehicles.filter((v) => {
+      if (!tenantSearch.trim()) return true;
+      const q = removeAccents(tenantSearch.trim()).replace(/[\s.-]/g, '');
+      return [v.plate, v.ownerName, v.phone, v.roomCode].some((f) =>
+        removeAccents(f).replace(/[\s.-]/g, '').includes(q)
+      );
+    });
 
     return (
       <div className="space-y-6">
@@ -2224,9 +2228,10 @@ export function App() {
                             </button>
                             <button
                               type="button"
-                              onClick={() =>
-                                setTenants((prev) => prev.filter((x) => x.id !== t.id))
-                              }
+                              onClick={() => {
+                                if (window.confirm(`Xóa khách ${t.name} (phòng ${t.roomCode})?`))
+                                  setTenants((prev) => prev.filter((x) => x.id !== t.id));
+                              }}
                               className="hover:text-rose-600"
                               title="Xóa khách"
                             >
@@ -2281,7 +2286,7 @@ export function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {vehicles.map((v) => (
+                  {filteredVehicles.map((v) => (
                     <tr key={v.id} className="hover:bg-slate-50">
                       <td className="py-3.5 px-5 font-bold text-slate-900">
                         {v.plate}
@@ -2311,8 +2316,12 @@ export function App() {
       (c) => c.daysRemaining <= 60
     );
 
+    const debtRoomCodes = new Set(allUnpaidInvoices.map((i) => i.roomCode));
+    const debtContracts = activeContracts.filter((c) => debtRoomCodes.has(c.roomCode));
+
     const displayedContracts = contracts.filter((c) => {
       if (contractFilter === 'expiring') return c.status === 'active' && c.daysRemaining <= 60;
+      if (contractFilter === 'debt') return debtContracts.includes(c);
       if (contractFilter === 'terminated') return c.status === 'terminated';
       if (contractFilter === 'ended') return c.status === 'ended';
       return c.status === 'active';
@@ -2352,7 +2361,7 @@ export function App() {
             {
               id: 'debt',
               label: 'Còn nợ',
-              count: activeContracts.length,
+              count: debtContracts.length,
               dot: 'bg-rose-500',
             },
             {
@@ -3238,10 +3247,7 @@ export function App() {
                 {currentProperty.bankAccount})
               </div>
               <div className="text-2xl font-extrabold text-blue-600">
-                {formatVND(
-                  (currentProperty.id === 'prop-binh-thanh' ? 95341400 : 0) +
-                    collectedToday
-                )}
+                {formatVND(collectedToday)}
               </div>
               <div className="text-[11px] text-slate-400">
                 Tự động cộng khi khách chuyển khoản VietQR
@@ -3250,7 +3256,7 @@ export function App() {
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
               <div className="text-xs text-slate-500">Quỹ Tiền mặt tại nhà trọ</div>
               <div className="text-2xl font-extrabold text-emerald-600">
-                {formatVND(currentProperty.id === 'prop-binh-thanh' ? 3230000 : 0)}
+                {formatVND(0)}
               </div>
               <div className="text-[11px] text-slate-400">
                 Dùng chi bảo trì, sửa chữa lặt vặt và vệ sinh định kỳ
@@ -3264,26 +3270,46 @@ export function App() {
 
   // 7. BÁO CÁO KINH DOANH
   const renderReports = () => {
-    const isMainProperty = currentProperty.id === 'prop-binh-thanh';
-    const baseRevenue = isMainProperty
-      ? 105191400
-      : invoices.reduce((s, i) => s + i.paidAmount, 0);
-    const baseExpense = isMainProperty
-      ? 6620000
-      : transactions
-          .filter((t) => t.type === 'expense')
-          .reduce((s, t) => s + t.amount, 0);
-    const extraToday =
-      isMainProperty && collectedToday > 6961800 ? collectedToday - 6961800 : 0;
-    const totalRevenue = baseRevenue + extraToday;
-    const totalExpense = baseExpense;
+    const totalRevenue = invoices.reduce((s, i) => s + i.paidAmount, 0);
+    const totalExpense = transactions
+      .filter((t) => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
     const netProfit = totalRevenue - totalExpense;
-    const totalInvoiced = isMainProperty
-      ? 141498000
-      : invoices
-          .filter((i) => i.status !== 'draft')
-          .reduce((s, i) => s + i.totalAmount, 0);
-    const totalDebtReport = isMainProperty ? 36306600 : allUnpaidTotalAmount;
+    const totalInvoiced = invoices
+      .filter((i) => i.status !== 'draft')
+      .reduce((s, i) => s + i.totalAmount, 0);
+    const totalDebtReport = allUnpaidTotalAmount;
+    const depositIncome = transactions
+      .filter((t) => t.type === 'income' && t.category === 'Thu tiền cọc')
+      .reduce((s, t) => s + t.amount, 0);
+    const incomeTotal = totalRevenue + depositIncome;
+    const expenseByCategory = Object.entries(
+      transactions
+        .filter((t) => t.type === 'expense')
+        .reduce<Record<string, number>>((m, t) => {
+          m[t.category] = (m[t.category] || 0) + t.amount;
+          return m;
+        }, {})
+    ).sort((a, b) => b[1] - a[1]);
+    const roomStats = Object.values(
+      invoices
+        .filter((i) => i.status !== 'draft')
+        .reduce<Record<string, { code: string; paid: number; debt: number }>>((m, i) => {
+          const r = m[i.roomCode] || (m[i.roomCode] = { code: i.roomCode, paid: 0, debt: 0 });
+          r.paid += i.paidAmount;
+          r.debt += Math.max(0, i.totalAmount - i.paidAmount);
+          return m;
+        }, {})
+    );
+    const bestRooms = roomStats
+      .filter((r) => r.paid > 0)
+      .sort((a, b) => b.paid - a.paid)
+      .slice(0, 3);
+    const watchRooms = roomStats
+      .filter((r) => r.debt > 0)
+      .sort((a, b) => b.debt - a.debt)
+      .slice(0, 3);
+    const pctOf = (v: number, total: number) => (total > 0 ? Math.round((v / total) * 100) : 0);
 
     const maxChartVal = 30000000;
 
@@ -3628,45 +3654,29 @@ export function App() {
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
             <div>
               <h3 className="text-sm font-bold text-slate-900">Nguồn thu</h3>
-              <p className="text-xs text-slate-400">Tổng {formatVND(totalRevenue)}</p>
+              <p className="text-xs text-slate-400">Tổng {formatVND(incomeTotal)}</p>
             </div>
             <div className="space-y-3 text-xs">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-700">Thu tiền hóa đơn</span>
-                  <span className="font-bold text-slate-900">
-                    {formatVND(totalRevenue)} ·{' '}
-                    <span className="text-slate-400">
-                      {totalRevenue > 0 ? '100%' : '0%'}
+              {[
+                ['Thu tiền hóa đơn', totalRevenue],
+                ['Thu tiền cọc', depositIncome],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-slate-700">{label}</span>
+                    <span className="font-bold text-slate-900">
+                      {formatVND(Number(value))} ·{' '}
+                      <span className="text-slate-400">{pctOf(Number(value), incomeTotal)}%</span>
                     </span>
-                  </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-blue-600"
+                      style={{ width: `${pctOf(Number(value), incomeTotal)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-blue-600 ${
-                      totalRevenue > 0 ? 'w-full' : 'w-0'
-                    }`}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-700">Thu tiền cọc</span>
-                  <span className="font-bold text-slate-900">
-                    {isMainProperty ? '9.850.000 đ' : '0 đ'} ·{' '}
-                    <span className="text-slate-400">
-                      {isMainProperty ? '9%' : '0%'}
-                    </span>
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-blue-600 ${
-                      isMainProperty ? 'w-[9%]' : 'w-0'
-                    }`}
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -3676,42 +3686,26 @@ export function App() {
               <p className="text-xs text-slate-400">Tổng {formatVND(totalExpense)}</p>
             </div>
             <div className="space-y-3 text-xs">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-700">Bảo trì/Sửa chữa</span>
-                  <span className="font-bold text-slate-900">
-                    {isMainProperty ? '3.620.000 đ' : '0 đ'} ·{' '}
-                    <span className="text-slate-400">
-                      {isMainProperty ? '55%' : '0%'}
+              {expenseByCategory.length === 0 && (
+                <div className="text-slate-400 py-2">Chưa có khoản chi tại cơ sở này.</div>
+              )}
+              {expenseByCategory.map(([category, value]) => (
+                <div key={category}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-slate-700">{category}</span>
+                    <span className="font-bold text-slate-900">
+                      {formatVND(value)} ·{' '}
+                      <span className="text-slate-400">{pctOf(value, totalExpense)}%</span>
                     </span>
-                  </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-purple-600"
+                      style={{ width: `${pctOf(value, totalExpense)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-purple-600 ${
-                      isMainProperty ? 'w-[55%]' : 'w-0'
-                    }`}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-700">Vệ sinh</span>
-                  <span className="font-bold text-slate-900">
-                    {isMainProperty ? '3.000.000 đ' : '0 đ'} ·{' '}
-                    <span className="text-slate-400">
-                      {isMainProperty ? '45%' : '0%'}
-                    </span>
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full bg-purple-600 ${
-                      isMainProperty ? 'w-[45%]' : 'w-0'
-                    }`}
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -3775,12 +3769,8 @@ export function App() {
               </p>
             </div>
             <div className="space-y-3 text-xs">
-              {isMainProperty ? (
-                [
-                  { code: 'P203', months: 5, debt: 4926300, paid: 12421200, pct: 100 },
-                  { code: 'P104', months: 5, debt: 4602900, paid: 12174600, pct: 96 },
-                  { code: 'P201', months: 5, debt: 4491600, paid: 11888400, pct: 93 },
-                ].map((item, idx) => (
+              {bestRooms.length > 0 ? (
+                bestRooms.map((item, idx) => (
                   <div key={item.code} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -3788,9 +3778,7 @@ export function App() {
                           {idx + 1}
                         </span>
                         <span className="font-bold text-blue-600">{item.code}</span>
-                        <span className="text-slate-400">
-                          · {item.months} tháng · nợ {formatVND(item.debt)}
-                        </span>
+                        <span className="text-slate-400">· nợ {formatVND(item.debt)}</span>
                       </div>
                       <span className="font-bold text-slate-900">
                         {formatVND(item.paid)}
@@ -3799,7 +3787,7 @@ export function App() {
                     <div className="w-full h-1.5 rounded-full bg-slate-100">
                       <div
                         className="h-full rounded-full bg-slate-800"
-                        style={{ width: `${item.pct}%` }}
+                        style={{ width: `${pctOf(item.paid, bestRooms[0].paid)}%` }}
                       />
                     </div>
                   </div>
@@ -3820,42 +3808,23 @@ export function App() {
               </p>
             </div>
             <div className="space-y-3 text-xs">
-              {isMainProperty ? (
-                [
-                  {
-                    code: 'P202',
-                    note: '1 tháng (Phòng đang trống)',
-                    amount: '2.500.000 đ',
-                    pct: 25,
-                  },
-                  {
-                    code: 'P303',
-                    note: '4 tháng · nợ 4.816.400 đ',
-                    amount: '11.233.600 đ',
-                    pct: 82,
-                  },
-                  {
-                    code: 'P204',
-                    note: 'Đang bảo trì sửa chữa',
-                    amount: '2.600.000 đ',
-                    pct: 20,
-                  },
-                ].map((item, idx) => (
+              {watchRooms.length > 0 ? (
+                watchRooms.map((item, idx) => (
                   <div key={item.code} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                        <span className="w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
                           {idx + 1}
                         </span>
                         <span className="font-bold text-blue-600">{item.code}</span>
-                        <span className="text-slate-400">· {item.note}</span>
+                        <span className="text-slate-400">· đã thu {formatVND(item.paid)}</span>
                       </div>
-                      <span className="font-bold text-slate-900">{item.amount}</span>
+                      <span className="font-bold text-rose-600">nợ {formatVND(item.debt)}</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-slate-800"
-                        style={{ width: `${item.pct}%` }}
+                        className="h-full rounded-full bg-rose-500"
+                        style={{ width: `${pctOf(item.debt, watchRooms[0].debt)}%` }}
                       />
                     </div>
                   </div>
@@ -4474,10 +4443,10 @@ export function App() {
 
             <button
               type="button"
-              onClick={() => setIsExpoQrModalOpen(true)}
+              onClick={() => setIsPhoneQrOpen(true)}
               className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1.5"
             >
-              <span>📲 Chạy Expo Go</span>
+              <span>📲 Mở trên điện thoại</span>
             </button>
           </div>
 
@@ -4550,10 +4519,10 @@ export function App() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsExpoQrModalOpen(true)}
+                  onClick={() => setIsPhoneQrOpen(true)}
                   className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition"
                 >
-                  Mã QR Expo
+                  Mã QR
                 </button>
               </div>
             </>
@@ -4650,7 +4619,7 @@ export function App() {
         property={currentProperty}
         previousDebtAmount={zaloPreviousDebt}
         depositHeld={
-          rooms.find((r) => r.code === zaloModalInvoice?.roomCode)?.deposit || 2350000
+          propertyRooms.find((r) => r.code === zaloModalInvoice?.roomCode)?.deposit || 0
         }
         onMarkSentZalo={(invId) =>
           setInvoices((prev) =>
@@ -4685,68 +4654,43 @@ export function App() {
         onSaveRoomPricing={handleSaveRoomPricing}
       />
 
-      {/* EXPO GO & MOBILE PWA MODAL */}
-      {isExpoQrModalOpen && (
+      {/* MÃ QR MỞ BẢN WEB TRÊN ĐIỆN THOẠI */}
+      {isPhoneQrOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 ui-enter">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4 ui-enter">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900">
-                  📲 Chạy thử trên Điện thoại (Expo Go & Mobile PWA)
+                  📲 Mở trên điện thoại
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Hỗ trợ cả Native App trên Expo Go (`mobile-expo/`) và Mobile PWA
+                  Quét bằng Camera hoặc Zalo, không cần cài app
                 </p>
               </div>
               <button
                 type="button"
                 aria-label="Đóng cửa sổ QR"
-                onClick={() => setIsExpoQrModalOpen(false)}
+                onClick={() => setIsPhoneQrOpen(false)}
                 className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600"
               >
                 Đóng
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
-                <div className="text-xs font-bold text-slate-800">1. Native App trên Expo Go</div>
-                {expoQrDataUrl && (
-                  <img
-                    src={expoQrDataUrl}
-                    alt="Expo Go QR"
-                    className="w-36 h-36 mx-auto rounded-xl border border-slate-200 bg-white p-1.5"
-                  />
-                )}
-                <div className="text-[11px] font-mono text-teal-700 bg-teal-50 py-1 px-2 rounded-lg">
-                  exp://192.168.0.23:8081
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Mở ứng dụng <b>Expo Go</b> (Android) hoặc <b>Camera</b> (iOS) để quét
-                </p>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+              {pwaQrDataUrl && (
+                <img
+                  src={pwaQrDataUrl}
+                  alt="Mã QR mở bản web trên điện thoại"
+                  className="w-44 h-44 mx-auto rounded-xl border border-slate-200 bg-white p-1.5"
+                />
+              )}
+              <div className="text-[11px] font-mono text-blue-700 bg-blue-50 py-1 px-2 rounded-lg break-all">
+                {MOBILE_WEB_URL}
               </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
-                <div className="text-xs font-bold text-slate-800">2. Mobile Web PWA</div>
-                {pwaQrDataUrl && (
-                  <img
-                    src={pwaQrDataUrl}
-                    alt="Mobile PWA QR"
-                    className="w-36 h-36 mx-auto rounded-xl border border-slate-200 bg-white p-1.5"
-                  />
-                )}
-                <div className="text-[11px] font-mono text-blue-700 bg-blue-50 py-1 px-2 rounded-lg truncate">
-                  .../phongtro/?mode=mobile
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Mở bằng Safari / Chrome trên điện thoại & chọn <b>Thêm vào MH chính</b>
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-200 text-xs font-mono space-y-1">
-              <div className="text-teal-400 font-bold"># Lệnh khởi chạy Expo Go Server:</div>
-              <div>cd mobile-expo && npx expo start --port 8081</div>
+              <p className="text-[11px] text-slate-500">
+                Mở bằng Safari / Chrome rồi chọn <b>Thêm vào Màn hình chính</b> để dùng như app
+              </p>
             </div>
           </div>
         </div>

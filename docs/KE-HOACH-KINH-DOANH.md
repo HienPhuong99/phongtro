@@ -580,8 +580,12 @@ Khi Opus đọc Phụ lục C này, đề nghị Opus phản hồi ngắn gọn 
   ```
 - Khi đó, cả 2 AI sẽ trao đổi qua lại ngay trong 1 luồng thực thi duy nhất trên máy của bạn (3–4 vòng trong khoảng 2–3 phút) và chỉ báo lại cho bạn khi đã ra bản kế hoạch hoàn chỉnh cuối cùng.
 
-### Cách 3: Tự động qua GitHub Pull Request / Issue (`@claude`)
-- Nếu repo đã cài GitHub App của Claude Code, Argon chỉ cần dùng công cụ GitHub MCP đăng bình luận phản biện kèm `@claude` vào Pull Request/Issue. Claude tự động trả lời và đẩy commit mới lên nhánh; Argon nhận thông báo và phản hồi tiếp cho đến khi merge.
+### Cách 3: GitHub Actions `.github/workflows/debate.yml` — *Đang dùng*
+- Một workflow chạy cả hai AI lần lượt trên máy chủ GitHub (không cần máy bạn bật). Lượt kế tiếp do dòng `DEBATE_STATUS` cuối file quyết định; workflow dừng khi `CONSENSUS_REACHED` hoặc hết số lượt.
+- Mỗi lượt là 1 commit `review(Opus|Argon): …` trên nhánh `debate/business-plan`. Bạn đọc diff rồi tự merge vào `main`.
+- Không dùng kiểu gọi nhau bằng `@claude` / `@gemini-cli` trong bình luận PR, vì bình luận do bot đăng bằng `GITHUB_TOKEN` không kích hoạt workflow khác, nên chuỗi sẽ đứng im.
+- Cần 2 secret (Settings → Secrets and variables → Actions): `CLAUDE_CODE_OAUTH_TOKEN` (lấy bằng `claude setup-token`, dùng gói Claude sẵn có) hoặc `ANTHROPIC_API_KEY`, và `GEMINI_API_KEY` (lấy tại aistudio.google.com).
+- Chạy: tab Actions → "Phản biện kế hoạch (Opus ⇄ Argon)" → Run workflow, hoặc `gh workflow run debate.yml -f max_turns=6`.
 
 <!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 2 -->
 

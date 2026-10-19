@@ -148,7 +148,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 ### 5.3 P1: tháng 12/2026 – 3/2027
 
-1. **Trang hóa đơn cho người thuê + xác nhận 1 chạm (code giữa tháng 12, chạy từ kỳ tháng 1).** Link mở trong Zalo (mã ngẫu nhiên khó đoán, chỉ hiện đúng hóa đơn đó, không hiện CCCD): phiếu báo, VietQR có mã hóa đơn, ảnh đồng hồ, lịch sử trả tiền, nút **"Tôi đã chuyển"** (kèm số tiền thực chuyển và ô tùy chọn ghi chú tên người chuyển hộ khi nhờ người thân chuyển khoản — **không tải ảnh biên lai**). Chủ trọ thấy danh sách "phòng vừa báo đã chuyển", đối chiếu thông báo biến động số dư của chính họ rồi bấm **Xác nhận**, app gạch nợ FIFO. Chủ trọ vẫn gạch được cho phòng không bấm báo. **"Tôi đã chuyển" chỉ là lời báo, không tự gạch nợ** (chống ảnh chuyển khoản giả và tránh lưu trữ dữ liệu cá nhân thừa).
+1. **Trang hóa đơn cho người thuê + xác nhận 1 chạm (code giữa tháng 12, chạy từ kỳ tháng 1).** Link mở trong Zalo (mã ngẫu nhiên khó đoán, chỉ hiện đúng hóa đơn đó, không hiện CCCD): phiếu báo, VietQR có mã hóa đơn, ảnh đồng hồ, lịch sử trả tiền, nút **"Tôi đã chuyển"** (kèm số tiền thực chuyển và ô tùy chọn ghi chú tên người chuyển hộ khi nhờ người thân chuyển khoản, tối đa 40 ký tự, hiển thị dạng văn bản thuần vì do người lạ nhập trên link công khai, giới hạn số lần bấm mỗi hóa đơn — **không tải ảnh biên lai**). Chủ trọ thấy danh sách "phòng vừa báo đã chuyển", đối chiếu thông báo biến động số dư của chính họ rồi bấm **Xác nhận**, app gạch nợ FIFO. Chủ trọ vẫn gạch được cho phòng không bấm báo. **"Tôi đã chuyển" chỉ là lời báo, không tự gạch nợ** (chống ảnh chuyển khoản giả và tránh lưu trữ dữ liệu cá nhân thừa).
 2. **Tự sửa/huỷ hóa đơn, gửi lại phiếu** mà không cần gọi hỗ trợ (code trong tháng 12, giảm tải mùng 1–5 từ kỳ tháng 1).
 3. **Công cụ tính lại cơ cấu giá điện + phụ lục hợp đồng** (mục 3.3), **tháng 1** (ước lượng 2–3 ngày kèm test) để kịp mùa tăng giá và ký lại hợp đồng sau Tết.
 4. **Chủ quyền dữ liệu (tháng 1):** tải toàn bộ dữ liệu ra file Excel (`.xlsx`), xoá tài khoản và toàn bộ dữ liệu trên máy chủ. Luật BVDLCN cũng bắt buộc có. Chưa làm đồng bộ Google Sheets OAuth cho từng chủ trọ trừ khi phỏng vấn có nhu cầu rõ rệt.
@@ -245,9 +245,8 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 - **Pháp lý:** chọn tên thương hiệu ("Quản lý phòng trọ" là tên chung, không đăng ký nhãn hiệu được), tra trùng (Cục SHTT, WIPO), mua tên miền.
 - **KPI:** 15 cuộc phỏng vấn; ≥ 5 người đồng ý dùng thử từ tháng 12; ≥ 3 người nói trả được ≥ 149k.
 - **Điều kiện đi tiếp (ngày 31/10):**
-  - Đạt đủ 15 cuộc và ≥ 5 người đồng ý dùng thử → bắt đầu P0 ngày 01/11.
-  - Nếu tới 31/10 mới phỏng vấn được **8–10 người** nhưng đã có **≥ 3 chủ trọ (≥20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12** → **vẫn bắt đầu P0 đúng ngày 01/11** (làm Auth, RLS, test tính tiền trước) và phỏng vấn nốt 5–7 người còn lại vào buổi tối trong 2 tuần đầu tháng 11.
-  - Nếu đã hỏi ≥ 8 người mà **dưới 2 người đồng ý dùng thử** → lùi P0, xem lại định vị và nỗi đau giả định trước khi viết code.
+  - **Bắt đầu P0 ngày 01/11** nếu đã phỏng vấn **≥ 8 người** và có **≥ 3 chủ trọ (≥ 20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12**. Chưa đủ 15 cuộc thì phỏng vấn nốt vào buổi tối trong 2 tuần đầu tháng 11.
+  - **Các trường hợp còn lại** (dưới 8 cuộc, hoặc mới 0–2 người đồng ý dùng thử) → chưa code P0, phỏng vấn tiếp tới **15/11** rồi xét lại đúng điều kiện trên. Tới 15/11 vẫn không đạt → xem lại định vị và nỗi đau giả định trước khi viết code.
 
 ### Tháng 11/2026: Làm phần nền (P0)
 
@@ -259,6 +258,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
   - Test tính tiền qua.
   - Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.
 - **Ngân sách:** khoảng 1–3 triệu.
+- **Mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 (mục 5.2) ra khoảng 4–5,5 tuần, dài hơn 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
 - **Nếu trễ mốc 25/11:** dời kỳ thu tiền beta đầu tiên sang kỳ tháng 1/2027. Không cắt phần test.
 
 ### Tháng 12/2026: Beta kỳ 1 + Phát triển P1 (#1, #2)
@@ -392,7 +392,7 @@ Không bán hàng trong buổi phỏng vấn. Sau 15 cuộc thì tổng hợp: 3
 | Rủi ro | Khả năng | Cách giảm |
 |---|---|---|
 | Phỏng vấn cho thấy nhóm 20–60 phòng cũng không đủ đau để trả tiền | Trung bình | Dừng code, đổi phân khúc (ví dụ CHDV) trước tháng 11 |
-| Tháng 11 trễ | Cao | Đã cắt phạm vi; nếu trễ thì dời beta sang tháng 1, không cắt test |
+| Tháng 11 trễ | Cao | Đã cắt phạm vi; mốc kiểm tra 15/11 (mục 9); nếu trễ thì dời beta sang tháng 1, không cắt test |
 | Lỗi tính tiền | Trung bình | Test tự động cho phần tiền; có mặt cùng khách ở kỳ đầu |
 | Lộ dữ liệu | Trung bình | RLS có test, mã hóa ảnh CCCD, triển khai bản khóa API ngay |
 | Quá tải hỗ trợ mùng 1–5 | Cao | Mục 7: giới hạn khách, không phát hành bản mới, cho khách tự xử lý |
@@ -685,5 +685,30 @@ Cả 4 câu hỏi ở E.3 hai bên đều đã thống nhất. Opus xem lại 2 
 
 Nếu Opus đồng ý với 2 điểm hoàn thiện này (hoặc tinh chỉnh nhỏ nếu cần), đề nghị Opus cập nhật và đổi trạng thái cuối file sang `CONSENSUS_REACHED` để hai bên hoàn tất bản kế hoạch trình chủ dự án!
 
-<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 4 -->
+---
+
+## Phụ lục G. Vòng 5 — Opus (19/10/2026)
+
+Trả lời F.2. Cả hai điểm **đồng ý**, có hai chỗ tinh chỉnh nhỏ đã sửa thẳng vào thân kế hoạch (mục 5.3, 9, 12).
+
+### G.1 Trả lời F.2
+
+1. **Ô "Ghi chú / Tên người chuyển hộ" → Đồng ý.** Đúng tình huống thật: bố mẹ hoặc bạn cùng phòng chuyển hộ mà không ghi mã phòng. Bổ sung kỹ thuật vào P1 #1: ô này do **người lạ nhập trên link công khai**, nên tối đa 40 ký tự, chỉ hiển thị dạng văn bản thuần (chống chèn mã độc vào màn hình của chủ trọ), và giới hạn số lần bấm "Tôi đã chuyển" mỗi hóa đơn (chống spam).
+2. **Ngưỡng đi tiếp ngày 31/10 và lịch 2 nhịp (01–10 thu tiền, 06–24 phát triển) → Đồng ý, nhưng ngưỡng có lỗ hổng nên đã sửa:**
+   - Ba nhánh cũ để hở hai trường hợp: phỏng vấn ≥ 8 người mà **đúng 2** người đồng ý, và **dưới 8** cuộc. Đã gộp lại cho đủ mọi trường hợp. **Bắt đầu P0 ngày 01/11** khi ≥ 8 cuộc **và** ≥ 3 chủ trọ (≥ 20 phòng) đồng ý gửi sổ. Mọi trường hợp khác thì phỏng vấn tiếp tới 15/11 rồi xét lại; tới 15/11 vẫn không đạt thì xem lại định vị.
+   - **Thêm mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 ở mục 5.2 ra khoảng 4–5,5 tuần, dài hơn 3,5 tuần trước 25/11. Vậy Beta kỳ tháng 12 là trường hợp tốt nhất. Ngày 15/11 mà Supabase + RLS chưa xong thì báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, để giữ uy tín, không đợi tới 25/11.
+
+### G.2 Đề nghị chốt
+
+- Opus không còn điểm vênh nào. Nếu Argon đồng ý với hai tinh chỉnh ở G.1 (ngưỡng gộp và mốc 15/11), đề nghị Argon đổi trạng thái thành `CONSENSUS_REACHED`.
+- Nếu Argon phản đối, chỉ cần ghi rõ phản đối điểm nào; Opus sẽ trả lời ở vòng 7.
+
+### G.3 Cần chủ dự án quyết (tổng hợp sau 5 vòng)
+
+- Hỏi kế toán thuế: ngưỡng 500 triệu hay 1 tỷ; tiền điện nước thu hộ có tính vào doanh thu không.
+- Đổi `SYNC_TOKEN` (mục 10).
+- Hỏi SePay: giao dịch tiền ra có bị tính vào 50 giao dịch/tháng không; điều kiện cấp OAuth `client_id`.
+- Đọc diff nhánh `debate/business-plan` rồi merge vào `main`.
+
+<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: 5 -->
 

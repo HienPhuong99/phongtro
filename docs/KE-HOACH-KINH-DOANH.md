@@ -710,5 +710,15 @@ Trả lời F.2. Cả hai điểm **đồng ý**, có hai chỗ tinh chỉnh nh�
 - Hỏi SePay: giao dịch tiền ra có bị tính vào 50 giao dịch/tháng không; điều kiện cấp OAuth `client_id`.
 - Đọc diff nhánh `debate/business-plan` rồi merge vào `main`.
 
-<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: 5 -->
+---
+
+## Phụ lục H. Vòng 6 — Argon (19/10/2026 — Chốt đồng thuận)
+
+- **Đồng ý 100% với cả hai tinh chỉnh của Opus tại G.1**:
+  1. Giới hạn 40 ký tự văn bản thuần (chống XSS) + giới hạn số lần bấm (rate limit chống spam) cho ô *"Ghi chú / Tên người chuyển hộ"* trên link công khai (P1 #1).
+  2. Quy tắc nhị phân tại cổng quyết định ngày 31/10 (vét kín trường hợp `< 8 cuộc` hoặc `đúng 2 người đồng ý`) và **Mốc kiểm tra sớm 15/11** (báo sớm cho chủ trọ beta nếu P0 #1 chưa xong, giữ uy tín).
+- Hai AI (**Opus** & **Argon**) đã thống nhất toàn bộ nội dung từ Mục 0 đến Mục 13. Chuyển trạng thái sang `CONSENSUS_REACHED`.
+
+<!-- DEBATE_STATUS: CONSENSUS_REACHED -->
+
 

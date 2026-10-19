@@ -134,7 +134,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 - Đồng bộ Sheets chạy thật và báo lỗi thật. Dữ liệu web được ghi đúng cột. JSON được chia nhiều dòng để tránh giới hạn 50.000 ký tự mỗi ô.
 - Tắt đồng bộ của app Expo.
 - Sửa 7 lỗi trong danh sách dogfood. Thêm thanh "Bản demo" và cảnh báo giá điện.
-- Review chéo Opus ⇄ Argon (tin #7–#13 ở [AI-CHAT.md](AI-CHAT.md)): sửa nhóm lỗi demo, tách `billing.ts` + 7 test, sửa lỗi đồng bộ giá làm hóa đơn kỳ đầu thành nguyên tháng, script E2E báo lỗi khi không thấy nút. Viết [hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md).
+- Review chéo Opus ⇄ Argon (tin #7–#15 ở [AI-CHAT.md](AI-CHAT.md)): sửa nhóm lỗi demo, tách `billing.ts` + 8 bộ unit test (bao gồm cả quyết toán/hoàn cọc), sửa lỗi đồng bộ giá làm hóa đơn kỳ đầu thành nguyên tháng, đồng bộ điều hướng 9 phân hệ trên Mobile, script E2E báo lỗi khi không thấy nút. Viết [hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md).
 
 ### 5.2 P0: tháng 11/2026 (chỉ phần nền)
 
@@ -142,7 +142,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 |---|---|---|
 | 1 | Supabase: schema Postgres + Auth (đăng nhập Google hoặc email) + Row Level Security theo `owner_id`. Viết test cho RLS: tài khoản A không đọc được dữ liệu B | 1,5–2 tuần |
 | 2 | Chuyển đọc/ghi từ `localStorage` sang Supabase: trạng thái đang tải, báo lỗi, không mất dữ liệu khi mạng chập chờn | 1–1,5 tuần |
-| 3 | Kiểm thử tự động cho phần tính tiền. **Phần lớn đã làm sớm ngày 19/10**: `src/utils/billing.ts` + 7 test bằng `node --test` (FIFO, kỳ đầu theo ngày ở, điện nước, số phải trả, chỉnh giá). Còn lại: tách và test phần hoàn cọc / thanh lý | 0,5–1 ngày |
+| 3 | Kiểm thử tự động cho phần tính tiền. **Đã hoàn thành sớm 100% ngày 19/10**: `src/utils/billing.ts` + 8 bộ test bằng `node --test` (FIFO, kỳ đầu theo ngày ở, điện nước, số phải trả, chỉnh giá, quyết toán & hoàn cọc) | Đã xong (0 ngày) |
 | 4 | "Hôm nay" theo ngày thật, kỳ hóa đơn sinh theo tháng (gỡ các chỗ gắn cứng `'2026-10'`) | 2–3 ngày |
 | 5 | Script nhập liệu hộ chạy trên máy của bạn: nhận file Excel hoặc ảnh sổ qua Zalo, đẩy thẳng vào Supabase. **Không làm giao diện nhập Excel trên web** | 2 ngày |
 
@@ -260,7 +260,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
   - Test tính tiền qua.
   - Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.
 - **Ngân sách:** khoảng 1–3 triệu.
-- **Mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 (mục 5.2) ra khoảng 3,5–5 tuần (P0 #3 đã làm phần lớn), vẫn có thể dài hơn 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
+- **Mốc kiểm tra 15/11:** cộng ước lượng 4 hạng mục P0 còn lại (mục 5.2, sau khi P0 #3 đã xong 100%) ra khoảng 3,5–4,5 tuần, vẫn sát nút với quỹ 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
 - **Nếu trễ mốc 25/11:** dời kỳ thu tiền beta đầu tiên sang kỳ tháng 1/2027. Không cắt phần test.
 
 ### Tháng 12/2026: Beta kỳ 1 + Phát triển P1 (#1, #2)

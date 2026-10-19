@@ -228,9 +228,6 @@ export function App() {
   const [invoiceMonth, setInvoiceMonth] = useState<string>('2026-11');
   const [invoiceSubTab, setInvoiceSubTab] = useState<'by_room' | 'all'>('by_room');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
-  const [reportGranularity, setReportGranularity] = useState<
-    'day' | 'week' | 'month' | 'year'
-  >('month');
   const [hoveredChartIdx, setHoveredChartIdx] = useState<number | null>(null);
 
   // Modals state
@@ -2755,6 +2752,10 @@ export function App() {
 
   // 6. TÀI CHÍNH (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả)
   const renderFinance = () => {
+    const fundBalance = (method: CashTransaction['method']) =>
+      transactions
+        .filter((t) => t.method === method)
+        .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
     const financeSubTabs: Array<{ id: NavTab; label: string }> = [
       { id: 'finance-cashbook', label: 'Sổ thu chi' },
       { id: 'finance-funds', label: 'Quỹ' },
@@ -3144,19 +3145,19 @@ export function App() {
                 {currentProperty.bankAccount})
               </div>
               <div className="text-2xl font-extrabold text-blue-600">
-                {formatVND(collectedToday)}
+                {formatVND(fundBalance('Chuyển khoản'))}
               </div>
               <div className="text-[11px] text-slate-400">
-                Tự động cộng khi khách chuyển khoản VietQR
+                Thu trừ chi bằng chuyển khoản trong sổ thu chi (chưa gồm số dư đầu kỳ)
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
               <div className="text-xs text-slate-500">Quỹ Tiền mặt tại nhà trọ</div>
               <div className="text-2xl font-extrabold text-emerald-600">
-                {formatVND(0)}
+                {formatVND(fundBalance('Tiền mặt'))}
               </div>
               <div className="text-[11px] text-slate-400">
-                Dùng chi bảo trì, sửa chữa lặt vặt và vệ sinh định kỳ
+                Thu trừ chi bằng tiền mặt trong sổ thu chi (chưa gồm số dư đầu kỳ)
               </div>
             </div>
           </div>
@@ -3167,7 +3168,10 @@ export function App() {
 
   // 7. BÁO CÁO KINH DOANH
   const renderReports = () => {
-    const totalRevenue = invoices.reduce((s, i) => s + i.paidAmount, 0);
+    // Thực thu lấy từ sổ thu chi (gồm cả các khoản thu gộp của những kỳ không còn hóa đơn chi tiết)
+    const totalRevenue = transactions
+      .filter((t) => t.type === 'income' && t.category === 'Thu tiền hóa đơn')
+      .reduce((s, t) => s + t.amount, 0);
     const totalExpense = transactions
       .filter((t) => t.type === 'expense')
       .reduce((s, t) => s + t.amount, 0);
@@ -3211,7 +3215,7 @@ export function App() {
     const maxChartVal = 30000000;
 
     const handleCopyReport = () => {
-      const summary = `BÁO CÁO KINH DOANH - ${currentProperty.name} (01/05/2026 - 11/10/2026)
+      const summary = `BÁO CÁO KINH DOANH - ${currentProperty.name}
 - Doanh thu thực thu: ${formatVND(totalRevenue)}
 - Chi phí: ${formatVND(totalExpense)}
 - Lợi nhuận ròng: ${formatVND(netProfit)}
@@ -3249,7 +3253,7 @@ export function App() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Báo cáo kinh doanh</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Từ 01/05/2026 đến 11/10/2026
+              Tính trên toàn bộ hóa đơn và sổ thu chi của {currentProperty.name}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -3269,46 +3273,6 @@ export function App() {
               <Download className="w-3.5 h-3.5" />
               Xuất báo cáo
             </button>
-          </div>
-        </div>
-
-        {/* Granularity Tabs & Date Range */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-6 text-xs font-semibold">
-            {[
-              { id: 'day', label: 'Theo ngày' },
-              { id: 'week', label: 'Theo tuần' },
-              { id: 'month', label: 'Theo tháng' },
-              { id: 'year', label: 'Theo năm' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() =>
-                  setReportGranularity(t.id as 'day' | 'week' | 'month' | 'year')
-                }
-                className={`pb-2 border-b-2 transition ${
-                  reportGranularity === t.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
-              Khoảng tuỳ chọn
-            </span>
-            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
-              01/05/2026
-            </span>
-            <span className="text-slate-400">→</span>
-            <span className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700">
-              11/10/2026
-            </span>
           </div>
         </div>
 

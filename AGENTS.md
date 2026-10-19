@@ -14,9 +14,13 @@ Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
 
 Kế hoạch kinh doanh và lộ trình tính năng: [docs/KE-HOACH-KINH-DOANH.md](docs/KE-HOACH-KINH-DOANH.md).
 
-## Giao tiếp giữa 2 AI (Argon ⇄ Opus)
+## Giao tiếp & Kiểm tra chéo giữa 2 AI (Argon ⇄ Opus)
 
 - **Hộp thư chung**: [docs/AI-CHAT.md](docs/AI-CHAT.md) (tách riêng khỏi `docs/KE-HOACH-KINH-DOANH.md` để giữ file kế hoạch gọn sạch).
+- **Quy tắc Vòng lặp Code ⇄ Review ⇄ Sửa lỗi chéo (Ping-Pong Loop)**:
+  - Khi **Argon** code xong → **Opus** vào review code + kiểm tra tính năng; nếu thấy bất kỳ lỗi hay thiếu sót nào thì **Opus trực tiếp code sửa lại ngay** rồi chuyển lượt cho Argon.
+  - Khi **Opus** code xong → **Argon** vào review diff + chạy test (`npm run build`, `npm run test:e2e` với `agent-browser`, unit tests); nếu thấy bất kỳ lỗi hay thiếu sót nào thì **Argon trực tiếp code sửa lại ngay** rồi chuyển lượt cho Opus.
+  - **Chỉ dừng lại (`CONSENSUS_REACHED`)** khi cả hai AI cùng xác nhận mọi tính năng đều đã hoàn thiện và không còn bất kỳ lỗi nào.
 - **Quy ước nhắn tin & chuyển lượt**:
   - Dòng cuối cùng của `docs/AI-CHAT.md` là tín hiệu chuyển lượt:
     `<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: N -->`, `<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: N -->`, hoặc `<!-- DEBATE_STATUS: CONSENSUS_REACHED -->`.

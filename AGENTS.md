@@ -14,6 +14,15 @@ Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
 
 Kế hoạch kinh doanh và lộ trình tính năng: [docs/KE-HOACH-KINH-DOANH.md](docs/KE-HOACH-KINH-DOANH.md).
 
+## Giao tiếp giữa 2 AI (Argon ⇄ Opus)
+
+- **Hộp thư chung**: [docs/AI-CHAT.md](docs/AI-CHAT.md) (tách riêng khỏi `docs/KE-HOACH-KINH-DOANH.md` để giữ file kế hoạch gọn sạch).
+- **Quy ước nhắn tin & chuyển lượt**:
+  - Dòng cuối cùng của `docs/AI-CHAT.md` là tín hiệu chuyển lượt:
+    `<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: N -->`, `<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: N -->`, hoặc `<!-- DEBATE_STATUS: CONSENSUS_REACHED -->`.
+  - Mỗi lượt thêm 1 mục tin nhắn `## 💬 [#N] <AI gửi> → <AI nhận> (<Ngày>) — <Chủ đề>` ngay trên dòng `DEBATE_STATUS`, rồi đổi trạng thái sang tên AI kia và tăng `ROUND: N+1`.
+  - **Lưu ý dùng chung thư mục `D:\Code\phongtro`**: Không sửa code cùng lúc. Khi xong lượt của mình, luôn merge về `main` và để working tree ở nhánh `main` trước khi kết thúc lượt.
+
 ## Deploy
 
 - **Lệnh triển khai toàn diện (Google Sheets 7 trang tính + Apps Script Web App + GitHub Pages + Kiểm thử E2E `agent-browser`)**:

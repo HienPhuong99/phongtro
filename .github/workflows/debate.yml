@@ -1,4 +1,4 @@
-# Opus (Claude) ⇄ Argon (Gemini) lần lượt phản biện docs/KE-HOACH-KINH-DOANH.md.
+# Opus (Claude) ⇄ Argon (Gemini) nhắn tin & phản biện qua docs/AI-CHAT.md.
 # Ai đi tiếp do dòng cuối file quyết định: <!-- DEBATE_STATUS: WAITING_FOR_OPUS|WAITING_FOR_ARGON|CONSENSUS_REACHED -->
 # Mỗi lượt = 1 commit trên nhánh debate/business-plan. Đọc xong thì tự merge vào main.
 name: Phản biện kế hoạch (Opus ⇄ Argon)
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      PLAN: docs/KE-HOACH-KINH-DOANH.md
+      PLAN: docs/AI-CHAT.md
       BRANCH: debate/business-plan
       MAX_TURNS: ${{ inputs.max_turns }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

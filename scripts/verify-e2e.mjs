@@ -144,7 +144,15 @@ async function main() {
   ab(`wait 300`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '11-finance-debt-after-fifo.png')}"`);
 
-  // 6b. Xác thực Bug 7: Quay sang màn hình Hóa đơn, dòng đã thu đủ của P101 có chữ "Đã thu đủ" màu xanh (text-emerald-600)
+  // 6b. Chuyển sang tab Quỹ để kiểm tra số dư Quỹ ngân hàng & Quỹ tiền mặt thực tế và chụp ảnh 18-finance-funds.png
+  clickBtn('Quỹ');
+  ab(`wait 400`);
+  ab(
+    `eval "(() => { const text = document.body.innerText; if (!text.includes('chưa gồm số dư đầu kỳ')) throw new Error('Màn Quỹ thiếu ghi chú chưa gồm số dư đầu kỳ'); return 'VERIFIED_FUNDS_SCREEN'; })()"`
+  );
+  ab(`screenshot "${path.join(SCREENSHOTS_DIR, '18-finance-funds.png')}"`);
+
+  // 6c. Xác thực Bug 7: Quay sang màn hình Hóa đơn, dòng đã thu đủ của P101 có chữ "Đã thu đủ" màu xanh (text-emerald-600)
   clickBtn('Hóa đơn');
   ab(`wait 400`);
   ab(
@@ -170,7 +178,7 @@ async function main() {
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-phone-qr-modal.png')}"`);
 
   ab(`close`);
-  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH & KIỂM ĐỊNH ĐẦY ĐỦ) ===');
+  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (18 ẢNH CHỤP MÀN HÌNH & KIỂM ĐỊNH ĐẦY ĐỦ) ===');
 }
 
 main().catch((err) => {

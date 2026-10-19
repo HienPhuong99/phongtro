@@ -12,6 +12,7 @@ import {
   calculateInvoicePayable,
   allocatePaymentFIFO,
   applyRoomPricingToInvoice,
+  calculateDepositRefund,
   computeDaysRemaining,
   extractBillingMonth,
 } from './billing.ts';
@@ -266,3 +267,25 @@ test('computeDaysRemaining & extractBillingMonth: hoạt động chính xác v�
   assert.equal(extractBillingMonth('15/11/2026'), '2026-11');
   assert.equal(extractBillingMonth('2026-12-05'), '2026-12');
 });
+
+test('calculateDepositRefund: quyết toán hoàn cọc, khấu trừ hư hỏng/công nợ và chặn âm', () => {
+  // Trường hợp 1: cọc 2.500.000đ, khấu trừ vệ sinh/sửa chữa 300.000đ -> hoàn trả 2.200.000đ
+  const normal = calculateDepositRefund(2500000, 300000);
+  assert.equal(normal.validDeposit, 2500000);
+  assert.equal(normal.actualDeducted, 300000);
+  assert.equal(normal.refundAmount, 2200000);
+  assert.equal(normal.extraDue, 0);
+
+  // Trường hợp 2: không khấu trừ -> hoàn trả đủ 100% cọc
+  const full = calculateDepositRefund(2400000, 0);
+  assert.equal(full.refundAmount, 2400000);
+  assert.equal(full.actualDeducted, 0);
+  assert.equal(full.extraDue, 0);
+
+  // Trường hợp 3: khấu trừ vượt tiền cọc (cọc 2.000.000đ, nợ/hư hỏng 2.650.000đ) -> hoàn 0đ, khách còn thiếu 650.000đ
+  const over = calculateDepositRefund(2000000, 2650000);
+  assert.equal(over.refundAmount, 0);
+  assert.equal(over.actualDeducted, 2000000);
+  assert.equal(over.extraDue, 650000);
+});
+

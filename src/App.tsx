@@ -63,6 +63,7 @@ import {
   calculateInvoiceFromReadings,
   allocatePaymentFIFO,
   applyRoomPricingToInvoice,
+  calculateDepositRefund,
 } from './utils/billing';
 import {
   CreateContractModal,
@@ -124,7 +125,10 @@ export function App() {
   const [financeExpanded, setFinanceExpanded] = useState<boolean>(true);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(
-    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'mobile'
+    () =>
+      typeof window !== 'undefined' &&
+      window.innerWidth >= 768 &&
+      new URLSearchParams(window.location.search).get('mode') === 'mobile'
   );
   const [isPhoneQrOpen, setIsPhoneQrOpen] = useState<boolean>(false);
   const [pwaQrDataUrl, setPwaQrDataUrl] = useState<string>('');
@@ -430,20 +434,25 @@ export function App() {
   );
 
   // Khoản cọc chờ hoàn trả lại khách (P202 - Huỳnh Thị Hà - 909.334 đ)
+  const getContractRefundAmount = (c: Contract) =>
+    c.depositRefundAmount !== undefined
+      ? c.depositRefundAmount
+      : calculateDepositRefund(c.depositAmount, c.depositDeducted || 0).refundAmount;
+
   const pendingRefundContracts = useMemo(
     () =>
       contracts.filter(
         (c) =>
           c.status === 'terminated' &&
           !c.depositRefunded &&
-          (c.depositRefundAmount || 0) > 0
+          getContractRefundAmount(c) > 0
       ),
     [contracts]
   );
   const pendingRefundTotal = useMemo(
     () =>
       pendingRefundContracts.reduce(
-        (sum, c) => sum + (c.depositRefundAmount || 0),
+        (sum, c) => sum + getContractRefundAmount(c),
         0
       ),
     [pendingRefundContracts]
@@ -735,7 +744,7 @@ export function App() {
 
   // 4. Hoàn trả tiền cọc cho khách đã trả phòng
   const handleMarkDepositRefunded = (contract: Contract) => {
-    const refundAmt = contract.depositRefundAmount || 0;
+    const refundAmt = getContractRefundAmount(contract);
     setContracts((prev) =>
       prev.map((c) =>
         c.id === contract.id ? { ...c, depositRefunded: true } : c
@@ -2910,7 +2919,11 @@ export function App() {
                   </span>
                 </div>
                 <div className="text-2xl font-extrabold text-slate-900">
-                  {formatVND(totalMonthlyContractRent)}
+                  {formatVND(
+                    contracts
+                      .filter((c) => c.status === 'active')
+                      .reduce((s, c) => s + c.depositAmount, 0)
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-1">
                   Khách còn thuê — chưa tới lúc trả
@@ -3144,7 +3157,11 @@ export function App() {
                 Quỹ Ngân hàng ({currentProperty.bankName} ·{' '}
                 {currentProperty.bankAccount})
               </div>
-              <div className="text-2xl font-extrabold text-blue-600">
+              <div
+                className={`text-2xl font-extrabold tabular-nums ${
+                  fundBalance('Chuyển khoản') < 0 ? 'text-rose-600' : 'text-blue-600'
+                }`}
+              >
                 {formatVND(fundBalance('Chuyển khoản'))}
               </div>
               <div className="text-[11px] text-slate-400">
@@ -3153,7 +3170,11 @@ export function App() {
             </div>
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
               <div className="text-xs text-slate-500">Quỹ Tiền mặt tại nhà trọ</div>
-              <div className="text-2xl font-extrabold text-emerald-600">
+              <div
+                className={`text-2xl font-extrabold tabular-nums ${
+                  fundBalance('Tiền mặt') < 0 ? 'text-rose-600' : 'text-emerald-600'
+                }`}
+              >
                 {formatVND(fundBalance('Tiền mặt'))}
               </div>
               <div className="text-[11px] text-slate-400">
@@ -4293,7 +4314,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setIsMobilePreview((v) => !v)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition ${
+              className={`hidden md:inline-flex px-3 py-2 rounded-xl text-xs font-semibold border transition ${
                 isMobilePreview
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -4311,30 +4332,38 @@ export function App() {
             </button>
           </div>
 
-          {/* Mobile secondary sub-tabs pill bar */}
+          {/* Mobile secondary sub-tabs pill bar (đầy đủ 9 phân hệ như menu trái trên máy tính) */}
           <div className="flex md:hidden items-center gap-1 overflow-x-auto w-full pt-1">
             {[
               { id: 'overview', label: 'Tổng quan' },
+              { id: 'calendar', label: 'Lịch' },
               { id: 'rooms', label: 'Phòng' },
-              { id: 'tenants', label: 'Khách' },
-              { id: 'contracts', label: 'HĐ' },
+              { id: 'tenants', label: 'Khách thuê' },
+              { id: 'contracts', label: 'Hợp đồng' },
               { id: 'invoices', label: 'Hóa đơn' },
-              { id: 'finance-debts', label: 'Thu tiền' },
+              { id: 'finance-debts', label: 'Tài chính' },
               { id: 'reports', label: 'Báo cáo' },
-            ].map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setActiveTab(m.id as NavTab)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${
-                  activeTab === m.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+              { id: 'settings', label: 'Cài đặt' },
+            ].map((m) => {
+              const isPillActive =
+                m.id === 'finance-debts'
+                  ? activeTab.startsWith('finance-')
+                  : activeTab === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setActiveTab(m.id as NavTab)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${
+                    isPillActive
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
         </header>
 
@@ -4385,6 +4414,40 @@ export function App() {
                 >
                   Mã QR
                 </button>
+              </div>
+
+              {/* Thanh cuộn ngang 9 phân hệ ngay trong Khung Mobile */}
+              <div className="bg-white border-b border-slate-200/80 px-3 py-2 flex items-center gap-1 overflow-x-auto shrink-0">
+                {[
+                  { id: 'overview', label: 'Tổng quan' },
+                  { id: 'calendar', label: 'Lịch' },
+                  { id: 'rooms', label: 'Phòng' },
+                  { id: 'tenants', label: 'Khách thuê' },
+                  { id: 'contracts', label: 'Hợp đồng' },
+                  { id: 'invoices', label: 'Hóa đơn' },
+                  { id: 'finance-debts', label: 'Tài chính' },
+                  { id: 'reports', label: 'Báo cáo' },
+                  { id: 'settings', label: 'Cài đặt' },
+                ].map((m) => {
+                  const isPillActive =
+                    m.id === 'finance-debts'
+                      ? activeTab.startsWith('finance-')
+                      : activeTab === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setActiveTab(m.id as NavTab)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition ${
+                        isPillActive
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}

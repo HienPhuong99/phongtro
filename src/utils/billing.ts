@@ -215,3 +215,32 @@ export function applyRoomPricingToInvoice(
     status: newStatus,
   };
 }
+
+/**
+ * 6. Tính toán quyết toán & hoàn trả tiền cọc khi thanh lý hợp đồng:
+ * - Tiền cọc hoàn lại = max(0, depositAmount - depositDeducted)
+ * - Khoản khấu trừ thực tế vào cọc = min(depositAmount, max(0, depositDeducted))
+ * - Nếu khoản nợ/khấu trừ vượt quá tiền cọc thì ghi nhận phần khách còn phải bù thêm (extraDue).
+ */
+export function calculateDepositRefund(
+  depositAmount: number,
+  depositDeducted: number = 0
+): {
+  validDeposit: number;
+  actualDeducted: number;
+  refundAmount: number;
+  extraDue: number;
+} {
+  const validDeposit = Math.max(0, Math.round(depositAmount || 0));
+  const rawDeducted = Math.max(0, Math.round(depositDeducted || 0));
+  const actualDeducted = Math.min(validDeposit, rawDeducted);
+  const refundAmount = Math.max(0, validDeposit - rawDeducted);
+  const extraDue = Math.max(0, rawDeducted - validDeposit);
+  return {
+    validDeposit,
+    actualDeducted,
+    refundAmount,
+    extraDue,
+  };
+}
+

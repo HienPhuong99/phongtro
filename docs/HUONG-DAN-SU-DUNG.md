@@ -13,7 +13,7 @@ Dành cho chủ trọ dùng thử và cho người mang bản demo đi phỏng v
 - **"Hôm nay" luôn là 11/10/2026.** Mọi hạn thu và số ngày còn lại của hợp đồng đều tính theo ngày này.
 - **Dữ liệu chỉ lưu trong trình duyệt bạn đang dùng.** Mở bằng máy khác, trình duyệt khác hoặc tab ẩn danh sẽ thấy lại dữ liệu mẫu ban đầu. Xoá lịch sử trình duyệt là mất dữ liệu đã nhập.
 - **Chưa có đăng nhập.** Đừng nhập số CCCD, số điện thoại hay số tài khoản thật của khách.
-- Bấm thoải mái. Muốn làm lại từ đầu thì bấm **Khôi phục dữ liệu mẫu** ở menu bên trái (có hỏi xác nhận trước khi xoá).
+- Bấm thoải mái. Muốn làm lại từ đầu thì bấm **Khôi phục dữ liệu mẫu** ở cuối menu bên trái (trên máy tính) hoặc vào **Cài đặt → Khôi phục dữ liệu mẫu** (trên điện thoại); app sẽ hỏi xác nhận trước khi xoá.
 
 ---
 
@@ -22,11 +22,11 @@ Dành cho chủ trọ dùng thử và cho người mang bản demo đi phỏng v
 **Trên máy tính:** mở link máy tính ở trên bằng Chrome, Edge hoặc Safari.
 
 **Trên điện thoại:**
-1. Trên máy tính, bấm **📲 Mở trên điện thoại** ở góc phải trên cùng để hiện mã QR.
-2. Quét mã bằng Camera hoặc Zalo.
+1. Trên máy tính, bấm **📲 Mở trên điện thoại** ở góc phải trên cùng (hoặc nút **Mã QR** trong khung xem trước điện thoại) để hiện mã QR.
+2. Quét mã bằng Camera hoặc Zalo. Khi mở trên điện thoại thật, giao diện tự động hiển thị toàn màn hình di động.
 3. Muốn dùng như một app: trong Safari bấm *Chia sẻ → Thêm vào MH chính*; trong Chrome bấm *⋮ → Thêm vào màn hình chính*.
 
-Nút **📱 Khung Mobile** trên máy tính cho xem trước giao diện điện thoại ngay trên màn hình lớn.
+Nút **📱 Khung Mobile** trên máy tính cho xem trước giao diện điện thoại ngay trên màn hình lớn (bấm **💻 Giao diện Web** để quay lại).
 
 ![Mã QR mở trên điện thoại](screenshots/14-phone-qr-modal.png)
 
@@ -34,7 +34,8 @@ Nút **📱 Khung Mobile** trên máy tính cho xem trước giao diện điện
 
 ## 3. Làm quen màn hình
 
-- **Menu bên trái:** Tổng quan, Lịch, Phòng, Khách thuê, Hợp đồng, Hóa đơn, Tài chính (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả), Báo cáo, Cài đặt.
+- **Trên máy tính (Menu bên trái):** Tổng quan, Lịch, Phòng, Khách thuê, Hợp đồng, Hóa đơn, Tài chính (Sổ thu chi, Quỹ, Công nợ, Cọc phải trả), Báo cáo, Cài đặt.
+- **Trên điện thoại:** Thanh cuộn ngang ở đầu trang có đủ 9 mục giống hệt máy tính (`Tổng quan · Lịch · Phòng · Khách thuê · Hợp đồng · Hóa đơn · Tài chính · Báo cáo · Cài đặt`), kèm 5 nút chính ở thanh dưới cùng (`Tổng quan`, `Phòng`, `Hóa đơn`, `Công nợ`, `Báo cáo`) để bấm nhanh bằng một tay.
 - **Chọn cơ sở** ở ô trên cùng. Đổi cơ sở thì mọi màn hình chỉ hiện phòng, khách, hóa đơn và tiền của cơ sở đó.
 - **Tổng quan** là nơi nên mở đầu tiên. Ở đây có:
   - Tỷ lệ lấp đầy, tiền thu trong ngày, lợi nhuận tháng.
@@ -167,20 +168,30 @@ Các bộ lọc ở đầu màn Hợp đồng: **Hết hạn trong 60 ngày**, *
 
 **Lịch**: ngày ghi chỉ số, hạn thu tiền, ngày chốt kỳ của từng phòng tính theo ngày vào ở, hợp đồng sắp hết hạn.
 
+![Quỹ ngân hàng và tiền mặt](screenshots/18-finance-funds.png)
+
 ![Báo cáo](screenshots/12-reports.png)
 
 ---
 
-## 9. Kịch bản demo 5 phút (cho buổi phỏng vấn)
+## 9. Kịch bản buổi phỏng vấn 15–20 phút & Demo 5 phút
 
-Mục đích là cho chủ trọ **thấy** cái họ mất thời gian nhất, không phải đi hết mọi màn hình. Trước buổi gặp, bấm **Khôi phục dữ liệu mẫu** để số liệu sạch.
+Mục đích của buổi gặp là **hiểu quy trình thật của chủ trọ** rồi mới cho họ thấy cách app giải quyết đúng khâu họ mất thời gian nhất. Trước buổi gặp, bấm **Khôi phục dữ liệu mẫu** để số liệu sạch.
 
-1. **Tổng quan (30 giây):** "Mở app ra là biết hôm nay phải làm gì." Chỉ vào mục *Việc cần làm hôm nay*.
-2. **Ghi chỉ số (1 phút):** Hóa đơn → Ghi chỉ số hàng loạt, nhập 2–3 phòng, bấm *Lưu & Lập hóa đơn*. "Ghi xong là có hóa đơn, không phải bấm máy tính."
-3. **Gửi phiếu (1 phút):** bấm *Gửi* một phòng, mở tab *Ảnh hóa đơn* cho thấy mã VietQR. Trên điện thoại thì bấm *Chia sẻ* sang Zalo. "Khách quét là đúng số tiền, đúng nội dung."
-4. **Khách trả gộp hoặc trả thiếu (1,5 phút):** Tổng quan → *Thu tiền nhanh*, sửa số tiền thành một số lẻ (ví dụ 5.000.000), bấm xác nhận. Cho xem màn kết quả trừ tháng cũ trước. "Không phải nhớ ai còn nợ tháng nào."
-5. **Tăng giá sau Tết (1 phút):** Phòng → *Điều chỉnh giá thuê phòng* → tab hàng loạt, tăng 100k cho một tầng, bật đồng bộ hợp đồng.
-6. Dừng lại, chuyển sang bộ câu hỏi phỏng vấn (mục 11 của [kế hoạch](KE-HOACH-KINH-DOANH.md)). **Không chào bán trong buổi phỏng vấn.**
+### Phần 1 — Hỏi & lắng nghe trước (10–12 phút đầu, chưa mở app)
+- Đi theo bộ câu hỏi ở mục 11 của [Kế hoạch kinh doanh](KE-HOACH-KINH-DOANH.md).
+- **Chưa mở máy demo ngay đầu buổi** để tránh dẫn dắt câu trả lời (nhất là khi hỏi họ đang tính giá điện, phí dịch vụ, đối chiếu chuyển khoản và xử lý nợ lẻ như thế nào).
+- Ghi lại 1–2 khâu họ vừa than tốn thời gian hoặc dễ nhầm nhất để lát nữa mở đúng màn hình đó.
+
+### Phần 2 — Mở app demo đúng nỗi đau họ vừa kể (5 phút cuối)
+1. **Tổng quan (30 giây):** *"Mở app ra là biết hôm nay phải làm gì."* Chỉ vào mục *Việc cần làm hôm nay*.
+2. **Ghi chỉ số (1 phút):** Hóa đơn → *Ghi chỉ số hàng loạt*, nhập 2–3 phòng, bấm *Lưu & Lập hóa đơn tất cả phòng ngay*. *"Ghi xong là có hóa đơn, không phải bấm máy tính, chặn luôn lỗi gõ nhầm số mới nhỏ hơn số cũ."*
+3. **Gửi phiếu (1 phút):** Bấm *Gửi* một phòng, mở tab *Ảnh hóa đơn* cho thấy mã VietQR đã tự cộng nợ cũ và trừ phần trả trước. Trên điện thoại bấm *Chia sẻ* sang Zalo. *"Khách quét là đúng số tiền, đúng nội dung."*
+4. **Khách trả gộp hoặc trả thiếu (1,5 phút):** Tổng quan → *Thu tiền nhanh*, sửa số tiền thành một số lẻ (ví dụ `5.000.000`), bấm *Xác nhận thu*. Cho xem màn kết quả tự trừ tháng cũ trước. *"Không phải nhớ ai còn nợ tháng nào."*
+5. **Tăng giá hàng loạt hoặc tính tiền kỳ đầu theo ngày ở (1 phút):**
+   - Nếu họ vừa nhắc chuyện điều chỉnh giá → mở *Phòng → Điều chỉnh giá thuê phòng* → tab hàng loạt, tăng 100k cho một tầng, bật đồng bộ hợp đồng.
+   - Nếu họ vừa nhắc chuyện khách vào ở giữa tháng → mở *Hợp đồng → Tạo hợp đồng mới* cho xem app tự chia 21/31 ngày.
+6. **Chốt buổi gặp (không chào bán):** Đưa điện thoại cho chủ trọ tự bấm thử 1 thao tác, rồi hỏi câu số 7 trong Kế hoạch: *"Kỳ thu tiền tới, nếu có người nhập sẵn toàn bộ danh sách phòng và chỉ số tháng trước vào đây, anh/chị có sẵn sàng gửi file Excel hoặc ảnh chụp sổ qua Zalo để dùng thử 1 kỳ không?"*
 
 Không nên demo: Lịch, Quỹ, Đồng bộ Google Sheets, `mobile-expo`.
 

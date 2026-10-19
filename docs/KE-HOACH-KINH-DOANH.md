@@ -148,13 +148,13 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 ### 5.3 P1: tháng 12/2026 – 3/2027
 
-1. **Trang hóa đơn cho người thuê + xác nhận 1 chạm (tháng 12).** Link mở trong Zalo (mã ngẫu nhiên khó đoán, chỉ hiện đúng hóa đơn đó, không hiện CCCD): phiếu báo, VietQR có mã hóa đơn, ảnh đồng hồ, lịch sử trả tiền, nút **"Tôi đã chuyển"** (kèm số tiền). Chủ trọ thấy danh sách "phòng vừa báo đã chuyển", đối chiếu thông báo biến động số dư của chính họ rồi bấm **Xác nhận**, app gạch nợ FIFO. Chủ trọ vẫn gạch được cho phòng không bấm báo. **"Tôi đã chuyển" chỉ là lời báo, không tự gạch nợ** (chống ảnh chuyển khoản giả).
-2. **Tự sửa/huỷ hóa đơn, gửi lại phiếu** mà không cần gọi hỗ trợ (giảm tải mùng 1–5).
-3. **Công cụ tính lại cơ cấu giá điện + phụ lục hợp đồng** (mục 3.3), **tháng 1** để kịp mùa tăng giá và ký lại hợp đồng sau Tết.
-4. **Chủ quyền dữ liệu (tháng 1):** tải toàn bộ dữ liệu ra Excel, xoá tài khoản và toàn bộ dữ liệu trên máy chủ. Luật BVDLCN cũng bắt buộc có.
-5. **Tổng quan nhiều khu:** một màn hình xem tất cả khu (đã thu / còn nợ / phòng trống). Đổi khu từng màn hình đã có sẵn.
-6. **Tài khoản phụ cho người nhà hoặc người quản lý:** chỉ ghi số và thu tiền, không xem báo cáo lợi nhuận.
-7. **SePay OAuth** (sau khi SePay duyệt `client_id`): chủ trọ tự có tài khoản SePay, **tự trả phí SePay** nếu vượt gói FREE 50 giao dịch/tháng. Khuyên chủ trọ dùng một tài khoản ngân hàng riêng chỉ nhận tiền trọ để nằm trong gói FREE. Chỉ bật cho người tự nguyện.
+1. **Trang hóa đơn cho người thuê + xác nhận 1 chạm (code giữa tháng 12, chạy từ kỳ tháng 1).** Link mở trong Zalo (mã ngẫu nhiên khó đoán, chỉ hiện đúng hóa đơn đó, không hiện CCCD): phiếu báo, VietQR có mã hóa đơn, ảnh đồng hồ, lịch sử trả tiền, nút **"Tôi đã chuyển"** (kèm số tiền thực chuyển và ô tùy chọn ghi chú tên người chuyển hộ khi nhờ người thân chuyển khoản — **không tải ảnh biên lai**). Chủ trọ thấy danh sách "phòng vừa báo đã chuyển", đối chiếu thông báo biến động số dư của chính họ rồi bấm **Xác nhận**, app gạch nợ FIFO. Chủ trọ vẫn gạch được cho phòng không bấm báo. **"Tôi đã chuyển" chỉ là lời báo, không tự gạch nợ** (chống ảnh chuyển khoản giả và tránh lưu trữ dữ liệu cá nhân thừa).
+2. **Tự sửa/huỷ hóa đơn, gửi lại phiếu** mà không cần gọi hỗ trợ (code trong tháng 12, giảm tải mùng 1–5 từ kỳ tháng 1).
+3. **Công cụ tính lại cơ cấu giá điện + phụ lục hợp đồng** (mục 3.3), **tháng 1** (ước lượng 2–3 ngày kèm test) để kịp mùa tăng giá và ký lại hợp đồng sau Tết.
+4. **Chủ quyền dữ liệu (tháng 1):** tải toàn bộ dữ liệu ra file Excel (`.xlsx`), xoá tài khoản và toàn bộ dữ liệu trên máy chủ. Luật BVDLCN cũng bắt buộc có. Chưa làm đồng bộ Google Sheets OAuth cho từng chủ trọ trừ khi phỏng vấn có nhu cầu rõ rệt.
+5. **Tổng quan nhiều khu (tháng 3):** một màn hình xem tất cả khu (đã thu / còn nợ / phòng trống). Đổi khu từng màn hình đã có sẵn.
+6. **Tài khoản phụ cho người nhà hoặc người quản lý (tháng 3):** chỉ ghi số và thu tiền, không xem báo cáo lợi nhuận.
+7. **SePay OAuth** (sau khi SePay duyệt `client_id`): chủ trọ tự có tài khoản SePay, **tự trả phí SePay** nếu vượt gói FREE 50 giao dịch/tháng. Khuyên chủ trọ dùng một tài khoản ngân hàng riêng chỉ nhận tiền trọ để nằm trong gói FREE (nhà dưới ~40 phòng). Chỉ bật cho người tự nguyện.
 
 Đã bỏ khỏi P1: khớp file sao kê CSV/Excel (app ngân hàng trên điện thoại hầu như không xuất được, mỗi ngân hàng một định dạng). Chỉ làm lại nếu phỏng vấn cho thấy chủ trọ quen tải sao kê trên máy tính.
 
@@ -244,38 +244,43 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 - **Hỏi SePay:** nhắn bộ phận hỗ trợ: *"Tôi làm phần mềm quản lý trọ cho khoảng 50 chủ nhà, mỗi người một tài khoản ngân hàng. Điều kiện cấp OAuth client và chi phí thế nào?"* Hỏi Casso câu tương tự.
 - **Pháp lý:** chọn tên thương hiệu ("Quản lý phòng trọ" là tên chung, không đăng ký nhãn hiệu được), tra trùng (Cục SHTT, WIPO), mua tên miền.
 - **KPI:** 15 cuộc phỏng vấn; ≥ 5 người đồng ý dùng thử từ tháng 12; ≥ 3 người nói trả được ≥ 149k.
-- **Điều kiện đi tiếp:** có ≥ 5 người đồng ý dùng thử. Nếu kết quả phỏng vấn cho thấy nỗi đau khác hẳn giả định, sửa kế hoạch trước khi code.
+- **Điều kiện đi tiếp (ngày 31/10):**
+  - Đạt đủ 15 cuộc và ≥ 5 người đồng ý dùng thử → bắt đầu P0 ngày 01/11.
+  - Nếu tới 31/10 mới phỏng vấn được **8–10 người** nhưng đã có **≥ 3 chủ trọ (≥20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12** → **vẫn bắt đầu P0 đúng ngày 01/11** (làm Auth, RLS, test tính tiền trước) và phỏng vấn nốt 5–7 người còn lại vào buổi tối trong 2 tuần đầu tháng 11.
+  - Nếu đã hỏi ≥ 8 người mà **dưới 2 người đồng ý dùng thử** → lùi P0, xem lại định vị và nỗi đau giả định trước khi viết code.
 
 ### Tháng 11/2026: Làm phần nền (P0)
 
-- **Sản phẩm:** 5 hạng mục P0 (mục 5.2), không làm gì thêm.
-- **Khách hàng:** nhận file hoặc ảnh sổ của 5 người beta, nhập hộ bằng script vào cuối tháng.
+- **Sản phẩm:** 5 hạng mục P0 (mục 5.2), hoàn tất trước ngày đóng băng **25/11**, không làm gì thêm.
+- **Khách hàng:** nhận file hoặc ảnh sổ của 3–5 người beta, nhập hộ bằng script vào cuối tháng (25–30/11).
 - **Pháp lý:** đăng ký hộ kinh doanh (lệ phí môn bài đã bỏ từ 2026), mở tài khoản ngân hàng riêng, soạn chính sách bảo mật và điều khoản.
 - **KPI:**
   - Test RLS qua (tài khoản A không đọc được dữ liệu B).
   - Test tính tiền qua.
   - Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.
 - **Ngân sách:** khoảng 1–3 triệu.
-- **Nếu trễ:** dời beta sang kỳ tháng 1. Không cắt phần test.
+- **Nếu trễ mốc 25/11:** dời kỳ thu tiền beta đầu tiên sang kỳ tháng 1/2027. Không cắt phần test.
 
-### Tháng 12/2026: Beta trên dữ liệu thật
+### Tháng 12/2026: Beta kỳ 1 + Phát triển P1 (#1, #2)
 
-- **Sản phẩm:** trang hóa đơn cho người thuê + xác nhận 1 chạm (P1 #1), tự sửa/huỷ hóa đơn (P1 #2), sửa lỗi phát sinh.
-- **Khách hàng:**
-  - 3–5 chủ trọ chạy kỳ thu tiền tháng 12.
+- **Giai đoạn 01–10/12 (Kỳ thu tiền Beta 1):**
+  - 3–5 chủ trọ chạy kỳ thu tiền tháng 12 bằng **bộ tính năng đã sẵn có từ P0** (ghi chỉ số hàng loạt, xuất phiếu VietQR dạng ảnh + tin Zalo soạn sẵn, chủ trọ bấm Thu nợ FIFO trên app). Không nhồi code trang hóa đơn mới vào trước ngày 01/12 để tránh vỡ tiến độ P0.
   - Có mặt trực tiếp hoặc gọi video ngày họ chốt sổ.
-  - Đo: số phút chốt sổ, tỷ lệ người thuê bấm "Tôi đã chuyển", số lần phải gọi hỗ trợ.
+  - Đo: số phút chốt sổ 30 phòng, các trường hợp đặc biệt phát sinh thực tế, số lần phải gọi hỗ trợ.
+- **Giai đoạn 06–24/12 (Phát triển & phát hành trước ngày đóng băng 25/12):**
+  - Làm **trang hóa đơn cho người thuê + nút "Tôi đã chuyển" + xác nhận 1 chạm (P1 #1)** và **tự sửa/huỷ hóa đơn (P1 #2)** để sẵn sàng cho kỳ thu tiền đầu tháng 1/2027.
 - **Vận hành:** nhóm Zalo hỗ trợ; quy tắc không phát hành bản mới từ 25 tới mùng 5 bắt đầu áp dụng.
-- **KPI:** chốt sổ ≤ 15 phút cho 30 phòng; ≥ 80% hóa đơn được gạch nợ bằng 1 chạm (không phải gõ số tiền); mức hài lòng ≥ 8/10.
+- **KPI:** kỳ 01–10/12 chốt sổ ≤ 15 phút cho 30 phòng, mức hài lòng ≥ 8/10; trước 25/12 phát hành xong P1 #1 và P1 #2.
 
-### Tháng 1/2027: Beta mở rộng + bán trước
+### Tháng 1/2027: Beta mở rộng (kỳ 2) + Công cụ giá điện + Bán trước
 
-- **Sản phẩm:** công cụ tính lại giá điện + phụ lục hợp đồng (P1 #3), tải dữ liệu ra Excel và xoá dữ liệu (P1 #4), luồng trả phòng trước Tết.
-- **Khách hàng:**
-  - Mở thêm tới 10 người beta.
+- **Giai đoạn 01–10/01/2027 (Kỳ thu tiền Beta 2):**
+  - Mở thêm tới 5–10 chủ trọ beta chạy kỳ thu tiền tháng 1 với **trang hóa đơn Zalo + xác nhận 1 chạm (P1 #1)** và **tự sửa/huỷ hóa đơn (P1 #2)**.
+  - Đo: tỷ lệ người thuê bấm "Tôi đã chuyển", tỷ lệ hóa đơn được gạch nợ bằng 1 chạm (mục tiêu ≥ 80%).
+- **Giai đoạn 06–24/01/2027 (Hoàn tất trước ngày đóng băng Tết 25/01):**
+  - Làm **công cụ tính lại giá điện + phụ lục hợp đồng (P1 #3, 2–3 ngày kèm test)**, **tải dữ liệu ra Excel và xoá dữ liệu (P1 #4)**, và luồng trả phòng trước Tết.
   - **Bán trước gói năm** cho người beta với giá ưu đãi (ví dụ 1,2 triệu/năm cho gói Tiêu chuẩn, giữ giá trọn đời). Có từ 3 người trả trước trở lên là tín hiệu thật.
-- **Tết 06/02/2027:** không phát hành bản mới từ khoảng 25/01.
-- **KPI:** 5–10 người dùng kỳ tháng 1; ≥ 3 người trả trước.
+- **KPI:** 5–10 người dùng kỳ tháng 1; ≥ 80% hóa đơn gạch nợ 1 chạm; ≥ 3 người trả trước gói năm.
 
 ### Tháng 2/2027: Tết + mở bán
 
@@ -644,5 +649,41 @@ Trả lời Phụ lục C. Ghi ở phụ lục mới thay vì mục C.4 để m�
 - Hỏi kế toán thuế: ngưỡng miễn thuế là 500 triệu hay 1 tỷ, và tiền điện nước thu hộ có tính vào doanh thu không (đã có ở mục 10).
 - Đổi `SYNC_TOKEN` (mục 10, vẫn chưa làm).
 
-<!-- DEBATE_STATUS: WAITING_FOR_ARGON | ROUND: 3 -->
+---
+
+## Phụ lục F. Vòng 4 — Argon (19/10/2026)
+
+Trả lời 4 câu hỏi của Opus ở **E.3**. Các nội dung hai bên đã đồng thuận ở vòng này đã được cập nhật thẳng vào **Mục 5.3** và **Mục 9**.
+
+### F.1 Trả lời 4 câu hỏi ở E.3
+
+1. **Bỏ ảnh biên lai trên trang hóa đơn, chỉ giữ nút "Tôi đã chuyển" + số tiền → Đồng ý 100%.**
+   - Lý do của Opus hoàn toàn thuyết phục: ảnh biên lai rất dễ làm giả (chủ trọ đằng nào cũng phải nhìn thông báo biến động số dư của chính mình), lại làm phát sinh nghĩa vụ lưu trữ/mã hóa/xoá dữ liệu cá nhân (họ tên, số tài khoản người thuê) theo Luật BVDLCN.
+   - **Bổ sung 1 chi tiết nhỏ giúp chủ trọ đối soát nhanh hơn**: bên cạnh ô số tiền, thêm 1 ô văn bản tùy chọn ngắn **"Ghi chú / Tên người chuyển hộ (nếu nhờ người khác chuyển)"** (tối đa 40 ký tự). Thực tế nhiều sinh viên/người đi làm nhờ bố mẹ hoặc bạn cùng phòng chuyển khoản hộ mà quên ghi mã phòng; có dòng ghi chú này thì chủ trọ nhìn thông báo ngân hàng khớp được ngay trong 1 giây mà không cần ảnh biên lai.
+
+2. **P1 #4 làm "Tải toàn bộ dữ liệu ra Excel (`.xlsx`)" trước, chưa làm Google Sheets OAuth → Đồng ý 100%.**
+   - Xuất file `.xlsx` nhiều sheet ngay trên trình duyệt không cần xin quyền Google Drive OAuth (tránh làm chủ trọ giật mình vì màn hình cấp quyền), vừa mở được bằng Excel vừa tải lên Google Sheets được, lại dùng chung logic với phần thực thi quyền truy cập/xoá dữ liệu của Luật BVDLCN. Đã cập nhật vào Mục 5.3 (P1 #4).
+
+3. **Tiến độ tháng 12: Kỳ thu tiền 01–10/12 chạy bằng phiếu VietQR dạng ảnh + tin Zalo soạn sẵn đang có, còn Trang hóa đơn cho người thuê (P1 #1) và Tự sửa/huỷ hóa đơn (P1 #2) phát hành trước 25/12 cho kỳ tháng 1 → Đồng ý 100%.**
+   - Đây là điểm bắt lỗi lịch trình rất sắc của Opus. Vì quy tắc Mục 7 cấm phát hành tính năng mới từ ngày 25 đến mùng 5, mọi thứ chạy ở kỳ 01–10/12 phải xong trước **25/11**. Trong 3,5 tuần đầu tháng 11 (khoảng 70–85 giờ làm bán thời gian), chỉ riêng 5 hạng mục P0 (Supabase + RLS + chuyển dữ liệu + bộ test tính tiền + gỡ ngày cứng + script nhập liệu) đã kín lịch.
+   - Đã tách rõ Mục 9 (Tháng 12 & Tháng 1) thành 2 nhịp:
+     - **01–10/12 (Beta kỳ 1)**: 3–5 chủ trọ chốt sổ bằng phiếu VietQR + tin Zalo soạn sẵn và nút Thu nợ FIFO đã có.
+     - **06–24/12**: Code & phát hành P1 #1 và P1 #2 trước ngày đóng băng 25/12 để chạy chính thức ở **kỳ thu tiền 01–10/01/2027 (Beta kỳ 2)**.
+     - **06–24/01/2027**: Code & phát hành P1 #3 (công cụ tính lại giá điện 2–3 ngày kèm test) và P1 #4 (xuất Excel + xoá dữ liệu) trước ngày đóng băng Tết 25/01.
+
+4. **Nếu tới 31/10 mới phỏng vấn được dưới 10 cuộc (thay vì 15): chọn (a) lùi P0 sang 15/11 hay (b) vẫn bắt đầu P0 ngày 01/11? → Chọn phương án kết hợp có điều kiện sàn.**
+   - Nếu lùi P0 sang 15/11 vô điều kiện thì chắc chắn mất kỳ Beta đầu tháng 12. Nhưng nếu bắt đầu P0 khi chưa có ai chịu dùng thử thì rủi ro xây xong không ai dùng.
+   - Đã cập nhật ngưỡng quyết định ngày 31/10 tại Mục 9:
+     - Nếu tới 31/10 phỏng vấn được **≥ 8 chủ trọ** và trong đó có **≥ 3 chủ trọ (quy mô ≥ 20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12**: **bắt đầu P0 đúng ngày 01/11** (2 tuần đầu làm Auth, RLS, test tính tiền vốn không phụ thuộc vào tiểu tiết giao diện), đồng thời tận dụng các buổi tối đầu tháng 11 phỏng vấn nốt 5–7 người còn lại cho đủ 15.
+     - Nếu đã hỏi ≥ 8 chủ trọ mà **dưới 2 người chịu dùng thử miễn phí**: **dừng/lùi P0** để mổ xẻ lại nguyên nhân trước khi code.
+
+### F.2 Câu hỏi gửi Opus cho Vòng 5 (Kiểm tra đồng thuận cuối)
+
+Cả 4 câu hỏi ở E.3 hai bên đều đã thống nhất. Opus xem lại 2 chi tiết hoàn thiện vừa cập nhật vào thân kế hoạch:
+1. Ô tùy chọn ngắn **"Ghi chú / Tên người chuyển hộ"** đi kèm nút `"Tôi đã chuyển"` ở P1 #1 (nhưng lưu ý rõ trên giao diện: chỉ ghi tên hiển thị ngắn hoặc 4 số cuối giao dịch, không nhập CCCD/số tài khoản đầy đủ).
+2. Ngưỡng đi tiếp ngày 31/10 (**≥ 8 cuộc phỏng vấn & ≥ 3 chủ trọ đồng ý Beta tháng 12**) và lịch tách 2 nhịp (`01–10` chạy kỳ thu tiền, `06–24` phát triển tính năng cho kỳ tháng sau) ở Tháng 12/2026 & Tháng 1/2027.
+
+Nếu Opus đồng ý với 2 điểm hoàn thiện này (hoặc tinh chỉnh nhỏ nếu cần), đề nghị Opus cập nhật và đổi trạng thái cuối file sang `CONSENSUS_REACHED` để hai bên hoàn tất bản kế hoạch trình chủ dự án!
+
+<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 4 -->
 

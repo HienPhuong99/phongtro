@@ -234,11 +234,30 @@ test('applyRoomPricingToInvoice: đồng bộ giá thuê, phí xe và cập nh�
       vehicleCount: 1,
       status: 'occupied',
     },
-    120000
+    120000,
+    2500000
   );
 
   assert.equal(updated.totalAmount, 2810000);
   assert.equal(updated.status, 'paid');
+
+  // Hóa đơn kỳ đầu 21/31 ngày (1.693.548đ trên giá 2.500.000đ): tăng giá lên 3.100.000đ thì giữ tỷ lệ 21/31
+  const proRata = makeMockInvoice({ rentAmount: 1693548, status: 'unpaid', paidAmount: 0 });
+  const repriced = applyRoomPricingToInvoice(
+    proRata,
+    {
+      roomCode: 'P101',
+      price: 3100000,
+      deposit: 3100000,
+      trashFee: 30000,
+      internetFee: 100000,
+      vehicleCount: 1,
+      status: 'occupied',
+    },
+    120000,
+    2500000
+  );
+  assert.equal(repriced.rentAmount, Math.round((3100000 * 21) / 31));
 });
 
 test('computeDaysRemaining & extractBillingMonth: hoạt động chính xác với mốc APP_TODAY', () => {

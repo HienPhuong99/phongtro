@@ -23,6 +23,7 @@ import {
   Contract,
   Invoice,
   FifoAllocatedItem,
+  RoomPriceUpdateItem,
 } from '../types';
 import {
   formatVND,
@@ -1858,8 +1859,6 @@ export const TempResidenceModal: React.FC<TempResidenceModalProps> = ({
 // ============================================================================
 // 6. MODAL ĐIỀU CHỈNH GIÁ THUÊ & BẢNG GIÁ PHÒNG (TỪNG PHÒNG + HÀNG LOẠT)
 // ============================================================================
-import type { RoomPriceUpdateItem } from '../types';
-export type { RoomPriceUpdateItem };
 
 interface RoomPricingModalProps {
   isOpen: boolean;

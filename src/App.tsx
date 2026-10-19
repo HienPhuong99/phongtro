@@ -43,6 +43,7 @@ import {
   Invoice,
   CashTransaction,
   FifoAllocatedItem,
+  RoomPriceUpdateItem,
 } from './types';
 import {
   SEED_PROPERTIES,
@@ -70,7 +71,6 @@ import {
   CollectPaymentModal,
   TempResidenceModal,
   RoomPricingModal,
-  RoomPriceUpdateItem,
 } from './components/Modals';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
@@ -900,7 +900,8 @@ export function App() {
           ) {
             return inv;
           }
-          return applyRoomPricingToInvoice(inv, up, currentProperty.vehicleFee);
+          const oldPrice = propertyRooms.find((r) => r.code === inv.roomCode)?.price ?? 0;
+          return applyRoomPricingToInvoice(inv, up, currentProperty.vehicleFee, oldPrice);
         })
       );
     }

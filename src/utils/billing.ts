@@ -178,11 +178,18 @@ export function allocatePaymentFIFO(
 export function applyRoomPricingToInvoice(
   inv: Invoice,
   update: RoomPriceUpdateItem,
-  vehicleFee: number
+  vehicleFee: number,
+  oldPrice: number
 ): Invoice {
   const vehicleAmount = update.vehicleCount * vehicleFee;
+  // Hóa đơn kỳ đầu tính theo ngày ở (tiền phòng < giá cũ) thì giữ đúng tỷ lệ ngày ở, không đổi thành nguyên tháng.
+  // ponytail: suy tỷ lệ từ rentAmount/giá cũ; khi có Supabase nên lưu stayDays trên hóa đơn.
+  const rentAmount =
+    oldPrice > 0 && inv.rentAmount < oldPrice
+      ? Math.round((inv.rentAmount * update.price) / oldPrice)
+      : update.price;
   const newTotal =
-    update.price +
+    rentAmount +
     inv.elecAmount +
     inv.waterAmount +
     update.trashFee +
@@ -199,7 +206,7 @@ export function applyRoomPricingToInvoice(
 
   return {
     ...inv,
-    rentAmount: update.price,
+    rentAmount,
     trashAmount: update.trashFee,
     internetAmount: update.internetFee,
     vehicleCount: update.vehicleCount,

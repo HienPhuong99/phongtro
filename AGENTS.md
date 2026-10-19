@@ -12,8 +12,6 @@ Mỗi khi xong 1 task, tự động làm (không cần hỏi lại):
 
 Nếu build/test lỗi thì dừng lại, không merge/deploy, báo lỗi.
 
-Lỗi đã biết đang chờ sửa: ghi vào `docs/BUGS-TODO.md` (hiện không còn lỗi nào). Sửa xong mục nào thì đánh dấu mục đó, hết thì xoá file.
-
 Kế hoạch kinh doanh và lộ trình tính năng: [docs/KE-HOACH-KINH-DOANH.md](docs/KE-HOACH-KINH-DOANH.md).
 
 ## Deploy
@@ -24,10 +22,10 @@ Kế hoạch kinh doanh và lộ trình tính năng: [docs/KE-HOACH-KINH-DOANH.m
   ```
 - **Các lệnh thành phần**:
   - `npm run deploy:sheets` — Build single-file `apps-script/Index.html`, đẩy mã Apps Script và phát hành Web App qua `clasp`. **Không** đụng tới dữ liệu trên Google Sheets.
-    - API dữ liệu (`getState`, `syncState`, `resetSeed`) cần mã `SYNC_TOKEN`: đặt trong Apps Script → Project Settings → Script Properties. Chưa đặt thì mọi thao tác dữ liệu bị từ chối. Không ghi mã vào repo; người dùng nhập mã ở trang Cài đặt của web (lưu trên trình duyệt).
+    - API dữ liệu cần mã `SYNC_TOKEN` (tạo bằng menu 🔑 trên Google Sheets, lưu trong Script Properties, không ghi vào repo). Trong `Code.gs`, mọi hàm nội bộ phải kết thúc bằng `_` (trang `/exec` cho phép gọi mọi hàm công khai qua `google.script.run`); hàm của menu phải gọi `assertSheetUi_()` trước tiên.
   - `npm run seed:sheets` — ⚠️ Ghi đè toàn bộ 7 bảng trên Google Sheets (`19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g`) bằng dữ liệu mẫu, mất dữ liệu thật. Chỉ chạy khi người dùng yêu cầu rõ ràng, không chạy trong quy trình deploy tự động.
   - `npm run deploy:web` — Build production bundle `dist/` và kích hoạt GitHub Pages workflow (`.github/workflows/deploy.yml`).
-  - `npm run test:e2e` — Chạy kiểm thử tự động E2E toàn bộ 8 màn hình + Mobile + Expo Go QR bằng `agent-browser` và xuất 14 ảnh chụp màn hình vào `docs/screenshots/`.
+  - `npm run test:e2e` — Chạy kiểm thử tự động E2E toàn bộ 8 màn hình + Mobile + Expo Go QR bằng `agent-browser` và xuất 17 ảnh chụp màn hình vào `docs/screenshots/`.
   - `cd mobile-expo && npx expo start --port 8081` — Khởi chạy máy chủ **Expo Go** (`exp://192.168.0.23:8081`) cho ứng dụng di động React Native.
 
 ### Đường dẫn triển khai thực tế (100% Miễn phí — Không dùng Netlify)

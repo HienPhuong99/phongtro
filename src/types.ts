@@ -114,7 +114,7 @@ export interface Invoice {
   tenantName: string;
   tenantPhone: string;
   contractCode: string;
-  billingMonth: string; // YYYY-MM
+  billingMonth: string;
   periodLabel: string;
   issueDate: string;
   dueDate: string;

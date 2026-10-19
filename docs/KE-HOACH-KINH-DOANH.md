@@ -1,6 +1,6 @@
 # Kế hoạch kinh doanh OptiRent — bản v2 (11/2026 → 10/2027)
 
-Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18/10/2026, sau một bản đánh giá phản biện và sau đợt sửa code ở commit `639e535`.
+Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.
 
 Số liệu thị trường lấy từ báo chí và trang của đối thủ, đăng trong năm 2026 (danh sách nguồn ở cuối). Văn bản luật mới đọc qua báo, **chưa đối chiếu văn bản gốc**. Chỗ có dấu ⚠️ là số liệu mâu thuẫn hoặc chưa kiểm chứng.
 
@@ -10,8 +10,8 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 
 1. **Thông điệp bán hàng mới: "Chốt sổ 20–60 phòng trong vài phút qua Zalo, không nhầm nợ cũ, không phải dò sao kê."** Chủ trọ trả tiền cho 3 việc: lấp phòng trống nhanh, thu đủ tiền, đỡ mệt mỗi đầu tháng. Họ không trả tiền để "tuân thủ luật". Các quy định 2026 (giá điện, thuế, lưu trú, dữ liệu cá nhân) vẫn có trong app nhưng chạy ngầm, không dùng để quảng cáo.
 2. **Khách hàng mục tiêu mới: chủ trọ 30–45 tuổi, quản lý 20–60 phòng hoặc 2–3 khu, vẫn đang đi làm.** Dưới 20 phòng thì sổ tay + Zalo vẫn đủ dùng và miễn phí. Nhóm mới thiếu thời gian, quen công nghệ, và trả 150–250k/tháng không phải đắn đo nhiều.
-3. **App vẫn là bản demo.** Đợt sửa ngày 18/10 đã:
-   - Khóa API Apps Script bằng mã bí mật.
+3. **App vẫn là bản demo.** Đợt sửa ngày 18–19/10 đã:
+   - Khóa API Apps Script bằng mã bí mật, và chặn việc gọi thẳng hàm nội bộ qua `google.script.run` (trước đó người lạ lấy được cả mã bí mật).
    - Sửa đồng bộ Google Sheets cho chạy thật.
    - Tắt đồng bộ của app Expo.
    - Sửa cả 7 lỗi đã ghi nhận.
@@ -41,7 +41,7 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 
 ---
 
-## 2. Hiện trạng sản phẩm (sau commit `639e535`, 18/10/2026)
+## 2. Hiện trạng sản phẩm (19/10/2026)
 
 ### 2.1 Những gì đã có
 
@@ -55,7 +55,7 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 | Tài chính | Sổ thu chi, quỹ, công nợ, cọc phải trả, thu tiền FIFO | FIFO là điểm mạnh thật |
 | Báo cáo | Doanh thu, chi phí, lợi nhuận, xếp hạng phòng | — |
 | Nhiều cơ sở | Đổi cơ sở thì mọi màn hình chỉ hiện dữ liệu cơ sở đó | Lỗi #1 đã sửa, quan trọng với phân khúc nhiều khu |
-| Đồng bộ Google Sheets | Gửi kèm mã `SYNC_TOKEN`, báo lỗi thật, dữ liệu web được ghi đúng cột | Sửa ngày 18/10, cần triển khai lại Apps Script |
+| Đồng bộ Google Sheets | Gửi kèm mã `SYNC_TOKEN`, báo lỗi thật, dữ liệu web được ghi đúng cột | Sửa ngày 18–19/10, cần triển khai lại Apps Script |
 | Cảnh báo | Thanh "Bản demo" ở đầu trang; cảnh báo khi giá điện > 3.460 đ/kWh | Dữ liệu mẫu vẫn để 3.500 đ/kWh để khớp video demo |
 
 ### 2.2 Còn thiếu để bán được
@@ -63,7 +63,7 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 1. **Đăng nhập và tách dữ liệu theo chủ trọ.** Hiện cả hệ thống dùng chung một Google Sheet.
 2. **Dữ liệu chỉ nằm trong trình duyệt.** Đồng bộ Sheets mới chỉ là bản sao lưu một chiều.
 3. **Ngày và kỳ bị gắn cứng.** "Hôm nay" luôn là 11/10/2026. Bộ chọn kỳ chỉ có 09–11/2026, cộng thêm kỳ của hóa đơn mới tạo.
-4. **Bản khóa API chưa chạy trên server.** Môi trường làm việc này không có quyền `clasp`. Bạn cần tự chạy `npm run deploy:sheets` và đặt `SYNC_TOKEN` (mục 9). Trước khi làm, Web App đang chạy vẫn là bản cũ, ai có link cũng đọc được dữ liệu.
+4. **Bản khóa API chưa chạy trên server.** Môi trường làm việc này không có quyền `clasp`. Bạn cần tự chạy `npm run deploy:sheets` rồi tạo mã bằng menu 🔑 trên Google Sheets (mục 9). Trước khi làm, Web App đang chạy vẫn là bản cũ, ai có link cũng đọc được dữ liệu.
 
 ---
 
@@ -120,9 +120,9 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 
 ## 5. Tính năng (theo thứ tự ưu tiên)
 
-### 5.1 Đã xong ngày 18/10/2026 (commit `639e535`)
+### 5.1 Đã xong ngày 18–19/10/2026
 
-- Khóa API Apps Script bằng `SYNC_TOKEN`. Các hàm nội bộ đổi sang dạng private. Các hàm của menu chỉ chạy được trong Google Sheets.
+- Khóa API Apps Script bằng `SYNC_TOKEN`. Các hàm nội bộ đổi sang dạng private để `google.script.run` không gọi được. Các hàm của menu (kể cả hàm tạo mã) chỉ chạy được trong Google Sheets và không trả mã về cho người gọi.
 - Đồng bộ Sheets chạy thật và báo lỗi thật. Dữ liệu web được ghi đúng cột. JSON được chia nhiều dòng để tránh giới hạn 50.000 ký tự mỗi ô.
 - Tắt đồng bộ của app Expo.
 - Sửa 7 lỗi trong danh sách dogfood. Thêm thanh "Bản demo" và cảnh báo giá điện.
@@ -223,15 +223,15 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 ### 18/10 – 31/10/2026: Không code thêm, đi phỏng vấn
 
 - **Kỹ thuật (khoảng 1 giờ):**
-  - Đặt `SYNC_TOKEN` trong Apps Script (Project Settings → Script Properties, chuỗi ngẫu nhiên ≥ 24 ký tự).
   - Chạy `npm run deploy:sheets` để triển khai bản khóa API.
-  - Merge PR, chạy `npm run deploy:web`.
+  - Mở Google Sheets → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ**, chép mã vào trang Cài đặt của web.
+  - Web lên GitHub Pages tự động khi merge vào `main` (đã merge ngày 19/10).
   - Thử lại: mở `.../exec?action=getState` không kèm mã phải bị từ chối.
 - **Phỏng vấn 15 chủ trọ** đúng phân khúc mới, dùng bản demo đang chạy (bộ câu hỏi ở mục 11).
   - Ở câu về giá điện và thuế: **quan sát thái độ**. Họ lo và muốn làm đúng, hay tìm cách né?
   - Ghi lại nguyên văn họ mô tả đầu tháng của mình.
 - **Hỏi SePay:** nhắn bộ phận hỗ trợ: *"Tôi làm phần mềm quản lý trọ cho khoảng 50 chủ nhà, mỗi người một tài khoản ngân hàng. Điều kiện cấp OAuth client và chi phí thế nào?"* Hỏi Casso câu tương tự.
-- **Pháp lý:** tra trùng tên "OptiRent" (Cục SHTT, WIPO), mua tên miền.
+- **Pháp lý:** chọn tên thương hiệu ("Quản lý phòng trọ" là tên chung, không đăng ký nhãn hiệu được), tra trùng (Cục SHTT, WIPO), mua tên miền.
 - **KPI:** 15 cuộc phỏng vấn; ≥ 5 người đồng ý dùng thử từ tháng 12; ≥ 3 người nói trả được ≥ 149k.
 - **Điều kiện đi tiếp:** có ≥ 5 người đồng ý dùng thử. Nếu kết quả phỏng vấn cho thấy nỗi đau khác hẳn giả định, sửa kế hoạch trước khi code.
 
@@ -343,12 +343,12 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 
 ## 10. Việc cần làm ngay
 
-- [ ] Đặt `SYNC_TOKEN` trong Script Properties của Apps Script và nhập cùng mã đó ở trang Cài đặt của web.
-- [ ] Chạy `npm run deploy:sheets` (triển khai bản khóa API) rồi `npm run deploy:web`.
+- [ ] Chạy `npm run deploy:sheets` để triển khai bản khóa API.
+- [ ] Trên Google Sheets: menu 🔑 Tạo / xem mã đồng bộ, rồi dán mã vào trang Cài đặt của web.
 - [ ] Thử: `.../exec?action=getState` không kèm mã phải trả về `UNAUTHORIZED`.
 - [ ] Danh sách 30 chủ trọ 20–60 phòng (hoặc nhiều khu) để chọn 15 người phỏng vấn.
 - [ ] Nhắn SePay và Casso hỏi về OAuth cho phần mềm nhiều chủ nhà.
-- [ ] Tra trùng tên "OptiRent", mua tên miền.
+- [ ] Chọn tên thương hiệu, tra trùng, mua tên miền.
 - [ ] Hỏi 1 kế toán thuế để chốt ngưỡng 500 triệu hay 1 tỷ.
 
 ---

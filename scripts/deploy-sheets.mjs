@@ -55,13 +55,13 @@ function bundleDistIntoAppsScriptHtml() {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OptiRent — Quản lý nhà trọ thông minh</title>
+    <title>Quản lý phòng trọ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
     <style>${cssContent}</style>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-teal-600 selection:text-white">
+  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-600 selection:text-white">
     <div id="root"></div>
     <script type="module">${jsContent}</script>
   </body>
@@ -79,7 +79,7 @@ async function main() {
 
   if (!fs.existsSync(CLASP_JSON_PATH)) {
     console.log('[1/4] Chưa có .clasp.json -> Tạo mới Google Spreadsheet + Apps Script...');
-    const createOut = run('clasp create --type sheets --title "OptiRent - Quản lý nhà trọ thông minh"');
+    const createOut = run('clasp create --type sheets --title "Quản lý phòng trọ"');
     console.log(createOut.trim());
   } else {
     console.log('[1/4] Đã tìm thấy .clasp.json hiện hữu.');
@@ -110,12 +110,12 @@ async function main() {
   let deployOut = '';
   if (existingDeploymentId) {
     try {
-      deployOut = run(`clasp deploy -i ${existingDeploymentId} -d "OptiRent Web App & Sheets Sync API"`);
+      deployOut = run(`clasp deploy -i ${existingDeploymentId} -d "Quản lý phòng trọ Web App & Sheets Sync API"`);
     } catch {
-      deployOut = run('clasp deploy -d "OptiRent Web App & Sheets Sync API"');
+      deployOut = run('clasp deploy -d "Quản lý phòng trọ Web App & Sheets Sync API"');
     }
   } else {
-    deployOut = run('clasp deploy -d "OptiRent Web App & Sheets Sync API"');
+    deployOut = run('clasp deploy -d "Quản lý phòng trọ Web App & Sheets Sync API"');
   }
   console.log(deployOut.trim());
 
@@ -139,7 +139,7 @@ async function main() {
     : '';
 
   const info = {
-    projectTitle: 'OptiRent - Quản lý nhà trọ thông minh',
+    projectTitle: 'Quản lý phòng trọ',
     scriptId,
     parentId,
     spreadsheetUrl,

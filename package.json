@@ -1,8 +1,8 @@
 {
-  "name": "optirent-phongtro",
+  "name": "quan-ly-phong-tro",
   "private": true,
   "version": "1.0.0",
-  "description": "OptiRent — Phần mềm Quản lý Nhà trọ, Phòng, Khách thuê, Hợp đồng, Điện nước, Hóa đơn VietQR, Thu tiền FIFO & Báo cáo (Web App + Google Sheets Apps Script)",
+  "description": "Quản lý phòng trọ — Phần mềm Quản lý Phòng, Khách thuê, Hợp đồng, Điện nước, Hóa đơn VietQR, Thu tiền FIFO & Báo cáo (Web App + Mobile + Google Sheets)",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173 --host",

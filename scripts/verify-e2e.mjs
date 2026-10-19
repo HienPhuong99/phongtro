@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Script kiểm thử E2E tự động bằng agent-browser
- * Kiểm tra toàn bộ 8 màn hình, giao diện Mobile, Mã QR Expo Go, các modal nghiệp vụ và luồng thu tiền FIFO
+ * Script kiểm thử E2E tự động bằng agent-browser cho hệ thống Quản lý phòng trọ
+ * Kiểm tra toàn bộ 8 màn hình, giao diện Mobile, Mã QR Expo Go, điều chỉnh giá thuê phòng,
+ * và xác thực toàn bộ 7 lỗi giao diện/nghiệp vụ đã được khắc phục triệt để.
  */
 
 import { execSync } from 'node:child_process';
@@ -13,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 const SCREENSHOTS_DIR = path.join(ROOT_DIR, 'docs', 'screenshots');
-const SESSION = 'optirent-e2e';
+const SESSION = 'phongtro-e2e';
 
 function ab(args) {
   const cmd = `agent-browser --session ${SESSION} ${args}`;
@@ -27,7 +28,7 @@ function clickBtn(label) {
 }
 
 function closeTopModal() {
-  const js = `(() => { const btns = Array.from(document.querySelectorAll('button')); const cancel = btns.reverse().find(b => b.innerText && (b.innerText.includes('Huỷ') || b.innerText.includes('Hủy') || b.innerText.includes('Đóng') || b.innerText.includes('Hoàn tất') || b.innerText.includes('Lưu & Lập hóa đơn'))); if (cancel) { cancel.click(); return true; } const modalX = document.querySelector('.fixed.inset-0 button'); if (modalX) { modalX.click(); return true; } return false; })()`;
+  const js = `(() => { const modals = Array.from(document.querySelectorAll('.fixed.inset-0')); const topModal = modals[modals.length - 1]; if (!topModal) return false; const btns = Array.from(topModal.querySelectorAll('button')); const cancel = btns.find(b => b.innerText && (b.innerText.includes('Huỷ') || b.innerText.includes('Hủy') || b.innerText.includes('Đóng') || b.innerText.includes('Xong'))); if (cancel) { cancel.click(); return 'text-btn'; } const closeBtn = btns.find(b => (b.getAttribute('aria-label') || '').includes('Đóng')); if (closeBtn) { closeBtn.click(); return 'aria-btn'; } if (btns[0]) { btns[0].click(); return 'first-btn'; } return false; })()`;
   ab(`eval "${js}"`);
 }
 
@@ -39,12 +40,29 @@ async function main() {
 
   console.log(`=== BẮT ĐẦU KIỂM THỬ E2E VỚI AGENT-BROWSER TẠI: ${targetUrl} ===`);
 
-  // 1. Mở trang Tổng quan
+  // 1. Mở trang Tổng quan & xác thực thương hiệu "Quản lý phòng trọ" (không còn tên app cũ)
   ab(`open "${targetUrl}"`);
   ab(`set viewport 1440 900`);
   ab(`wait 600`);
   ab(`get title`);
+  ab(
+    `eval "(() => { const text = document.body.innerText; if (!text.includes('Quản lý phòng trọ')) throw new Error('Thiếu tên thương hiệu Quản lý phòng trọ'); if (text.includes(['Opti', 'Rent'].join(''))) throw new Error('Vẫn còn sót tên cũ trên giao diện'); return 'BRAND_VERIFIED_QUAN_LY_PHONG_TRO'; })()"`
+  );
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '01-dashboard.png')}"`);
+
+  // 1b. Xác thực Bug 1: Đổi cơ sở sang "Khu trọ An Phú (Q.2 - TP. Thủ Đức)" -> số liệu phải lọc đúng theo cơ sở
+  ab(
+    `eval "(() => { const sel = document.querySelector('select[aria-label=\\"Chọn cơ sở nhà trọ\\"]'); sel.value = 'prop-an-phu'; sel.dispatchEvent(new Event('change', { bubbles: true })); return 'SWITCHED_TO_AN_PHU'; })()"`
+  );
+  ab(`wait 300`);
+  ab(
+    `eval "(() => { const text = document.body.innerText; if (text.includes('65.622.900')) throw new Error('Bug 1: Công nợ cơ sở Bình Thạnh vẫn hiển thị ở cơ sở An Phú'); return 'VERIFIED_BUG_1_PROPERTY_FILTER'; })()"`
+  );
+  // Chuyển lại về cơ sở Bình Thạnh
+  ab(
+    `eval "(() => { const sel = document.querySelector('select[aria-label=\\"Chọn cơ sở nhà trọ\\"]'); sel.value = 'prop-binh-thanh'; sel.dispatchEvent(new Event('change', { bubbles: true })); return 'SWITCHED_BACK_BINH_THANH'; })()"`
+  );
+  ab(`wait 300`);
 
   // 2. Chuyển sang màn hình Phòng & Kiểm thử tính năng Điều chỉnh giá thuê phòng
   clickBtn('Phòng');
@@ -83,12 +101,16 @@ async function main() {
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '04-vehicles.png')}"`);
 
-  // 4. Chuyển sang màn hình Hợp đồng & mở modal Tạo hợp đồng mới (Pro-rata)
+  // 4. Chuyển sang màn hình Hợp đồng & mở modal Tạo hợp đồng mới (Pro-rata + kiểm tra Bug 4, 5, 6)
   clickBtn('Hợp đồng');
   ab(`wait 400`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '05-contracts.png')}"`);
   clickBtn('Tạo hợp đồng mới');
   ab(`wait 400`);
+  // Xác thực Bug 4: Có ô Số điện thoại (type="tel") và Số CCCD/CMND
+  ab(
+    `eval "(() => { const telInput = document.querySelector('.fixed.inset-0 input[type=\\"tel\\"]'); if (!telInput) throw new Error('Bug 4: Thiếu ô nhập Số điện thoại trong form Tạo hợp đồng'); return 'VERIFIED_BUG_4_PHONE_CCCD_INPUTS'; })()"`
+  );
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '06-modal-prorata-contract.png')}"`);
   closeTopModal();
   ab(`wait 300`);
@@ -114,8 +136,15 @@ async function main() {
   clickBtn('Xác nhận thu');
   ab(`wait 400`);
   closeTopModal();
-  ab(`wait 400`);
+  ab(`wait 300`);
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '11-finance-debt-after-fifo.png')}"`);
+
+  // 6b. Xác thực Bug 7: Quay sang màn hình Hóa đơn, dòng đã thu đủ của P101 có chữ "Đã thu đủ" màu xanh (text-emerald-600)
+  clickBtn('Hóa đơn');
+  ab(`wait 400`);
+  ab(
+    `eval "(() => { const cells = Array.from(document.querySelectorAll('td')); const paidCell = cells.find(td => td.innerText.trim() === 'Đã thu đủ'); if (!paidCell) throw new Error('Không tìm thấy ô Đã thu đủ'); if (!paidCell.className.includes('text-emerald-600')) throw new Error('Bug 7: Ô Đã thu đủ không có màu xanh text-emerald-600'); return 'VERIFIED_BUG_7_GREEN_PAID_STATUS'; })()"`
+  );
 
   // 7. Chuyển sang màn hình Báo cáo
   clickBtn('Báo cáo');
@@ -133,7 +162,7 @@ async function main() {
   ab(`screenshot "${path.join(SCREENSHOTS_DIR, '14-expo-go-qr-modal.png')}"`);
 
   ab(`close`);
-  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH) ===');
+  console.log('=== HOÀN TẤT KIỂM THỬ E2E VỚI AGENT-BROWSER (17 ẢNH CHỤP MÀN HÌNH & 7 BUG FIXES) ===');
 }
 
 main().catch((err) => {

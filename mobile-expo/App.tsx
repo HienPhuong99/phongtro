@@ -184,7 +184,6 @@ export default function App() {
   const [selectedPeriod, setSelectedPeriod] = useState<'2026-09' | '2026-10' | '2026-11'>('2026-11');
   const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const syncing = false;
 
   // Modal Thu tiền FIFO
   const [fifoRoomId, setFifoRoomId] = useState<string | null>(null);
@@ -319,12 +318,13 @@ export default function App() {
     );
   };
 
-  // Tạm tắt đồng bộ: app Expo dùng dữ liệu mẫu riêng, khác cấu trúc với bản web.
-  // Gửi lên sẽ ghi đè dữ liệu web trên Google Sheets. Chỉ bật lại khi app đọc chung một nguồn dữ liệu.
-  const handleSyncGoogleSheets = async () => {
+  // Đồng bộ Google Sheets đang tắt: dữ liệu demo của app này khác schema Web App (RoomItem.name,
+  // status 'rented', ...) nên gửi syncState sẽ ghi đè dữ liệu thật của Web App bằng các dòng không tương thích.
+  // Apps Script cũng từ chối gói dữ liệu không có SYNC_TOKEN và schema 'quanlyphongtro-web-v1'.
+  const handleSyncGoogleSheets = () => {
     Alert.alert(
-      'Đồng bộ đang tạm tắt',
-      'Bản Expo đang dùng dữ liệu mẫu riêng. Hãy dùng bản web (hoặc ?mode=mobile) để đồng bộ Google Sheets.'
+      '☁️ Chưa hỗ trợ đồng bộ',
+      'Bản di động đang dùng dữ liệu demo nên không đồng bộ lên Google Sheets. Hãy đồng bộ từ Web App (Cài đặt → Kết nối & Đồng bộ Google Sheets).'
     );
   };
 
@@ -410,10 +410,10 @@ export default function App() {
       <View style={styles.topbar}>
         <View style={styles.brandRow}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>OR</Text>
+            <Text style={styles.logoText}>🏠</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>OptiRent Mobile</Text>
+            <Text style={styles.brandTitle}>Quản lý phòng trọ</Text>
             <Text style={styles.brandSub}>Nhà trọ Bình An · 12 phòng · 3 tầng</Text>
           </View>
         </View>
@@ -421,9 +421,8 @@ export default function App() {
         <TouchableOpacity
           style={styles.syncBtn}
           onPress={handleSyncGoogleSheets}
-          disabled={syncing}
         >
-          <Text style={styles.syncBtnText}>{syncing ? 'Đang đồng bộ...' : '☁️ Đồng bộ Sheets'}</Text>
+          <Text style={styles.syncBtnText}>☁️ Sheets (tắt)</Text>
         </TouchableOpacity>
       </View>
 

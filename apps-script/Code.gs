@@ -1,5 +1,5 @@
 /**
- * OptiRent — Quản lý nhà trọ thông minh
+ * Quản lý phòng trọ — Hệ thống quản lý phòng trọ, hợp đồng, điện nước và công nợ
  * Google Sheets + Google Apps Script Backend & Web App
  *
  * Tự động khởi tạo 7 trang tính (Sheets):
@@ -28,9 +28,10 @@ var SHEET_NAMES = {
 function onOpen() {
   try {
     SpreadsheetApp.getUi()
-      .createMenu('🏠 OptiRent Quản Lý Trọ')
-      .addItem('🚀 Khởi tạo / Làm mới dữ liệu mẫu', 'setupOptiRentSheets')
+      .createMenu('🏠 Quản lý phòng trọ')
+      .addItem('🚀 Khởi tạo / Làm mới dữ liệu mẫu', 'setupPhongTroSheets')
       .addItem('📊 Xem báo cáo tổng quan', 'showQuickSummary')
+      .addItem('🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)', 'setupSyncToken')
       .addSeparator()
       .addItem('🌐 Mở giao diện Web App', 'openWebAppModal')
       .addToUi();
@@ -40,63 +41,75 @@ function onOpen() {
 }
 
 /**
- * Bảo mật API (từ 18/10/2026):
- * - Mọi thao tác đọc/ghi dữ liệu đều cần mã bí mật SYNC_TOKEN.
- *   Cách đặt: Apps Script editor → Project Settings → Script Properties → thêm khóa SYNC_TOKEN
- *   (chuỗi ngẫu nhiên ≥ 24 ký tự). Chưa đặt thì mọi thao tác dữ liệu đều bị từ chối.
- * - Web App gửi mã này trong body POST (trường "token"). Không ghi mã vào code hay repo.
- * - Các hàm nội bộ kết thúc bằng "_" để google.script.run và trình duyệt không gọi trực tiếp được.
- *
- * HTTP GET:
- * - Mặc định => Render giao diện Web App từ Index.html (chỉ có dữ liệu mẫu trong trình duyệt)
- * - ?action=getState&token=... => Trả về JSON dữ liệu (nên dùng POST để mã không nằm trên URL)
- *
- * HTTP POST (body JSON, Content-Type text/plain):
- * - { action: 'getState', token }
- * - { action: 'syncState', token, state }
- * - { action: 'resetSeed', token }
+ * Mã bí mật dùng chung giữa Web App và Apps Script.
+ * Lưu trong Script Properties (khóa SYNC_TOKEN), KHÔNG commit vào repo.
+ * Tạo/xem bằng menu "🔑 Tạo / xem mã đồng bộ" trên Google Sheets (chỉ chạy được từ menu).
+ */
+var SYNC_TOKEN_PROPERTY = 'SYNC_TOKEN';
+
+var RAW_STATE_PART_PREFIX = 'RAW_STATE_JSON_';
+var RAW_STATE_CHUNK_SIZE = 45000;
+
+// Web App gửi kèm schema này. Gói dữ liệu khác schema (vd. app Expo cũ) bị từ chối để không ghi đè dữ liệu Web.
+var SYNC_SCHEMA = 'quanlyphongtro-web-v1';
+
+/**
+ * Xử lý HTTP GET:
+ * - ?action=getState&token=... (hoặc ?format=json&token=...) => Trả về JSON dữ liệu (bắt buộc mã đồng bộ)
+ * - Mặc định => Render giao diện Web App từ Index.html (không đọc dữ liệu trên Sheets)
+ * Khởi tạo/nạp lại dữ liệu mẫu chỉ làm được từ menu trên Google Sheets hoặc POST resetSeed có mã đồng bộ.
  */
 function doGet(e) {
   var params = (e && e.parameter) ? e.parameter : {};
   var action = params.action || '';
+  var format = params.format || '';
 
-  if (action || params.format === 'json') {
-    if (action !== 'getState' && params.format !== 'json') {
-      return jsonResponse_({ ok: false, error: 'Action không hợp lệ qua GET: ' + action });
+  if (action === 'getState' || format === 'json') {
+    if (!isAuthorized_(params.token)) {
+      return unauthorizedResponse_();
     }
-    var authError = checkToken_(params.token);
-    if (authError) return jsonResponse_(authError);
-    return jsonResponse_(buildStateResponse_());
+    return stateResponse_();
+  }
+
+  if (action) {
+    return jsonResponse_({ ok: false, error: 'Action không hợp lệ: ' + action });
   }
 
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('OptiRent — Quản lý nhà trọ thông minh')
+    .setTitle('Quản lý phòng trọ')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 /**
- * Xử lý HTTP POST (đồng bộ dữ liệu từ Web App về Google Sheets)
+ * Xử lý HTTP POST (body JSON gửi dạng text/plain, luôn kèm `token`):
+ * - { action: 'syncState', schema: 'quanlyphongtro-web-v1', token, state } => Ghi đè dữ liệu trên Sheets
+ * - { action: 'getState', token } => Đọc dữ liệu
+ * - { action: 'resetSeed', token } => Nạp lại dữ liệu mẫu
  */
 function doPost(e) {
   try {
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
-    var authError = checkToken_(payload.token);
-    if (authError) return jsonResponse_(authError);
-
     var action = payload.action || '';
 
+    if (!isAuthorized_(payload.token)) {
+      return unauthorizedResponse_();
+    }
+
     if (action === 'getState') {
-      return jsonResponse_(buildStateResponse_());
+      return stateResponse_();
     }
 
     if (action === 'syncState') {
-      if (!payload.state || typeof payload.state !== 'object') {
-        return jsonResponse_({ ok: false, error: 'Thiếu dữ liệu state' });
+      var invalid = validateSyncPayload_(payload);
+      if (invalid) {
+        return jsonResponse_({ ok: false, error: invalid });
       }
-      writeStateToSheets_(payload.state);
+      withScriptLock_(function() {
+        writeStateToSheets_(payload.state);
+      });
       return jsonResponse_({
         ok: true,
         action: 'syncState',
@@ -106,54 +119,113 @@ function doPost(e) {
     }
 
     if (action === 'resetSeed') {
-      setupSheets_();
-      return jsonResponse_({ ok: true, action: 'resetSeed', state: readStateFromSheets_() });
+      withScriptLock_(function() {
+        setupSheets_();
+      });
+      return jsonResponse_({
+        ok: true,
+        action: 'resetSeed',
+        state: readStateFromSheets_()
+      });
     }
 
-    return jsonResponse_({ ok: false, error: 'Action không hợp lệ: ' + action });
+    return jsonResponse_({
+      ok: false,
+      error: 'Action không hợp lệ: ' + action
+    });
   } catch (err) {
-    return jsonResponse_({ ok: false, error: String(err) });
+    return jsonResponse_({
+      ok: false,
+      error: String(err)
+    });
   }
+}
+
+// Chỉ đọc, không ghi: Sheets chưa có dữ liệu thì readStateFromSheets trả về dữ liệu mẫu
+function stateResponse_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return jsonResponse_({
+    ok: true,
+    spreadsheetId: ss.getId(),
+    spreadsheetUrl: ss.getUrl(),
+    updatedAt: new Date().toISOString(),
+    state: readStateFromSheets_()
+  });
 }
 
 /**
- * Trả về null nếu mã hợp lệ, ngược lại trả về object lỗi để gửi cho client.
+ * Kiểm tra mã đồng bộ. Chưa cấu hình SYNC_TOKEN thì từ chối mọi yêu cầu (fail closed).
  */
-function checkToken_(token) {
-  var expected = PropertiesService.getScriptProperties().getProperty('SYNC_TOKEN');
-  if (!expected) {
-    return { ok: false, code: 'NOT_CONFIGURED', error: 'Máy chủ chưa đặt SYNC_TOKEN trong Script Properties' };
+function isAuthorized_(token) {
+  var expected = PropertiesService.getScriptProperties().getProperty(SYNC_TOKEN_PROPERTY);
+  if (!expected || typeof token !== 'string' || token.length !== expected.length) {
+    return false;
   }
-  if (typeof token !== 'string' || !safeEquals_(token, expected)) {
-    return { ok: false, code: 'UNAUTHORIZED', error: 'Sai mã đồng bộ' };
-  }
-  return null;
-}
-
-/** So sánh chuỗi không dừng sớm ở ký tự khác đầu tiên. */
-function safeEquals_(a, b) {
-  if (a.length !== b.length) return false;
   var diff = 0;
-  for (var i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (var i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ token.charCodeAt(i);
   }
   return diff === 0;
 }
 
-function buildStateResponse_() {
-  ensureSheetsInitialized_();
-  return {
-    ok: true,
-    spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
-    spreadsheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(),
-    updatedAt: new Date().toISOString(),
-    state: readStateFromSheets_()
-  };
+function unauthorizedResponse_() {
+  return jsonResponse_({
+    ok: false,
+    error: 'UNAUTHORIZED: Thiếu hoặc sai mã đồng bộ (SYNC_TOKEN).'
+  });
 }
 
 /**
- * Hàm gọi từ menu trên Google Sheets phải chạy trong giao diện bảng tính.
- * SpreadsheetApp.getUi() ném lỗi khi bị gọi từ Web App / google.script.run.
+ * Chỉ nhận đúng cấu trúc dữ liệu của Web App để tránh ghi đè bằng dữ liệu sai schema.
+ */
+function validateSyncPayload_(payload) {
+  if (payload.schema !== SYNC_SCHEMA) {
+    return 'Schema dữ liệu không được hỗ trợ: ' + payload.schema + ' (cần ' + SYNC_SCHEMA + ')';
+  }
+  var state = payload.state;
+  if (!state || typeof state !== 'object') {
+    return 'Thiếu payload.state';
+  }
+  var keys = ['properties', 'rooms', 'tenants', 'vehicles', 'contracts', 'invoices', 'transactions'];
+  for (var i = 0; i < keys.length; i++) {
+    if (!Array.isArray(state[keys[i]])) {
+      return 'payload.state.' + keys[i] + ' phải là mảng';
+    }
+  }
+  return '';
+}
+
+function withScriptLock_(fn) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Tạo mã đồng bộ ngẫu nhiên (nếu chưa có) và hiển thị để dán vào trang Cài đặt của Web App.
+ */
+function setupSyncToken() {
+  assertSheetUi_();
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty(SYNC_TOKEN_PROPERTY);
+  if (!token) {
+    token = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+    props.setProperty(SYNC_TOKEN_PROPERTY, token);
+  }
+  var message = 'Mã đồng bộ (SYNC_TOKEN) — dán vào Web App > Cài đặt > Mã đồng bộ:\n\n' + token +
+    '\n\nĐổi mã: xoá khóa SYNC_TOKEN trong Project Settings > Script Properties rồi chạy lại.';
+  SpreadsheetApp.getUi().alert(message);
+}
+
+/**
+ * Các hàm gọi từ menu chỉ được chạy trong giao diện Google Sheets.
+ * Trang /exec do HtmlService phục vụ cho phép gọi mọi hàm công khai qua google.script.run,
+ * và SpreadsheetApp.getUi() ném lỗi trong ngữ cảnh đó, nên dùng nó để chặn.
+ * Vì lý do này mọi hàm nội bộ đều kết thúc bằng "_" (google.script.run không gọi được).
  */
 function assertSheetUi_() {
   try {
@@ -169,27 +241,16 @@ function jsonResponse_(obj) {
 }
 
 /**
- * Đảm bảo Google Sheets đã có đủ các bảng dữ liệu
+ * Khởi tạo toàn bộ 7 sheet với dữ liệu mẫu mặc định
  */
-function ensureSheetsInitialized_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var roomSheet = ss.getSheetByName(SHEET_NAMES.ROOMS);
-  if (!roomSheet || roomSheet.getLastRow() < 2) {
-    setupSheets_();
-  }
-}
-
 /**
  * Menu "Khởi tạo / Làm mới dữ liệu mẫu" (chỉ chạy được trong Google Sheets)
  */
-function setupOptiRentSheets() {
+function setupPhongTroSheets() {
   assertSheetUi_();
   return setupSheets_();
 }
 
-/**
- * Khởi tạo toàn bộ 7 sheet với dữ liệu chuẩn từ video Phongtro.mp4
- */
 function setupSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var seed = getDefaultSeedData_();
@@ -218,6 +279,7 @@ function setupSheets_() {
  */
 function writeStateToSheets_(state) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  // JSON gốc lưu nguyên vào CaiDat; các bảng dùng bản đã đổi sang cấu trúc cột
   var rawState = state;
   state = toSheetShape_(state);
 
@@ -406,28 +468,112 @@ function writeStateToSheets_(state) {
     txRows
   );
 
-  // 7. Bảng CaiDat & State JSON (mỗi ô Google Sheets tối đa 50.000 ký tự nên JSON được chia nhiều dòng)
-  var prop = rawState.property || {};
+  // 7. Bảng CaiDat & State JSON
   var settingsRows = [
-    ['TEN_CO_SO', prop.name || 'Nhà trọ Bình An', 'Tên nhà trọ chính'],
-    ['DIA_CHI', prop.address || '128 Nguyễn Văn Thương, Bình Thạnh, TP.HCM', 'Địa chỉ cơ sở'],
-    ['GIA_DIEN_KWH', prop.electricityRate || 3500, 'Đơn giá điện (VNĐ/kWh)'],
-    ['GIA_NUOC_M3', prop.waterRate || 18000, 'Đơn giá nước (VNĐ/m3)'],
-    ['PHI_RAC_THANG', prop.trashFee || 30000, 'Phí rác sinh hoạt (VNĐ/tháng)'],
-    ['PHI_WIFI_THANG', prop.internetFee || 100000, 'Phí Internet/Wifi (VNĐ/tháng)'],
-    ['NGAN_HANG_VIETQR', prop.bankName ? (prop.bankName + ' - ' + prop.bankAccount + ' - ' + prop.bankOwner) : 'Vietcombank - 1029384756 - NGUYEN QUAN LY TRO', 'Tài khoản nhận thanh toán QR'],
+    ['TEN_CO_SO', 'Nhà trọ Bình An', 'Tên nhà trọ chính'],
+    ['DIA_CHI', '128 Nguyễn Văn Thương, Bình Thạnh, TP.HCM', 'Địa chỉ cơ sở'],
+    ['GIA_DIEN_KWH', 3500, 'Đơn giá điện (VNĐ/kWh)'],
+    ['GIA_NUOC_M3', 18000, 'Đơn giá nước (VNĐ/m3)'],
+    ['PHI_RAC_THANG', 30000, 'Phí rác sinh hoạt (VNĐ/tháng)'],
+    ['PHI_WIFI_THANG', 100000, 'Phí Internet/Wifi (VNĐ/tháng)'],
+    ['NGAN_HANG_VIETQR', 'Vietcombank - 1029384756 - NGUYEN QUAN LY TRO', 'Tài khoản nhận thanh toán QR'],
     ['CAP_NHAT_CUOI', new Date().toISOString(), 'Thời điểm đồng bộ gần nhất']
   ];
-  var json = JSON.stringify(rawState);
-  var CHUNK = 45000;
-  for (var part = 0; part * CHUNK < json.length; part++) {
+  // Mỗi ô Google Sheets giới hạn 50.000 ký tự => chia RAW_STATE_JSON thành nhiều phần
+  var rawJson = JSON.stringify(rawState);
+  var partCount = Math.max(1, Math.ceil(rawJson.length / RAW_STATE_CHUNK_SIZE));
+  for (var p = 0; p < partCount; p++) {
     settingsRows.push([
-      'RAW_STATE_JSON_' + (part + 1),
-      json.slice(part * CHUNK, (part + 1) * CHUNK),
-      'Dữ liệu JSON đồng bộ với Web App (phần ' + (part + 1) + ')'
+      RAW_STATE_PART_PREFIX + (p + 1),
+      // Tiền tố '~' để Sheets không hiểu nhầm phần JSON thành số/ngày/công thức (=, +, -)
+      '~' + rawJson.substr(p * RAW_STATE_CHUNK_SIZE, RAW_STATE_CHUNK_SIZE),
+      'Dữ liệu JSON đồng bộ với Web App (phần ' + (p + 1) + '/' + partCount + ')'
     ]);
   }
   writeTable_(ss, SHEET_NAMES.SETTINGS, ['Khóa Cấu Hình', 'Giá Trị', 'Mô Tả'], settingsRows);
+}
+
+/**
+ * Các bảng trên Sheets dùng cấu trúc cột cũ (r.name, inv.period, ...). Dữ liệu Web App
+ * (Room.code, Invoice.billingMonth, ...) được đổi sang cấu trúc đó trước khi ghi bảng,
+ * nếu không các cột sẽ trống. Dữ liệu mẫu nội bộ đã đúng cấu trúc nên giữ nguyên.
+ */
+function toSheetShape_(state) {
+  var rooms = state.rooms || [];
+  var isWebShape = rooms.length > 0 && rooms[0].code !== undefined && rooms[0].name === undefined;
+  if (!isWebShape) return state;
+
+  var propsById = {};
+  (state.properties || []).forEach(function(p) { propsById[p.id] = p; });
+  var buildingOf = function(item) {
+    var p = propsById[item.propertyId];
+    return (p && p.name) || 'Nhà trọ Bình An';
+  };
+  var invoices = state.invoices || [];
+  var contracts = state.contracts || [];
+  var tenants = state.tenants || [];
+  var remaining = function(i) { return Math.max(0, (i.totalAmount || 0) - (i.paidAmount || 0)); };
+  var sameRoom = function(a, b) { return a.roomCode === b.code && a.propertyId === b.propertyId; };
+  var statusMap = { occupied: 'rented', vacant: 'vacant', maintenance: 'maintenance', deposited: 'deposited', moving_in: 'moving_in' };
+
+  return {
+    rooms: rooms.map(function(r) {
+      var contract = contracts.filter(function(c) { return c.code === r.contractCode; })[0];
+      return {
+        id: r.id, name: r.code, floor: r.floor || 0, building: buildingOf(r),
+        status: statusMap[r.status] || r.status || '', price: r.price || 0, deposit: r.deposit || 0,
+        tenantName: r.tenantName || '', tenantPhone: r.tenantPhone || '',
+        occupantsCount: tenants.filter(function(t) { return sameRoom(t, r) && t.status === 'active'; }).length,
+        maxOccupants: 3, vehiclesCount: r.vehicleCount || 0,
+        contractCode: r.contractCode || '', contractEnd: contract ? contract.endDate : '',
+        debt: invoices.filter(function(i) { return sameRoom(i, r); }).reduce(function(sum, i) { return sum + remaining(i); }, 0),
+        note: r.notes || ''
+      };
+    }),
+    tenants: tenants.map(function(t) {
+      return {
+        id: t.id, code: t.code || '', name: t.name || '', phone: t.phone || '', cccd: t.cccd || '',
+        roomId: t.roomCode || '', roomName: t.roomCode || '', building: buildingOf(t),
+        role: t.role || '', status: t.status || '', contractCode: t.contractCode || '',
+        totalPaid: 0, debt: 0, moveInDate: ''
+      };
+    }),
+    vehicles: (state.vehicles || []).map(function(v) {
+      return {
+        id: v.id, roomId: v.roomCode || '', roomName: v.roomCode || '', building: buildingOf(v),
+        tenantId: '', tenantName: v.ownerName || '', type: v.vehicleType || '', licensePlate: v.plate || '', note: ''
+      };
+    }),
+    contracts: contracts.map(function(c) {
+      return {
+        id: c.id, code: c.code || '', roomId: c.roomCode || '', roomName: c.roomCode || '', building: buildingOf(c),
+        tenantId: c.tenantId || '', tenantName: c.tenantName || '', tenantPhone: c.tenantPhone || '',
+        startDate: c.startDate || '', endDate: c.endDate || '', rentPrice: c.rentAmount || 0, deposit: c.depositAmount || 0,
+        status: c.status || '', refundDue: c.depositRefundAmount || 0, refundNote: c.depositRefunded ? 'Đã hoàn cọc' : ''
+      };
+    }),
+    invoices: invoices.map(function(i) {
+      return {
+        id: i.id, code: i.code || '', period: i.billingMonth || '', periodLabel: i.periodLabel || '',
+        roomId: i.roomCode || '', roomName: i.roomCode || '', building: buildingOf(i),
+        tenantName: i.tenantName || '', tenantPhone: i.tenantPhone || '', rentAmount: i.rentAmount || 0,
+        oldElec: i.elecOld || 0, newElec: i.elecNew || 0, elecUsage: i.elecUsage || 0, elecAmount: i.elecAmount || 0,
+        oldWater: i.waterOld || 0, newWater: i.waterNew || 0, waterUsage: i.waterUsage || 0, waterAmount: i.waterAmount || 0,
+        serviceAmount: (i.trashAmount || 0) + (i.internetAmount || 0) + (i.vehicleAmount || 0),
+        totalAmount: i.totalAmount || 0, paidAmount: i.paidAmount || 0, remainingAmount: remaining(i),
+        dueDate: i.dueDate || '', status: i.status || ''
+      };
+    }),
+    transactions: (state.transactions || []).map(function(x) {
+      return {
+        id: x.id, code: x.invoiceCode || x.id, date: x.date || '', type: x.type || '', category: x.category || '',
+        title: x.description || '', roomName: x.roomCode || '', tenantName: '', building: buildingOf(x),
+        amount: x.amount || 0, paymentMethod: x.method || '',
+        fund: x.method === 'Tiền mặt' ? 'Quỹ tiền mặt' : 'Tài khoản ngân hàng',
+        invoiceCode: x.invoiceCode || '', note: ''
+      };
+    })
+  };
 }
 
 /**
@@ -438,101 +584,25 @@ function readStateFromSheets_() {
   var settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
   if (settingsSheet && settingsSheet.getLastRow() >= 2) {
     var values = settingsSheet.getDataRange().getValues();
-    var legacy = '';
-    var parts = [];
+    var raw = '';
     for (var i = 1; i < values.length; i++) {
       var key = String(values[i][0]);
-      if (key === 'RAW_STATE_JSON') legacy = String(values[i][1] || '');
-      var m = /^RAW_STATE_JSON_(\d+)$/.exec(key);
-      if (m) parts[Number(m[1]) - 1] = String(values[i][1] || '');
+      // Hỗ trợ cả định dạng cũ (1 ô RAW_STATE_JSON) lẫn định dạng chia phần RAW_STATE_JSON_1..N
+      if (key === 'RAW_STATE_JSON') {
+        raw += String(values[i][1]);
+      } else if (key.indexOf(RAW_STATE_PART_PREFIX) === 0) {
+        raw += String(values[i][1]).replace(/^~/, '');
+      }
     }
-    var json = parts.length ? parts.join('') : legacy;
-    if (json) {
+    if (raw) {
       try {
-        return JSON.parse(json);
+        return JSON.parse(raw);
       } catch (err) {
         Logger.log('Lỗi parse RAW_STATE_JSON: ' + err);
       }
     }
   }
   return getDefaultSeedData_();
-}
-
-/**
- * Bảng trên Sheets dùng cấu trúc cũ (của app Expo). Dữ liệu từ Web App (Room.code, Invoice.billingMonth...)
- * được đổi sang cấu trúc đó trước khi ghi; JSON gốc vẫn được lưu nguyên trong CaiDat.
- */
-function toSheetShape_(state) {
-  var rooms = state.rooms || [];
-  var isWebShape = rooms.length > 0 && rooms[0].code !== undefined && rooms[0].name === undefined;
-  if (!isWebShape) return state;
-
-  var building = (state.property && state.property.name) || 'Nhà trọ Bình An';
-  var vehicleFee = (state.property && state.property.vehicleFee) || 0;
-  var invoices = state.invoices || [];
-  var contracts = state.contracts || [];
-  var tenants = state.tenants || [];
-  var txs = state.transactions || [];
-  var remaining = function(i) { return Math.max(0, (i.totalAmount || 0) - (i.paidAmount || 0)); };
-  var statusMap = { occupied: 'rented', vacant: 'vacant', maintenance: 'maintenance', deposited: 'deposited', moving_in: 'moving_in' };
-
-  return {
-    rooms: rooms.map(function(r) {
-      var contract = contracts.filter(function(c) { return c.code === r.contractCode; })[0];
-      return {
-        id: r.id, name: r.code, floor: r.floor, building: building,
-        status: statusMap[r.status] || r.status, price: r.price || 0, deposit: r.deposit || 0,
-        tenantName: r.tenantName || '', tenantPhone: r.tenantPhone || '',
-        occupantsCount: tenants.filter(function(t) { return t.roomCode === r.code && t.status === 'active'; }).length,
-        maxOccupants: 3, vehiclesCount: r.vehicleCount || 0,
-        contractCode: r.contractCode || '', contractEnd: contract ? contract.endDate : '',
-        debt: invoices.filter(function(i) { return i.roomCode === r.code; }).reduce(function(s, i) { return s + remaining(i); }, 0),
-        note: r.notes || ''
-      };
-    }),
-    tenants: tenants.map(function(t) {
-      return {
-        id: t.id, code: t.code, name: t.name, phone: t.phone || '', cccd: t.cccd || '',
-        roomId: t.roomCode || '', roomName: t.roomCode || '', building: building,
-        role: t.role, status: t.status, contractCode: t.contractCode || '',
-        totalPaid: 0, debt: 0, moveInDate: ''
-      };
-    }),
-    vehicles: (state.vehicles || []).map(function(v) {
-      return {
-        id: v.id, roomId: v.roomCode, roomName: v.roomCode, building: building,
-        tenantId: '', tenantName: v.ownerName || '', type: v.vehicleType || '', licensePlate: v.plate || '', note: ''
-      };
-    }),
-    contracts: contracts.map(function(c) {
-      return {
-        id: c.id, code: c.code, roomId: c.roomCode, roomName: c.roomCode, building: building,
-        tenantId: c.tenantId || '', tenantName: c.tenantName || '', tenantPhone: c.tenantPhone || '',
-        startDate: c.startDate || '', endDate: c.endDate || '', rentPrice: c.rentAmount || 0, deposit: c.depositAmount || 0,
-        status: c.status, refundDue: c.depositRefundAmount || 0, refundNote: c.depositRefunded ? 'Đã hoàn cọc' : ''
-      };
-    }),
-    invoices: invoices.map(function(i) {
-      return {
-        id: i.id, code: i.code, period: i.billingMonth, periodLabel: i.periodLabel || '',
-        roomId: i.roomCode, roomName: i.roomCode, building: building,
-        tenantName: i.tenantName || '', tenantPhone: i.tenantPhone || '', rentAmount: i.rentAmount || 0,
-        oldElec: i.elecOld || 0, newElec: i.elecNew || 0, elecUsage: i.elecUsage || 0, elecAmount: i.elecAmount || 0,
-        oldWater: i.waterOld || 0, newWater: i.waterNew || 0, waterUsage: i.waterUsage || 0, waterAmount: i.waterAmount || 0,
-        serviceAmount: (i.trashAmount || 0) + (i.internetAmount || 0) + (i.vehicleAmount || (i.vehicleCount || 0) * vehicleFee),
-        totalAmount: i.totalAmount || 0, paidAmount: i.paidAmount || 0, remainingAmount: remaining(i),
-        dueDate: i.dueDate || '', status: i.status
-      };
-    }),
-    transactions: txs.map(function(x) {
-      return {
-        id: x.id, code: x.invoiceCode || x.id, date: x.date, type: x.type, category: x.category,
-        title: x.description || '', roomName: x.roomCode || '', tenantName: '', building: building,
-        amount: x.amount || 0, paymentMethod: x.method || '', fund: x.method === 'Tiền mặt' ? 'Quỹ tiền mặt' : 'Tài khoản ngân hàng',
-        invoiceCode: x.invoiceCode || '', note: ''
-      };
-    })
-  };
 }
 
 /**
@@ -569,7 +639,7 @@ function showQuickSummary() {
   var totalDebt = unpaid.reduce(function(sum, i) { return sum + Number(i.remainingAmount || 0); }, 0);
 
   SpreadsheetApp.getUi().alert(
-    '📊 Thống kê nhanh OptiRent — Nhà trọ Bình An\n\n' +
+    '📊 Thống kê nhanh Quản lý phòng trọ — Nhà trọ Bình An\n\n' +
     '• Tỷ lệ lấp đầy: ' + rented + '/' + totalRooms + ' phòng (' + Math.round((rented / totalRooms) * 100) + '%)\n' +
     '• Tổng khách thuê: ' + (state.tenants || []).length + ' người\n' +
     '• Hóa đơn chưa thu: ' + unpaid.length + ' hóa đơn\n' +
@@ -583,11 +653,11 @@ function openWebAppModal() {
     .evaluate()
     .setWidth(1200)
     .setHeight(780);
-  SpreadsheetApp.getUi().showModalDialog(html, 'OptiRent — Quản lý nhà trọ thông minh');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Quản lý phòng trọ');
 }
 
 /**
- * Dữ liệu gốc khớp 100% với video Phongtro.mp4
+ * Dữ liệu mẫu mặc định của hệ thống Quản lý phòng trọ
  */
 function getDefaultSeedData_() {
   var rooms = [

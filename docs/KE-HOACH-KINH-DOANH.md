@@ -31,7 +31,7 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 | Giá | 99k (≤20 phòng) | Miễn phí ≤10 phòng · 149k ≤30 · 249k ≤60 | Không cạnh tranh với gói miễn phí ≤15 phòng của đối thủ; nhóm mới trả được cao hơn |
 | Tháng 11 | Backend + nhập Excel trên web + onboarding đầy đủ | Chỉ đăng nhập + phân quyền + chuyển dữ liệu + kiểm thử tính tiền; nhập liệu hộ bằng script | 80–100 giờ không đủ làm hết |
 | Mốc 20/01/2027 | Có khách trả phí trước Tết | 5 chủ trọ beta chạy kỳ thu tiền thật | Khả năng trễ quá cao |
-| Báo có tự động | SePay/Casso, giá chưa rõ | Làm 2 cách: tải sao kê lên để khớp (0đ) trước, SePay OAuth sau | SePay miễn phí ≤50 giao dịch/tháng nhưng hướng dẫn liên kết ngân hàng rất vất vả |
+| Báo có tự động | SePay/Casso, giá chưa rõ | Cách chính: khách bấm "Tôi đã chuyển" trên trang hóa đơn, chủ trọ xác nhận 1 chạm (0đ). SePay OAuth là tùy chọn. Bỏ khớp file sao kê khỏi P1 (Phụ lục C, E) | App ngân hàng trên điện thoại hầu như không xuất được CSV; liên kết ngân hàng là rào cản lớn |
 | Hỗ trợ mùng 1–5 | Chưa tính | Có kế hoạch riêng (mục 7) | Hỗ trợ dồn vào đúng giờ đi làm |
 | Kênh môi giới | Hoa hồng 20–30% năm đầu | Bỏ | Khoảng 300k không đủ hấp dẫn môi giới |
 
@@ -104,7 +104,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | Quy định (theo báo chí) | Cách app xử lý |
 |---|---|
 | **NĐ 133/2026** (từ 25/5/2026): phạt 20–30 triệu nếu thu tiền điện cao hơn giá bán lẻ, buộc hoàn trả | Đã có cảnh báo ở trang Cài đặt. Sẽ thêm công cụ "tính lại cơ cấu giá": điện đúng giá + 10% hao hụt, cộng phí dịch vụ thật có trong hợp đồng, tách dòng trên phiếu, giữ gần nguyên thu nhập |
-| **Thuế cho thuê nhà 2026**: bỏ khoán, tự kê khai; ngưỡng miễn thuế ⚠️ 500 triệu hay 1 tỷ/năm (NĐ 141/2026) | Báo cáo doanh thu theo kỳ, chỉ tạo khi chủ trọ bấm. Không làm mồi bán hàng |
+| **Thuế cho thuê nhà 2026**: bỏ khoán, tự kê khai; ngưỡng miễn thuế ⚠️ 500 triệu hay 1 tỷ/năm (NĐ 141/2026) | Báo cáo doanh thu theo kỳ, chỉ tạo khi chủ trọ bấm. Không làm mồi bán hàng. Ở TP.HCM/Hà Nội, nhà 20–60 phòng thường **chạm hoặc vượt** ngưỡng (Phụ lục C.2 #2), nên nỗi sợ lộ doanh thu là thật: cam kết tải dữ liệu ra và xoá sạch bất cứ lúc nào, không bắt khai địa chỉ thật hay CCCD của chủ trọ |
 | **Luật Cư trú sửa đổi** (từ 1/7/2026): thông báo lưu trú, phạt 500k–1 triệu/người | Danh sách "ai chưa khai báo", xuất các trường cần khai. Không hứa tích hợp VNeID |
 | **Luật BVDLCN** (từ 1/1/2026): phạt tới 3 tỷ | Đây là rủi ro của mình (bên cung cấp phần mềm), không phải lý do chủ trọ mua. Vẫn bắt buộc làm: phân quyền dữ liệu, mã hóa ảnh CCCD, phiếu đồng ý, xóa dữ liệu khi khách trả phòng lâu |
 
@@ -148,13 +148,15 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 ### 5.3 P1: tháng 12/2026 – 3/2027
 
-1. **Khớp chuyển khoản không tốn phí bên thứ ba.** VietQR có sẵn mã hóa đơn trong nội dung chuyển khoản. Chủ trọ tải file sao kê (Excel/CSV từ app ngân hàng) lên, app tự khớp theo mã và số tiền rồi gạch nợ FIFO. Dòng nào không khớp thì cho chủ trọ chọn tay.
-2. **Tự sửa/huỷ hóa đơn, gửi lại phiếu** mà không cần gọi hỗ trợ (giảm tải mùng 1–5).
-3. **Trang hóa đơn cho người thuê** mở trong Zalo: phiếu báo, QR, ảnh đồng hồ, lịch sử trả tiền.
-4. **Tổng quan nhiều khu:** một màn hình xem tất cả khu (đã thu / còn nợ / phòng trống).
-5. **Tài khoản phụ cho người nhà hoặc người quản lý:** chỉ ghi số và thu tiền, không xem báo cáo lợi nhuận.
-6. **Công cụ tính lại cơ cấu giá điện** (mục 3.3).
-7. **SePay OAuth** (sau khi SePay duyệt `client_id`): chủ trọ tự có tài khoản SePay. Gói FREE 50 giao dịch/tháng, không giới hạn số tài khoản ngân hàng, hỗ trợ 12 ngân hàng. App đọc giao dịch thay chủ trọ. Chỉ bật cho người tự nguyện, vì liên kết ngân hàng là rào cản lớn.
+1. **Trang hóa đơn cho người thuê + xác nhận 1 chạm (code giữa tháng 12, chạy từ kỳ tháng 1).** Link mở trong Zalo (mã ngẫu nhiên khó đoán, chỉ hiện đúng hóa đơn đó, không hiện CCCD): phiếu báo, VietQR có mã hóa đơn, ảnh đồng hồ, lịch sử trả tiền, nút **"Tôi đã chuyển"** (kèm số tiền thực chuyển và ô tùy chọn ghi chú tên người chuyển hộ khi nhờ người thân chuyển khoản, tối đa 40 ký tự, hiển thị dạng văn bản thuần vì do người lạ nhập trên link công khai, giới hạn số lần bấm mỗi hóa đơn — **không tải ảnh biên lai**). Chủ trọ thấy danh sách "phòng vừa báo đã chuyển", đối chiếu thông báo biến động số dư của chính họ rồi bấm **Xác nhận**, app gạch nợ FIFO. Chủ trọ vẫn gạch được cho phòng không bấm báo. **"Tôi đã chuyển" chỉ là lời báo, không tự gạch nợ** (chống ảnh chuyển khoản giả và tránh lưu trữ dữ liệu cá nhân thừa).
+2. **Tự sửa/huỷ hóa đơn, gửi lại phiếu** mà không cần gọi hỗ trợ (code trong tháng 12, giảm tải mùng 1–5 từ kỳ tháng 1).
+3. **Công cụ tính lại cơ cấu giá điện + phụ lục hợp đồng** (mục 3.3), **tháng 1** (ước lượng 2–3 ngày kèm test) để kịp mùa tăng giá và ký lại hợp đồng sau Tết.
+4. **Chủ quyền dữ liệu (tháng 1):** tải toàn bộ dữ liệu ra file Excel (`.xlsx`), xoá tài khoản và toàn bộ dữ liệu trên máy chủ. Luật BVDLCN cũng bắt buộc có. Chưa làm đồng bộ Google Sheets OAuth cho từng chủ trọ trừ khi phỏng vấn có nhu cầu rõ rệt.
+5. **Tổng quan nhiều khu (tháng 3):** một màn hình xem tất cả khu (đã thu / còn nợ / phòng trống). Đổi khu từng màn hình đã có sẵn.
+6. **Tài khoản phụ cho người nhà hoặc người quản lý (tháng 3):** chỉ ghi số và thu tiền, không xem báo cáo lợi nhuận.
+7. **SePay OAuth** (sau khi SePay duyệt `client_id`): chủ trọ tự có tài khoản SePay, **tự trả phí SePay** nếu vượt gói FREE 50 giao dịch/tháng. Khuyên chủ trọ dùng một tài khoản ngân hàng riêng chỉ nhận tiền trọ để nằm trong gói FREE (nhà dưới ~40 phòng). Chỉ bật cho người tự nguyện.
+
+Đã bỏ khỏi P1: khớp file sao kê CSV/Excel (app ngân hàng trên điện thoại hầu như không xuất được, mỗi ngân hàng một định dạng). Chỉ làm lại nếu phỏng vấn cho thấy chủ trọ quen tải sao kê trên máy tính.
 
 ### 5.4 P2: từ tháng 4/2027, khi có trên 40 khách trả phí
 
@@ -174,9 +176,9 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 | Gói | Giá | Giới hạn | Ghi chú |
 |---|---|---|---|
-| Miễn phí | 0đ | ≤ 10 phòng, 1 khu | Không có khớp sao kê, không có tài khoản phụ |
+| Miễn phí | 0đ | ≤ 10 phòng, 1 khu | Không có tài khoản phụ, không có SePay |
 | **Tiêu chuẩn** | **149k/tháng** (1,49 triệu/năm) | ≤ 30 phòng, 3 khu | Đầy đủ P1 |
-| **Chuyên nghiệp** | **249k/tháng** (2,49 triệu/năm) | ≤ 60 phòng, không giới hạn khu | + tài khoản phụ, SePay (nếu vượt 50 giao dịch thì phí SePay đã tính trong giá) |
+| **Chuyên nghiệp** | **249k/tháng** (2,49 triệu/năm) | ≤ 60 phòng, không giới hạn khu | + tài khoản phụ, SePay OAuth (phí SePay nếu vượt 50 giao dịch do chủ trọ tự trả cho SePay, **không** gộp vào giá) |
 | Trên 60 phòng | Từ 399k/tháng | Thỏa thuận | — |
 | Nhập liệu hộ | Miễn phí cho 30 khách đầu, sau đó 300–500k/lần | — | Cũng là cách hiểu các trường hợp đặc biệt |
 
@@ -189,8 +191,8 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | Supabase Pro (khi có khách thật) | khoảng 25 USD ≈ 650k/tháng |
 | Tên miền + email | khoảng 300–800k/năm |
 | Hosting web | 0đ |
-| Khớp sao kê tự làm | 0đ |
-| SePay | 0đ nếu chủ trọ dùng gói FREE của chính họ (≤50 giao dịch/tháng); 120k/tháng cho gói STARTUP nếu vượt |
+| Xác nhận chuyển khoản 1 chạm | 0đ |
+| SePay | 0đ với mình: chủ trọ dùng tài khoản SePay của chính họ (FREE ≤50 giao dịch/tháng; vượt thì họ tự trả gói STARTUP từ 120k/tháng) |
 | Luật sư rà chính sách bảo mật và điều khoản | khoảng 2–5 triệu (một lần) |
 | Marketing | 1–3 triệu/tháng (chủ yếu in ấn, quà giới thiệu) |
 
@@ -235,55 +237,62 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
   - Đổi mã: xoá `SYNC_TOKEN` trong Script Properties → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ** → chép mã vào trang Cài đặt của web.
   - Thử lại: mở `.../exec?action=getState` không kèm mã phải bị từ chối.
 - **Phỏng vấn 15 chủ trọ** đúng phân khúc mới, dùng bản demo đang chạy (bộ câu hỏi ở mục 11).
+  - Cách tìm: lọc số điện thoại đăng tin cho thuê ở **từ 2 địa chỉ trở lên** hoặc tòa 4–5 tầng (nhóm Facebook, Chợ Tốt). Kết bạn Zalo, giới thiệu thật tên mình, gửi kèm clip 15 giây thao tác gạch nợ FIFO và chỉnh giá hàng loạt, xin gọi 15 phút buổi tối hoặc cuối tuần. Chủ trọ nhóm này thường không có mặt ở khu trọ giờ hành chính.
+  - Chỉ nhắn tay từng người, không gom số điện thoại thành danh sách để nhắn hàng loạt (Luật BVDLCN).
   - Ở câu về giá điện và thuế: **quan sát thái độ**. Họ lo và muốn làm đúng, hay tìm cách né?
   - Ghi lại nguyên văn họ mô tả đầu tháng của mình.
 - **Hỏi SePay:** nhắn bộ phận hỗ trợ: *"Tôi làm phần mềm quản lý trọ cho khoảng 50 chủ nhà, mỗi người một tài khoản ngân hàng. Điều kiện cấp OAuth client và chi phí thế nào?"* Hỏi Casso câu tương tự.
 - **Pháp lý:** chọn tên thương hiệu ("Quản lý phòng trọ" là tên chung, không đăng ký nhãn hiệu được), tra trùng (Cục SHTT, WIPO), mua tên miền.
 - **KPI:** 15 cuộc phỏng vấn; ≥ 5 người đồng ý dùng thử từ tháng 12; ≥ 3 người nói trả được ≥ 149k.
-- **Điều kiện đi tiếp:** có ≥ 5 người đồng ý dùng thử. Nếu kết quả phỏng vấn cho thấy nỗi đau khác hẳn giả định, sửa kế hoạch trước khi code.
+- **Điều kiện đi tiếp (ngày 31/10):**
+  - **Bắt đầu P0 ngày 01/11** nếu đã phỏng vấn **≥ 8 người** và có **≥ 3 chủ trọ (≥ 20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12**. Chưa đủ 15 cuộc thì phỏng vấn nốt vào buổi tối trong 2 tuần đầu tháng 11.
+  - **Các trường hợp còn lại** (dưới 8 cuộc, hoặc mới 0–2 người đồng ý dùng thử) → chưa code P0, phỏng vấn tiếp tới **15/11** rồi xét lại đúng điều kiện trên. Tới 15/11 vẫn không đạt → xem lại định vị và nỗi đau giả định trước khi viết code.
 
 ### Tháng 11/2026: Làm phần nền (P0)
 
-- **Sản phẩm:** 5 hạng mục P0 (mục 5.2), không làm gì thêm.
-- **Khách hàng:** nhận file hoặc ảnh sổ của 5 người beta, nhập hộ bằng script vào cuối tháng.
+- **Sản phẩm:** 5 hạng mục P0 (mục 5.2), hoàn tất trước ngày đóng băng **25/11**, không làm gì thêm.
+- **Khách hàng:** nhận file hoặc ảnh sổ của 3–5 người beta, nhập hộ bằng script vào cuối tháng (25–30/11).
 - **Pháp lý:** đăng ký hộ kinh doanh (lệ phí môn bài đã bỏ từ 2026), mở tài khoản ngân hàng riêng, soạn chính sách bảo mật và điều khoản.
 - **KPI:**
   - Test RLS qua (tài khoản A không đọc được dữ liệu B).
   - Test tính tiền qua.
   - Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.
 - **Ngân sách:** khoảng 1–3 triệu.
-- **Nếu trễ:** dời beta sang kỳ tháng 1. Không cắt phần test.
+- **Mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 (mục 5.2) ra khoảng 4–5,5 tuần, dài hơn 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
+- **Nếu trễ mốc 25/11:** dời kỳ thu tiền beta đầu tiên sang kỳ tháng 1/2027. Không cắt phần test.
 
-### Tháng 12/2026: Beta trên dữ liệu thật
+### Tháng 12/2026: Beta kỳ 1 + Phát triển P1 (#1, #2)
 
-- **Sản phẩm:** khớp sao kê (P1 #1), tự sửa/huỷ hóa đơn (P1 #2), sửa lỗi phát sinh.
-- **Khách hàng:**
-  - 3–5 chủ trọ chạy kỳ thu tiền tháng 12.
+- **Giai đoạn 01–10/12 (Kỳ thu tiền Beta 1):**
+  - 3–5 chủ trọ chạy kỳ thu tiền tháng 12 bằng **bộ tính năng đã sẵn có từ P0** (ghi chỉ số hàng loạt, xuất phiếu VietQR dạng ảnh + tin Zalo soạn sẵn, chủ trọ bấm Thu nợ FIFO trên app). Không nhồi code trang hóa đơn mới vào trước ngày 01/12 để tránh vỡ tiến độ P0.
   - Có mặt trực tiếp hoặc gọi video ngày họ chốt sổ.
-  - Đo: số phút chốt sổ, tỷ lệ giao dịch khớp tự động, số lần phải gọi hỗ trợ.
+  - Đo: số phút chốt sổ 30 phòng, các trường hợp đặc biệt phát sinh thực tế, số lần phải gọi hỗ trợ.
+- **Giai đoạn 06–24/12 (Phát triển & phát hành trước ngày đóng băng 25/12):**
+  - Làm **trang hóa đơn cho người thuê + nút "Tôi đã chuyển" + xác nhận 1 chạm (P1 #1)** và **tự sửa/huỷ hóa đơn (P1 #2)** để sẵn sàng cho kỳ thu tiền đầu tháng 1/2027.
 - **Vận hành:** nhóm Zalo hỗ trợ; quy tắc không phát hành bản mới từ 25 tới mùng 5 bắt đầu áp dụng.
-- **KPI:** chốt sổ ≤ 15 phút cho 30 phòng; ≥ 70% giao dịch tự khớp; mức hài lòng ≥ 8/10.
+- **KPI:** kỳ 01–10/12 chốt sổ ≤ 15 phút cho 30 phòng, mức hài lòng ≥ 8/10; trước 25/12 phát hành xong P1 #1 và P1 #2.
 
-### Tháng 1/2027: Beta mở rộng + bán trước
+### Tháng 1/2027: Beta mở rộng (kỳ 2) + Công cụ giá điện + Bán trước
 
-- **Sản phẩm:** trang hóa đơn cho người thuê (P1 #3), tổng quan nhiều khu (P1 #4), luồng trả phòng trước Tết.
-- **Khách hàng:**
-  - Mở thêm tới 10 người beta.
+- **Giai đoạn 01–10/01/2027 (Kỳ thu tiền Beta 2):**
+  - Mở thêm tới 5–10 chủ trọ beta chạy kỳ thu tiền tháng 1 với **trang hóa đơn Zalo + xác nhận 1 chạm (P1 #1)** và **tự sửa/huỷ hóa đơn (P1 #2)**.
+  - Đo: tỷ lệ người thuê bấm "Tôi đã chuyển", tỷ lệ hóa đơn được gạch nợ bằng 1 chạm (mục tiêu ≥ 80%).
+- **Giai đoạn 06–24/01/2027 (Hoàn tất trước ngày đóng băng Tết 25/01):**
+  - Làm **công cụ tính lại giá điện + phụ lục hợp đồng (P1 #3, 2–3 ngày kèm test)**, **tải dữ liệu ra Excel và xoá dữ liệu (P1 #4)**, và luồng trả phòng trước Tết.
   - **Bán trước gói năm** cho người beta với giá ưu đãi (ví dụ 1,2 triệu/năm cho gói Tiêu chuẩn, giữ giá trọn đời). Có từ 3 người trả trước trở lên là tín hiệu thật.
-- **Tết 06/02/2027:** không phát hành bản mới từ khoảng 25/01.
-- **KPI:** 5–10 người dùng kỳ tháng 1; ≥ 3 người trả trước.
+- **KPI:** 5–10 người dùng kỳ tháng 1; ≥ 80% hóa đơn gạch nợ 1 chạm; ≥ 3 người trả trước gói năm.
 
 ### Tháng 2/2027: Tết + mở bán
 
 - **Nửa đầu tháng:** trực hỗ trợ.
 - **Sau Tết (mùa chuyển trọ):**
   - Mở bán chính thức với bảng giá ở mục 6.1.
-  - Nội dung "tăng giá sau Tết đúng hợp đồng" (dùng tính năng chỉnh giá hàng loạt có sẵn).
+  - Nội dung "tăng giá sau Tết đúng hợp đồng" (dùng chỉnh giá hàng loạt có sẵn và công cụ tính lại giá điện làm xong từ tháng 1).
 - **KPI:** 10 khách trả phí.
 
 ### Tháng 3/2027
 
-- **Sản phẩm:** tài khoản phụ cho người nhà/quản lý (P1 #5), công cụ tính lại giá điện (P1 #6).
+- **Sản phẩm:** tổng quan nhiều khu (P1 #5), tài khoản phụ cho người nhà/quản lý (P1 #6).
 - **Khách hàng:** khởi động chương trình giới thiệu bạn bè; thử với 1–2 văn phòng kế toán.
 - **KPI:** 20 khách trả phí; tỷ lệ huỷ < 5%/tháng.
 
@@ -334,10 +343,10 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 |---|---|---|---|
 | 10/2026 | 0 | 0 | Triển khai bản khóa API, 15 phỏng vấn |
 | 11/2026 | 0 | 0 | Supabase + RLS + test tính tiền |
-| 12/2026 | 0 (3–5 beta) | 0 | Khớp sao kê, tự sửa hóa đơn |
-| 01/2027 | 0 (≥3 trả trước gói năm) | 0 | Trang hóa đơn cho khách, nhiều khu |
+| 12/2026 | 0 (3–5 beta) | 0 | Trang hóa đơn cho khách + xác nhận 1 chạm, tự sửa hóa đơn |
+| 01/2027 | 0 (≥3 trả trước gói năm) | 0 | Tính lại giá điện, tải/xoá dữ liệu |
 | 02/2027 | 10 | khoảng 1,8 triệu | Mở bán sau Tết |
-| 03/2027 | 20 | khoảng 3,6 triệu | Tài khoản phụ, tính lại giá điện |
+| 03/2027 | 20 | khoảng 3,6 triệu | Tổng quan nhiều khu, tài khoản phụ |
 | 04/2027 | 28 | khoảng 5 triệu | SePay OAuth |
 | 05/2027 | 35 | khoảng 6,3 triệu | P2 theo nhu cầu |
 | 06/2027 | 42 | khoảng 7,6 triệu | Trả phòng hàng loạt |
@@ -369,7 +378,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 4. Đang ghi chép bằng gì? Đã thử phần mềm nào chưa, vì sao bỏ?
 5. Đang thu tiền điện bao nhiêu một số? Có biết quy định mới về giá điện cho thuê trọ không? *(Quan sát: lo lắng, muốn làm đúng, hay né?)*
 6. Năm nay khai thuế cho thuê nhà thế nào? *(Quan sát: có ngại cho người khác thấy doanh thu không?)*
-7. Nếu dùng app, anh/chị có ngại để dữ liệu phòng, tiền thuê lên đó không? Cần gì để yên tâm?
+7. Nếu dùng app, anh/chị có ngại để dữ liệu phòng, tiền thuê lên đó không? Cần gì để yên tâm? *(Nếu họ chưa nhắc: có nút tải hết dữ liệu ra Excel và xoá sạch trên máy chủ thì có yên tâm hơn không? Muốn bản sao nằm ở Google Sheets của chính mình không?)*
 8. Nếu có công cụ chốt sổ trong vài phút và tự gạch nợ khi khách chuyển khoản, bao nhiêu tiền một tháng thì hợp lý? Bao nhiêu thì quá đắt?
 9. Anh/chị có thể gửi file Excel hoặc ảnh sổ để mình nhập hộ dùng thử từ tháng 12 không?
 10. Anh/chị biết chủ trọ nào khác có thể quan tâm không?
@@ -383,11 +392,12 @@ Không bán hàng trong buổi phỏng vấn. Sau 15 cuộc thì tổng hợp: 3
 | Rủi ro | Khả năng | Cách giảm |
 |---|---|---|
 | Phỏng vấn cho thấy nhóm 20–60 phòng cũng không đủ đau để trả tiền | Trung bình | Dừng code, đổi phân khúc (ví dụ CHDV) trước tháng 11 |
-| Tháng 11 trễ | Cao | Đã cắt phạm vi; nếu trễ thì dời beta sang tháng 1, không cắt test |
+| Tháng 11 trễ | Cao | Đã cắt phạm vi; mốc kiểm tra 15/11 (mục 9); nếu trễ thì dời beta sang tháng 1, không cắt test |
 | Lỗi tính tiền | Trung bình | Test tự động cho phần tiền; có mặt cùng khách ở kỳ đầu |
 | Lộ dữ liệu | Trung bình | RLS có test, mã hóa ảnh CCCD, triển khai bản khóa API ngay |
 | Quá tải hỗ trợ mùng 1–5 | Cao | Mục 7: giới hạn khách, không phát hành bản mới, cho khách tự xử lý |
-| Khách không chịu liên kết ngân hàng | Cao | Khớp sao kê / xác nhận biên lai 1 chạm là cách chính, SePay chỉ là tùy chọn |
+| Khách không chịu liên kết ngân hàng | Cao | Xác nhận 1 chạm là cách chính, SePay chỉ là tùy chọn |
+| Người thuê báo "đã chuyển" bằng ảnh giả | Trung bình | Chỉ gạch nợ khi chủ trọ bấm xác nhận theo thông báo ngân hàng của chính họ; không lưu ảnh biên lai |
 | Hiểu sai luật | Trung bình | Cho phép cấu hình ngưỡng, ghi rõ "không phải tư vấn thuế/pháp lý" |
 
 ---
@@ -580,12 +590,181 @@ Khi Opus đọc Phụ lục C này, đề nghị Opus phản hồi ngắn gọn 
   ```
 - Khi đó, cả 2 AI sẽ trao đổi qua lại ngay trong 1 luồng thực thi duy nhất trên máy của bạn (3–4 vòng trong khoảng 2–3 phút) và chỉ báo lại cho bạn khi đã ra bản kế hoạch hoàn chỉnh cuối cùng.
 
-### Cách 3: GitHub Actions `.github/workflows/debate.yml` — *Đang dùng*
+> **Đang dùng (từ 19/10/2026):** biến thể của Cách 1 trên nhánh `debate/business-plan`, không ghi thẳng vào `main`. Argon (Antigravity) và Opus (Claude Code) mỗi bên tự kiểm tra nhánh này mỗi 60 giây và tự viết khi đến lượt. Chủ dự án đọc diff rồi mới merge vào `main`. Cách 3 để dự phòng vì cần thêm API key vào GitHub Secrets.
+
+### Cách 3: GitHub Actions `.github/workflows/debate.yml` — *Dự phòng*
 - Một workflow chạy cả hai AI lần lượt trên máy chủ GitHub (không cần máy bạn bật). Lượt kế tiếp do dòng `DEBATE_STATUS` cuối file quyết định; workflow dừng khi `CONSENSUS_REACHED` hoặc hết số lượt.
 - Mỗi lượt là 1 commit `review(Opus|Argon): …` trên nhánh `debate/business-plan`. Bạn đọc diff rồi tự merge vào `main`.
 - Không dùng kiểu gọi nhau bằng `@claude` / `@gemini-cli` trong bình luận PR, vì bình luận do bot đăng bằng `GITHUB_TOKEN` không kích hoạt workflow khác, nên chuỗi sẽ đứng im.
 - Cần 2 secret (Settings → Secrets and variables → Actions): `CLAUDE_CODE_OAUTH_TOKEN` (lấy bằng `claude setup-token`, dùng gói Claude sẵn có) hoặc `ANTHROPIC_API_KEY`, và `GEMINI_API_KEY` (lấy tại aistudio.google.com).
 - Chạy: tab Actions → "Phản biện kế hoạch (Opus ⇄ Argon)" → Run workflow, hoặc `gh workflow run debate.yml -f max_turns=6`.
 
-<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 2 -->
+---
+
+## Phụ lục E. Vòng 3 — Opus (19/10/2026)
+
+Trả lời Phụ lục C. Ghi ở phụ lục mới thay vì mục C.4 để mỗi vòng là một khối riêng, dễ xem diff. Các điểm đã đồng ý **đã sửa thẳng vào thân kế hoạch**: mục 1, 3.3, 5.3, 6.1, 6.2, 9, 11, 12.
+
+### E.1 Trả lời 4 câu hỏi ở C.3
+
+**1. Thay khớp sao kê CSV bằng "Tôi đã chuyển" + xác nhận 1 chạm, làm trong tháng 12 → Đồng ý một phần.**
+- Đồng ý bỏ CSV khỏi P1. Lý do của Argon đúng: chủ trọ xem tiền trên điện thoại, app ngân hàng hầu như không xuất CSV, mỗi ngân hàng một định dạng.
+- Đồng ý dồn vào tháng 12, gộp với trang hóa đơn cho người thuê (giờ là P1 #1), vì nút "Tôi đã chuyển" phải nằm trên trang đó.
+- **Phản đối phần ảnh biên lai:**
+  - Ảnh chuyển khoản giả là chiêu lừa phổ biến. Ảnh không chứng minh được gì; thứ duy nhất đáng tin là thông báo biến động số dư của chính chủ trọ. Mà chủ trọ đã phải xem thông báo đó thì ảnh là thừa.
+  - Ảnh biên lai có họ tên và số tài khoản người thuê, tức là thêm dữ liệu cá nhân phải lưu, mã hóa và xoá theo Luật BVDLCN. Ngoài ra còn tốn dung lượng lưu trữ.
+  - Đề xuất: nút "Tôi đã chuyển" + số tiền, **không có ảnh**. Nút chỉ là lời báo, không tự gạch nợ.
+- **Bổ sung:** chủ trọ vẫn phải gạch được cho phòng không bấm báo, vì nhiều người thuê chỉ chuyển rồi nhắn Zalo. KPI tháng 12 đổi từ "≥70% giao dịch tự khớp" (không còn tự khớp) thành **"≥80% hóa đơn được gạch nợ bằng 1 chạm"**.
+- Mẹo tài khoản riêng chỉ nhận tiền trọ: đồng ý, đã đưa vào P1 #7. ⚠️ Cần hỏi SePay hai việc: (a) giao dịch **tiền ra** có bị tính vào 50 giao dịch/tháng không; (b) khách trả thiếu rồi trả thêm lần nữa thì mỗi lần là một giao dịch. Vì vậy chỉ chắc nằm trong gói FREE với nhà dưới khoảng 40 phòng, không phải 45.
+
+**2. Đẩy công cụ tính lại giá điện lên tháng 1/2027 → Đồng ý.**
+- Đúng mùa: sau Tết là lúc tăng giá và ký lại hợp đồng.
+- **Không đồng ý ước lượng "~1 ngày".** Đây là phần tính tiền, kèm mẫu phụ lục hợp đồng, và theo quy tắc của P0 thì phải có test. Thực tế 2–3 ngày.
+- Để tháng 1 không quá tải (lại có Tết, ngừng phát hành từ 25/01): đổi chỗ với **tổng quan nhiều khu**, đẩy sang tháng 3. Đổi khu ở từng màn hình đã có sẵn (lỗi #1 đã sửa), nên nhóm 2–3 khu vẫn dùng được.
+
+**3. Tách phí SePay khỏi gói 249k → Đồng ý hoàn toàn.**
+- Phép tính của Argon đúng: 2,49 triệu/năm ≈ 207k/tháng, trừ 120k còn khoảng 87k.
+- Thêm một lý do: theo mô hình OAuth ở A.2, tài khoản SePay **đứng tên chủ trọ**, nên mình cũng không có cách gọn để trả hộ. Câu "đã tính vào gói 249k" ở A.2 #1 tự mâu thuẫn. Đã sửa ở mục 6.1, 6.2, 5.3.
+
+**4. Giữ "sao lưu 1 chạm về Google Sheets của chủ trọ" sau khi chuyển sang Supabase → Đồng ý một phần.**
+- Đồng ý cần cam kết chủ quyền dữ liệu: không bắt khai địa chỉ thật, cho tải dữ liệu ra và xoá sạch bất cứ lúc nào. Đã đưa vào mục 3.3 và P1 #4 (tháng 1).
+- **Phản đối làm Google Sheets trước.** Ghi vào Drive của từng chủ trọ phải qua Google OAuth và màn hình xin quyền truy cập Drive, đúng loại "cho app lạ đụng vào tài khoản" mà nhóm này đang sợ. Kiến trúc Apps Script hiện tại là **một Sheet dùng chung + `SYNC_TOKEN`**, không tách theo chủ trọ, nên đằng nào cũng phải viết lại chứ không "tận dụng sẵn" được.
+- Đề xuất: P1 làm **"Tải toàn bộ dữ liệu ra Excel"**. Không cần xin quyền gì, mở được trên điện thoại và đưa lên Google Sheets được, và cùng code với phần xoá dữ liệu mà luật bắt buộc. Chỉ làm bản đẩy thẳng sang Google Sheets nếu phỏng vấn cho thấy chủ trọ đòi (đã thêm câu hỏi phụ vào câu 7 mục 11).
+
+### E.2 Các điểm khác trong C.2
+
+- **#2 Toán ngưỡng thuế → Argon đúng, Opus rút lại nhận định ở A.2 #3.** Chỉ tính tiền phòng 2,5 triệu × 33 phòng × 12 tháng đã khoảng 1 tỷ, chưa cộng điện nước. Vậy ở TP.HCM/Hà Nội, nhóm 20–60 phòng chạm hoặc vượt ngưỡng. Hệ quả: bỏ hẳn ý "báo cáo doanh thu giúp chứng minh được miễn thuế", và nỗi sợ lộ doanh thu là rào cản số 1 cần kiểm chứng khi phỏng vấn. ⚠️ Chưa rõ tiền điện, nước thu hộ có tính vào doanh thu chịu thuế không. Câu này để kế toán thuế trả lời (mục 10).
+- **#2 Ẩn danh tên khu → Đồng ý.** App vốn không cần địa chỉ thật để tính tiền. CCCD **người thuê** vẫn để tùy chọn vì cần cho khai báo lưu trú (CT01).
+- **#5 Cách tìm 15 chủ trọ → Đồng ý**, đã đưa vào mục 9 (18/10–31/10). Thêm hai lưu ý: giới thiệu thật tên mình; nhắn tay từng người, không gom số điện thoại từ tin đăng thành danh sách để nhắn hàng loạt, vì đó là xử lý dữ liệu cá nhân khi chưa được đồng ý.
+
+### E.3 Câu hỏi gửi Argon cho Vòng 4
+
+1. Argon có đồng ý **bỏ ảnh biên lai**, chỉ giữ nút "Tôi đã chuyển" + số tiền, nút chỉ là lời báo không tự gạch nợ không? Nếu vẫn muốn giữ ảnh, ảnh giúp được gì mà thông báo ngân hàng của chủ trọ không làm được?
+2. Argon có đồng ý P1 làm **tải dữ liệu ra Excel** trước, còn đẩy thẳng sang Google Sheets chỉ làm khi phỏng vấn cho thấy có nhu cầu không?
+3. Tháng 12 giờ có trang hóa đơn cho người thuê (link công khai, cần mã khó đoán, chặn dò link, không lộ CCCD) cộng tự sửa/huỷ hóa đơn, trong khi kỳ thu tiền beta đầu tiên rơi vào mùng 1–10/12. Argon thấy có kịp không, hay nên để kỳ tháng 12 chạy bằng **phiếu VietQR dạng ảnh + tin Zalo soạn sẵn đang có**, còn trang hóa đơn phát hành giữa tháng 12 cho kỳ tháng 1?
+4. Còn 12 ngày (19–31/10) để phỏng vấn 15 người. Nếu tới 31/10 mới được dưới 10 cuộc, Argon chọn: (a) lùi P0 sang 15/11, hay (b) vẫn bắt đầu P0 vì phần nền (đăng nhập, RLS, test tính tiền) đằng nào cũng cần?
+
+### E.4 Cần chủ dự án quyết
+
+- Hỏi kế toán thuế: ngưỡng miễn thuế là 500 triệu hay 1 tỷ, và tiền điện nước thu hộ có tính vào doanh thu không (đã có ở mục 10).
+- Đổi `SYNC_TOKEN` (mục 10, vẫn chưa làm).
+
+---
+
+## Phụ lục F. Vòng 4 — Argon (19/10/2026)
+
+Trả lời 4 câu hỏi của Opus ở **E.3**. Các nội dung hai bên đã đồng thuận ở vòng này đã được cập nhật thẳng vào **Mục 5.3** và **Mục 9**.
+
+### F.1 Trả lời 4 câu hỏi ở E.3
+
+1. **Bỏ ảnh biên lai trên trang hóa đơn, chỉ giữ nút "Tôi đã chuyển" + số tiền → Đồng ý 100%.**
+   - Lý do của Opus hoàn toàn thuyết phục: ảnh biên lai rất dễ làm giả (chủ trọ đằng nào cũng phải nhìn thông báo biến động số dư của chính mình), lại làm phát sinh nghĩa vụ lưu trữ/mã hóa/xoá dữ liệu cá nhân (họ tên, số tài khoản người thuê) theo Luật BVDLCN.
+   - **Bổ sung 1 chi tiết nhỏ giúp chủ trọ đối soát nhanh hơn**: bên cạnh ô số tiền, thêm 1 ô văn bản tùy chọn ngắn **"Ghi chú / Tên người chuyển hộ (nếu nhờ người khác chuyển)"** (tối đa 40 ký tự). Thực tế nhiều sinh viên/người đi làm nhờ bố mẹ hoặc bạn cùng phòng chuyển khoản hộ mà quên ghi mã phòng; có dòng ghi chú này thì chủ trọ nhìn thông báo ngân hàng khớp được ngay trong 1 giây mà không cần ảnh biên lai.
+
+2. **P1 #4 làm "Tải toàn bộ dữ liệu ra Excel (`.xlsx`)" trước, chưa làm Google Sheets OAuth → Đồng ý 100%.**
+   - Xuất file `.xlsx` nhiều sheet ngay trên trình duyệt không cần xin quyền Google Drive OAuth (tránh làm chủ trọ giật mình vì màn hình cấp quyền), vừa mở được bằng Excel vừa tải lên Google Sheets được, lại dùng chung logic với phần thực thi quyền truy cập/xoá dữ liệu của Luật BVDLCN. Đã cập nhật vào Mục 5.3 (P1 #4).
+
+3. **Tiến độ tháng 12: Kỳ thu tiền 01–10/12 chạy bằng phiếu VietQR dạng ảnh + tin Zalo soạn sẵn đang có, còn Trang hóa đơn cho người thuê (P1 #1) và Tự sửa/huỷ hóa đơn (P1 #2) phát hành trước 25/12 cho kỳ tháng 1 → Đồng ý 100%.**
+   - Đây là điểm bắt lỗi lịch trình rất sắc của Opus. Vì quy tắc Mục 7 cấm phát hành tính năng mới từ ngày 25 đến mùng 5, mọi thứ chạy ở kỳ 01–10/12 phải xong trước **25/11**. Trong 3,5 tuần đầu tháng 11 (khoảng 70–85 giờ làm bán thời gian), chỉ riêng 5 hạng mục P0 (Supabase + RLS + chuyển dữ liệu + bộ test tính tiền + gỡ ngày cứng + script nhập liệu) đã kín lịch.
+   - Đã tách rõ Mục 9 (Tháng 12 & Tháng 1) thành 2 nhịp:
+     - **01–10/12 (Beta kỳ 1)**: 3–5 chủ trọ chốt sổ bằng phiếu VietQR + tin Zalo soạn sẵn và nút Thu nợ FIFO đã có.
+     - **06–24/12**: Code & phát hành P1 #1 và P1 #2 trước ngày đóng băng 25/12 để chạy chính thức ở **kỳ thu tiền 01–10/01/2027 (Beta kỳ 2)**.
+     - **06–24/01/2027**: Code & phát hành P1 #3 (công cụ tính lại giá điện 2–3 ngày kèm test) và P1 #4 (xuất Excel + xoá dữ liệu) trước ngày đóng băng Tết 25/01.
+
+4. **Nếu tới 31/10 mới phỏng vấn được dưới 10 cuộc (thay vì 15): chọn (a) lùi P0 sang 15/11 hay (b) vẫn bắt đầu P0 ngày 01/11? → Chọn phương án kết hợp có điều kiện sàn.**
+   - Nếu lùi P0 sang 15/11 vô điều kiện thì chắc chắn mất kỳ Beta đầu tháng 12. Nhưng nếu bắt đầu P0 khi chưa có ai chịu dùng thử thì rủi ro xây xong không ai dùng.
+   - Đã cập nhật ngưỡng quyết định ngày 31/10 tại Mục 9:
+     - Nếu tới 31/10 phỏng vấn được **≥ 8 chủ trọ** và trong đó có **≥ 3 chủ trọ (quy mô ≥ 20 phòng) đồng ý gửi sổ dùng thử Beta tháng 12**: **bắt đầu P0 đúng ngày 01/11** (2 tuần đầu làm Auth, RLS, test tính tiền vốn không phụ thuộc vào tiểu tiết giao diện), đồng thời tận dụng các buổi tối đầu tháng 11 phỏng vấn nốt 5–7 người còn lại cho đủ 15.
+     - Nếu đã hỏi ≥ 8 chủ trọ mà **dưới 2 người chịu dùng thử miễn phí**: **dừng/lùi P0** để mổ xẻ lại nguyên nhân trước khi code.
+
+### F.2 Câu hỏi gửi Opus cho Vòng 5 (Kiểm tra đồng thuận cuối)
+
+Cả 4 câu hỏi ở E.3 hai bên đều đã thống nhất. Opus xem lại 2 chi tiết hoàn thiện vừa cập nhật vào thân kế hoạch:
+1. Ô tùy chọn ngắn **"Ghi chú / Tên người chuyển hộ"** đi kèm nút `"Tôi đã chuyển"` ở P1 #1 (nhưng lưu ý rõ trên giao diện: chỉ ghi tên hiển thị ngắn hoặc 4 số cuối giao dịch, không nhập CCCD/số tài khoản đầy đủ).
+2. Ngưỡng đi tiếp ngày 31/10 (**≥ 8 cuộc phỏng vấn & ≥ 3 chủ trọ đồng ý Beta tháng 12**) và lịch tách 2 nhịp (`01–10` chạy kỳ thu tiền, `06–24` phát triển tính năng cho kỳ tháng sau) ở Tháng 12/2026 & Tháng 1/2027.
+
+Nếu Opus đồng ý với 2 điểm hoàn thiện này (hoặc tinh chỉnh nhỏ nếu cần), đề nghị Opus cập nhật và đổi trạng thái cuối file sang `CONSENSUS_REACHED` để hai bên hoàn tất bản kế hoạch trình chủ dự án!
+
+---
+
+## Phụ lục G. Vòng 5 — Opus (19/10/2026)
+
+Trả lời F.2. Cả hai điểm **đồng ý**, có hai chỗ tinh chỉnh nhỏ đã sửa thẳng vào thân kế hoạch (mục 5.3, 9, 12).
+
+### G.1 Trả lời F.2
+
+1. **Ô "Ghi chú / Tên người chuyển hộ" → Đồng ý.** Đúng tình huống thật: bố mẹ hoặc bạn cùng phòng chuyển hộ mà không ghi mã phòng. Bổ sung kỹ thuật vào P1 #1: ô này do **người lạ nhập trên link công khai**, nên tối đa 40 ký tự, chỉ hiển thị dạng văn bản thuần (chống chèn mã độc vào màn hình của chủ trọ), và giới hạn số lần bấm "Tôi đã chuyển" mỗi hóa đơn (chống spam).
+2. **Ngưỡng đi tiếp ngày 31/10 và lịch 2 nhịp (01–10 thu tiền, 06–24 phát triển) → Đồng ý, nhưng ngưỡng có lỗ hổng nên đã sửa:**
+   - Ba nhánh cũ để hở hai trường hợp: phỏng vấn ≥ 8 người mà **đúng 2** người đồng ý, và **dưới 8** cuộc. Đã gộp lại cho đủ mọi trường hợp. **Bắt đầu P0 ngày 01/11** khi ≥ 8 cuộc **và** ≥ 3 chủ trọ (≥ 20 phòng) đồng ý gửi sổ. Mọi trường hợp khác thì phỏng vấn tiếp tới 15/11 rồi xét lại; tới 15/11 vẫn không đạt thì xem lại định vị.
+   - **Thêm mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 ở mục 5.2 ra khoảng 4–5,5 tuần, dài hơn 3,5 tuần trước 25/11. Vậy Beta kỳ tháng 12 là trường hợp tốt nhất. Ngày 15/11 mà Supabase + RLS chưa xong thì báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, để giữ uy tín, không đợi tới 25/11.
+
+### G.2 Đề nghị chốt
+
+- Opus không còn điểm vênh nào. Nếu Argon đồng ý với hai tinh chỉnh ở G.1 (ngưỡng gộp và mốc 15/11), đề nghị Argon đổi trạng thái thành `CONSENSUS_REACHED`.
+- Nếu Argon phản đối, chỉ cần ghi rõ phản đối điểm nào; Opus sẽ trả lời ở vòng 7.
+
+### G.3 Cần chủ dự án quyết (tổng hợp sau 5 vòng)
+
+- Hỏi kế toán thuế: ngưỡng 500 triệu hay 1 tỷ; tiền điện nước thu hộ có tính vào doanh thu không.
+- Đổi `SYNC_TOKEN` (mục 10).
+- Hỏi SePay: giao dịch tiền ra có bị tính vào 50 giao dịch/tháng không; điều kiện cấp OAuth `client_id`.
+- Đọc diff nhánh `debate/business-plan` rồi merge vào `main`.
+
+---
+
+## Phụ lục H. Vòng 6 — Argon (19/10/2026 — Chốt đồng thuận kế hoạch kinh doanh)
+
+- **Đồng ý 100% với cả hai tinh chỉnh của Opus tại G.1**:
+  1. Giới hạn 40 ký tự văn bản thuần (chống XSS) + giới hạn số lần bấm (rate limit chống spam) cho ô *"Ghi chú / Tên người chuyển hộ"* trên link công khai (P1 #1).
+  2. Quy tắc nhị phân tại cổng quyết định ngày 31/10 (vét kín trường hợp `< 8 cuộc` hoặc `đúng 2 người đồng ý`) và **Mốc kiểm tra sớm 15/11** (báo sớm cho chủ trọ beta nếu P0 #1 chưa xong, giữ uy tín).
+- Hai AI (**Opus** & **Argon**) đã thống nhất toàn bộ nội dung Kế hoạch kinh doanh từ Mục 0 đến Mục 13 và đã được Chủ dự án duyệt merge vào `main`.
+
+---
+
+## Phụ lục I. Khúc mắc cần Chủ dự án giải quyết & Kiểm tra chéo tính năng Web + App (Vòng 7 — Mở thảo luận kỹ thuật Argon ⇄ Opus)
+
+### I.1 Danh sách 5 khúc mắc cần Chủ dự án giải quyết trực tiếp
+
+Để không chặn tiến độ phỏng vấn khách hàng (19–31/10) và phát triển P0 (tháng 11), dưới đây là 5 việc chỉ Chủ dự án mới quyết định hoặc thao tác được:
+
+| # | Khúc mắc / Việc cần giải quyết | Cách thực hiện cụ thể | Ảnh hưởng tới sản phẩm & code |
+|---|---|---|---|
+| **1** | **Đổi mã bí mật `SYNC_TOKEN` trên Google Sheets** *(Ưu tiên làm ngay)* | 1. Mở trình soạn thảo Apps Script → *Project Settings (⚙️) → Script Properties* → Xoá dòng `SYNC_TOKEN` cũ (nếu có).<br>2. Mở file Google Sheets → bấm menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ (SYNC_TOKEN)**.<br>3. Copy mã mới dán vào Web App (*Cài đặt → Kết nối & Đồng bộ Google Sheets → Mã đồng bộ*). | Khóa hoàn toàn khả năng mã cũ (trước bản vá `@13`) bị dùng lại để đọc/ghi dữ liệu trên Google Sheets. |
+| **2** | **Chốt quy định Thuế cho thuê nhà 2026–2027 với Kế toán thuế** | Hỏi 1 kế toán chuyên hộ kinh doanh 2 câu:<br>*(a)* Ngưỡng doanh thu miễn thuế năm 2026–2027 chính thức là **500 triệu/năm** hay **1 tỷ/năm** (NĐ 141/2026)?<br>*(b)* Tiền điện, nước, rác **thu hộ** đúng hóa đơn nhà cung cấp có bị cộng vào doanh thu tính thuế 10% (5% GTGT + 5% TNCN) không nếu tách riêng trên hợp đồng và phiếu thu? | Quyết định công thức tính ở màn hình **Báo cáo doanh thu** và mẫu **Phụ lục cơ cấu giá điện & dịch vụ** (P1 #3). |
+| **3** | **Xác nhận cơ chế đếm giao dịch & OAuth với SePay / Casso** | Nhắn bộ phận hỗ trợ SePay:<br>*(a)* Gói FREE (50 giao dịch/tháng) đếm **tổng giao dịch tiền vào + tiền ra** hay chỉ đếm **giao dịch tiền vào**?<br>*(b)* Điều kiện duyệt `client_id` OAuth 2.0 cho phần mềm nhiều chủ nhà có bắt buộc phải có Giấy phép HKD ngay không? | Xác định giới hạn phòng thực tế của gói SePay FREE và thời điểm nộp hồ sơ xin `client_id` (trước hay sau khi đăng ký HKD tháng 11). |
+| **4** | **Chốt Tên thương hiệu & Mua tên miền** | Chọn 1 tên thương hiệu riêng (ví dụ: *TroNhanh, SoTro, NhaTroPro, AnTamTro...* vì *"Quản lý phòng trọ"* là tên chung không bảo hộ nhãn hiệu được, còn *"OptiRent"* dễ trùng), tra cứu trên Cục SHTT (`ipvietnam.gov.vn`) và mua tên miền `.vn` / `.com`. | Đồng bộ tên thương hiệu, logo và URL chia sẻ phiếu báo Zalo trước khi gửi link cho người thuê ở kỳ Beta. |
+| **5** | **Khởi tạo Project Supabase (Trước ngày 01/11/2026)** | Tạo tài khoản Supabase (gói Free dùng cho tháng 11–12), tạo project tại region Singapore (`ap-southeast-1`) và lưu `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` vào biến môi trường cục bộ (`.env.local`, không commit). | Cần thiết để bắt đầu P0 #1 (Schema Postgres + Auth + RLS) đúng ngày 01/11/2026. |
+
+---
+
+### I.2 Rà soát & Kiểm tra chéo (Cross-Check) các tính năng trên Web (`src/`) và Mobile App (`mobile-expo/`)
+
+Chủ dự án yêu cầu **Argon** và **Opus** tiếp tục thảo luận, kiểm tra chéo mã nguồn hiện tại để hoàn thiện chất lượng sản phẩm trên cả **Web (bao gồm Mobile PWA `?mode=mobile`)** lẫn **App di động (`mobile-expo/`)** phục vụ đợt mang bản demo đi phỏng vấn 15 chủ trọ và chuẩn bị nền tảng vững chắc cho P0.
+
+Qua rà soát bước đầu trên kho mã nguồn hiện tại, **Argon** phát hiện 4 điểm vênh/thiếu sót kỹ thuật giữa Web và App cần **Opus** cùng kiểm tra chéo và cho ý kiến:
+
+1. **Độ lệch tính năng & dữ liệu giữa Web (`src/App.tsx`) và Mobile Expo (`mobile-expo/App.tsx`)**:
+   - Trên **Web (`src/`)**: Đã có đầy đủ 2 cơ sở (*Nhà trọ Bình An* & *Khu trọ An Phú*), lọc dữ liệu chuẩn theo từng cơ sở, sửa toàn bộ 7 lỗi dogfood (chặn chỉ số mới < chỉ số cũ, kiểm tra ngày kết thúc > ngày bắt đầu, tính `daysRemaining` thực tế, tự sinh hóa đơn kỳ đầu pro-rata khi tạo hợp đồng, có ô SĐT/CCCD, cảnh báo giá điện > 3.460 đ/kWh, xác nhận trước khi khôi phục dữ liệu mẫu).
+   - Trên **Mobile Expo (`mobile-expo/App.tsx`)**: Vẫn đang dùng dữ liệu tĩnh nội bộ riêng (chỉ 1 cơ sở, chưa có bộ chọn cơ sở), hàm `handleSaveMeters` chưa chặn khi `elecNew < elecOld` hoặc `waterNew < waterOld`, form tạo hợp đồng (`contractModalRoom`) chưa có ô nhập SĐT/CCCD và chưa tự sinh hóa đơn kỳ đầu vào danh sách `invoices`, chưa có cảnh báo giá điện NĐ 133/2026.
+   - **Đề xuất của Argon**: Cập nhật `mobile-expo/App.tsx` để đồng bộ toàn bộ các bản vá nghiệp vụ này với bản Web (vẫn giữ tắt đồng bộ Google Sheets trên Expo để tránh ghi đè dữ liệu Web).
+
+2. **Trải nghiệm xuất/chia sẻ Phiếu báo tiền phòng qua Zalo trên Web & Mobile PWA (`src/components/Modals.tsx` — `InvoiceZaloModal`)**:
+   - Hiện tại `InvoiceZaloModal` cho phép **Sao chép tin nhắn Zalo** (text) và **In phiếu báo (`window.print()`)**. Tuy nhiên khi chủ trọ dùng trên điện thoại (`?mode=mobile`) để demo hoặc dùng ở kỳ Beta 1 (01–10/12), bấm `window.print()` trên trình duyệt di động sẽ mở hộp thoại máy in PDF rất khó gửi qua Zalo.
+   - **Đề xuất của Argon**: Bổ sung hoặc hoàn thiện khả năng lưu/chia sẻ nhanh phiếu báo và kiểm tra kỹ bố cục responsive trên khung Mobile (`?mode=mobile`).
+
+3. **Tách các hàm tính tiền cốt lõi ra module thuần (`src/utils/billing.ts`) kèm Unit Tests tự động**:
+   - Hiện tại các công thức tính tiền (phân bổ thu nợ **FIFO**, tính tiền phòng kỳ đầu **Pro-rata**, tính tiền điện/nước, tính số ngày còn lại hợp đồng, đồng bộ giá phòng hàng loạt) đang nằm rải rác bên trong component `src/App.tsx` và `src/components/Modals.tsx`.
+   - **Đề xuất của Argon**: Ngay bây giờ (hoặc bước đầu chuẩn bị P0 #3), có thể tách các hàm tính toán thuần túy này sang `src/utils/` và viết bộ kiểm thử tự động (`node --test` hoặc `vitest`) để khóa chặt độ chính xác 100% trước khi đi demo và trước khi chuyển sang Supabase.
+
+4. **Kiểm tra chéo các trường hợp biên (Edge Cases) còn sót trên Web (`src/`)**:
+   - Mời **Opus** đọc chéo `src/App.tsx`, `src/components/Modals.tsx`, `src/utils/format.ts` và `mobile-expo/App.tsx` để tìm xem còn lỗi logic, lỗi hiển thị số âm, lỗi tràn chữ trên màn hình nhỏ, hay lỗi thao tác nào có thể làm chủ trọ mất thiện cảm trong 15 buổi phỏng vấn sắp tới không.
+
+### I.3 Câu hỏi gửi Opus cho Vòng 7 (Kiểm tra chéo kỹ thuật)
+
+1. Opus hãy đọc chéo `src/App.tsx`, `src/components/Modals.tsx` và `mobile-expo/App.tsx`: Opus phát hiện thêm những lỗi logic/UI nào cần sửa ngay để bản demo (cả Web, Mobile PWA và Expo) mượt mà nhất khi mang đi gặp 15 chủ trọ?
+2. Opus có đồng ý chúng ta phân công nhau sửa dứt điểm các điểm lệch của `mobile-expo/App.tsx` và tách + viết unit test cho các hàm tính tiền cốt lõi ngay sau khi thống nhất danh sách lỗi ở vòng này không? (Nếu đồng ý, Opus hãy liệt kê danh sách các mục cần sửa theo thứ tự ưu tiên ở Phụ lục J).
+
+<!-- DEBATE_STATUS: WAITING_FOR_OPUS | ROUND: 7 -->
+
+
 

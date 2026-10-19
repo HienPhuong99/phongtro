@@ -63,14 +63,9 @@ npm run dev
 npm run build
 ```
 
-### 2. Chạy Native Mobile App trên **Expo Go** (`mobile-expo/`)
-```bash
-cd mobile-expo
-npm install
-npx expo start --port 8081
-```
-- Mở ứng dụng **Expo Go** trên Android hoặc **Camera** trên iOS và quét mã QR hiển thị trên terminal (hoặc truy cập trực tiếp `exp://192.168.0.23:8081`).
-- Trên giao diện Web App cũng có sẵn nút **`📲 Chạy Expo Go`** ở góc phải thanh Topbar để bật mã QR quét nhanh bất cứ lúc nào.
+### 2. Dùng trên điện thoại
+- Bản di động là Web `?mode=mobile` (https://hienphuong99.github.io/phongtro/?mode=mobile). Nút **`📲 Mở trên điện thoại`** trên thanh Topbar hiện mã QR để quét.
+- `mobile-expo/` (Expo Go) **đã đóng băng**: không bảo trì, không dùng khi demo (xem `docs/KE-HOACH-KINH-DOANH.md`, mục 5.4).
 
 ### 3. Triển khai tự động 1 chạm (Google Sheets + Apps Script + GitHub Pages + E2E `agent-browser`)
 ```bash

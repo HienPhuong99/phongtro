@@ -8,7 +8,8 @@ import {
   ArrowRight,
   Copy,
   Check,
-  Download,
+  Share2,
+  Printer,
   MessageCircle,
   Upload,
   CheckCircle2,
@@ -28,35 +29,14 @@ import {
   formatNumberInput,
   readMoneyWordsVN,
   getVietQrUrl,
+  parseDateVN,
+  vnToIsoDate,
+  isoToVnDate,
 } from '../utils/format';
 
 // ============================================================================
 // 1. MODAL TẠO HỢP ĐỒNG MỚI
 // ============================================================================
-function parseContractDate(str: string): Date | null {
-  const s = str.trim();
-  if (!s) return null;
-  if (s.includes('/')) {
-    const parts = s.split('/');
-    if (parts.length !== 3) return null;
-    const d = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const y = parseInt(parts[2], 10);
-    if (!d || !m || !y || y < 1900) return null;
-    return new Date(y, m - 1, d);
-  }
-  if (s.includes('-')) {
-    const parts = s.split('-');
-    if (parts.length !== 3) return null;
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    if (!d || !m || !y || y < 1900) return null;
-    return new Date(y, m - 1, d);
-  }
-  return null;
-}
-
 interface CreateContractModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -126,23 +106,18 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
   const [selectedCoTenants, setSelectedCoTenants] = useState<string[]>([]);
 
   const isDateOrderInvalid = useMemo(() => {
-    const start = parseContractDate(startDate);
-    const end = parseContractDate(endDate);
+    const start = parseDateVN(startDate);
+    const end = parseDateVN(endDate);
     if (!start || !end) return false;
     return end.getTime() <= start.getTime();
   }, [startDate, endDate]);
 
   // Tính toán kỳ đầu tự động chia theo số ngày ở thật (ví dụ 11/10 -> 31/10 = 21/31 ngày = 1.693.548 đ)
   const proRataInfo = useMemo(() => {
-    const parts = startDate.split('/');
-    let day = 11;
-    let month = 10;
-    let year = 2026;
-    if (parts.length === 3) {
-      day = Math.max(1, Math.min(31, parseInt(parts[0], 10) || 11));
-      month = Math.max(1, Math.min(12, parseInt(parts[1], 10) || 10));
-      year = parseInt(parts[2], 10) || 2026;
-    }
+    const start = parseDateVN(startDate) || new Date(2026, 9, 11);
+    const day = start.getDate();
+    const month = start.getMonth() + 1;
+    const year = start.getFullYear();
     const daysInMonth = new Date(year, month, 0).getDate();
     const stayDays = Math.max(1, daysInMonth - day + 1);
     const firstAmount =
@@ -199,7 +174,14 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalName = tenantName.trim();
-    if (!finalName || currentRoom?.status === 'occupied' || isDateOrderInvalid) return;
+    if (
+      !finalName ||
+      currentRoom?.status === 'occupied' ||
+      isDateOrderInvalid ||
+      !parseDateVN(startDate) ||
+      !parseDateVN(endDate)
+    )
+      return;
     onCreateContract({
       roomCode: selectedRoomCode,
       tenantName: finalName,
@@ -316,9 +298,10 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày bắt đầu *
               </label>
               <input
-                type="text"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                type="date"
+                required
+                value={vnToIsoDate(startDate)}
+                onChange={(e) => setStartDate(isoToVnDate(e.target.value))}
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
               />
             </div>
@@ -327,9 +310,10 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày kết thúc *
               </label>
               <input
-                type="text"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                type="date"
+                required
+                value={vnToIsoDate(endDate)}
+                onChange={(e) => setEndDate(isoToVnDate(e.target.value))}
                 className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none ${
                   isDateOrderInvalid
                     ? 'border-rose-500 bg-rose-50/40 focus:border-rose-600'
@@ -365,9 +349,10 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
                 Ngày ký
               </label>
               <input
-                type="text"
-                value={signDate}
-                onChange={(e) => setSignDate(e.target.value)}
+                type="date"
+                required
+                value={vnToIsoDate(signDate)}
+                onChange={(e) => setSignDate(isoToVnDate(e.target.value))}
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
               />
             </div>
@@ -1004,7 +989,8 @@ export const InvoiceZaloModal: React.FC<InvoiceZaloModalProps> = ({
 
   if (!isOpen || !invoice) return null;
 
-  const grandTotal = invoice.totalAmount + previousDebtAmount;
+  // Phải trả = phần còn thiếu của kỳ này (đã trừ tiền khách trả trước) + nợ các kỳ cũ
+  const grandTotal = Math.max(0, invoice.totalAmount - invoice.paidAmount) + previousDebtAmount;
   const qrUrl = getVietQrUrl({
     bankBin: property.bankBin,
     bankAccount: property.bankAccount,
@@ -1024,23 +1010,40 @@ Khách thuê: ${invoice.tenantName}
 5. Internet: ${formatVND(invoice.internetAmount)}
 6. Gửi xe máy (${invoice.vehicleCount} xe): ${formatVND(invoice.vehicleAmount)}
 --------------------------------
-• Tổng tiền hóa đơn kỳ này: ${formatVND(invoice.totalAmount)}
+• Tổng tiền hóa đơn kỳ này: ${formatVND(invoice.totalAmount)}${
+    invoice.paidAmount > 0 ? `\n• Đã trả kỳ này: -${formatVND(invoice.paidAmount)}` : ''
+  }
 • Nợ kỳ trước: ${formatVND(previousDebtAmount)}
 👉 TỔNG PHẢI TRẢ: ${formatVND(grandTotal)}
 --------------------------------
 🏦 Chuyển khoản: ${property.bankName} - ${property.bankAccount} (${property.bankOwner})
 Nội dung CK: Thanh toan ${invoice.roomCode} ${invoice.code}
+📷 Mã QR chuyển khoản (đã điền sẵn số tiền): ${qrUrl}
 Hạn thanh toán: ${invoice.dueDate}`;
 
-  const handleCopyZalo = () => {
-    navigator.clipboard?.writeText(zaloMessage);
+  // Chỉ đánh dấu "đã gửi Zalo" khi sao chép / chia sẻ thật sự thành công
+  const handleCopyZalo = async () => {
+    try {
+      await navigator.clipboard.writeText(zaloMessage);
+    } catch {
+      return;
+    }
     setCopied(true);
     onMarkSentZalo(invoice.id);
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleShare = async () => {
+    if (!navigator.share) return handleCopyZalo();
+    try {
+      await navigator.share({ text: zaloMessage });
+      onMarkSentZalo(invoice.id);
+    } catch {
+      // Người dùng đóng bảng chia sẻ: không đánh dấu đã gửi
+    }
+  };
+
   const handleOpenZalo = () => {
-    onMarkSentZalo(invoice.id);
     window.open(`https://zalo.me/${invoice.tenantPhone}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -1080,14 +1083,19 @@ Hạn thanh toán: ${invoice.dueDate}`;
             </button>
             <button
               type="button"
-              onClick={() => {
-                onMarkSentZalo(invoice.id);
-                window.print();
-              }}
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              In
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
             >
-              <Download className="w-3.5 h-3.5" />
-              Tải ảnh hóa đơn
+              <Share2 className="w-3.5 h-3.5" />
+              Chia sẻ
             </button>
             <button
               type="button"
@@ -1320,6 +1328,14 @@ Hạn thanh toán: ${invoice.dueDate}`;
                     {formatVND(invoice.totalAmount)}
                   </span>
                 </div>
+                {invoice.paidAmount > 0 && (
+                  <div className="flex items-center justify-between w-64">
+                    <span className="text-emerald-600 font-medium">Đã trả kỳ này</span>
+                    <span className="font-bold text-emerald-600">
+                      -{formatVND(invoice.paidAmount)}
+                    </span>
+                  </div>
+                )}
                 {previousDebtAmount > 0 && (
                   <div className="flex items-center justify-between w-64">
                     <span className="text-rose-600 font-medium">[2] Nợ kỳ trước</span>
@@ -1574,8 +1590,8 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
             </div>
             <p className="text-[11px] text-slate-500 pt-1">
               Thu bao nhiêu cũng được. Tiền sẽ trừ vào{' '}
-              <strong className="text-slate-700">hóa đơn cũ nhất trước</strong>, thừa mới
-              sang kỳ này.
+              <strong className="text-slate-700">hóa đơn cũ nhất trước</strong>, rồi mới
+              tới kỳ này. Không thu quá tổng nợ.
             </p>
           </div>
 
@@ -1605,9 +1621,10 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
                 Ngày thanh toán *
               </label>
               <input
-                type="text"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
+                type="date"
+                required
+                value={vnToIsoDate(paymentDate)}
+                onChange={(e) => setPaymentDate(isoToVnDate(e.target.value))}
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
               />
             </div>

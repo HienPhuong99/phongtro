@@ -1,6 +1,6 @@
 # Kế hoạch kinh doanh OptiRent — bản v2 (11/2026 → 10/2027)
 
-Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện (tóm tắt và phản hồi ở **Phụ lục A**) và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.
+Bản v1 lập ngày 17/10/2026. Bản v2 cập nhật ngày 18–19/10/2026, sau một bản đánh giá phản biện (các vòng phản biện tóm tắt ở [AI-CHAT.md](AI-CHAT.md); bản đầy đủ Phụ lục A–J nằm trong lịch sử git, commit `86a66cc`) và đợt sửa code ngày 18–19/10. Tên hiển thị của app đã đổi từ "OptiRent" thành "Quản lý phòng trọ"; tài liệu này vẫn gọi là OptiRent cho tới khi chọn tên thương hiệu chính thức.
 
 Số liệu thị trường lấy từ báo chí và trang của đối thủ, đăng trong năm 2026 (danh sách nguồn ở cuối). Văn bản luật mới đọc qua báo, **chưa đối chiếu văn bản gốc**. Chỗ có dấu ⚠️ là số liệu mâu thuẫn hoặc chưa kiểm chứng.
 
@@ -15,9 +15,10 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
    - Sửa đồng bộ Google Sheets cho chạy thật.
    - Tắt đồng bộ của app Expo.
    - Sửa cả 7 lỗi đã ghi nhận.
+   - Tối 19/10, hai AI review chéo và sửa thêm các lỗi lộ ra khi demo: phiếu Zalo và VietQR trừ phần khách đã trả, nút "Chia sẻ" thay cho in, bỏ QR Expo trỏ IP nội bộ, ô ngày dùng bộ chọn ngày, Báo cáo và Quỹ tính từ dữ liệu thật. Phần tính tiền đã tách ra `src/utils/billing.ts` có 7 bài test (`npm test`).
 
    Vẫn chưa có đăng nhập, chưa tách dữ liệu theo từng chủ trọ, dữ liệu vẫn nằm trong trình duyệt.
-4. **Hai tuần tới không viết thêm tính năng.** Bản khóa API Apps Script (`@13`) và Web đã triển khai xong ngày 19/10/2026; việc tiếp theo là đổi `SYNC_TOKEN` trên Google Sheets và mang bản demo đi gặp 15 chủ trọ. Tháng 11 chỉ làm phần nền: đăng nhập, phân quyền dữ liệu, chuyển sang database thật, kiểm thử phần tính tiền.
+4. **Hai tuần tới không viết thêm tính năng.** Bản khóa API Apps Script (`@13`, nay là `@15`) và Web đã triển khai xong ngày 19/10/2026; việc tiếp theo là đổi `SYNC_TOKEN` trên Google Sheets và mang bản demo đi gặp 15 chủ trọ. Tháng 11 chỉ làm phần nền: đăng nhập, phân quyền dữ liệu, chuyển sang database thật, kiểm thử phần tính tiền.
 5. **Mục tiêu thực tế sau 12 tháng: 60–100 chủ trọ trả phí, trung bình khoảng 180k/khách/tháng, tức khoảng 11–18 triệu/tháng.** Không đặt mục tiêu có khách trả phí trước Tết (06/02/2027). Mốc tháng 1/2027 là 5 chủ trọ beta chạy được kỳ thu tiền thật. Mở bán chính thức sau Tết, đúng mùa chuyển trọ.
 
 ---
@@ -31,11 +32,11 @@ Số liệu thị trường lấy từ báo chí và trang của đối thủ, �
 | Giá | 99k (≤20 phòng) | Miễn phí ≤10 phòng · 149k ≤30 · 249k ≤60 | Không cạnh tranh với gói miễn phí ≤15 phòng của đối thủ; nhóm mới trả được cao hơn |
 | Tháng 11 | Backend + nhập Excel trên web + onboarding đầy đủ | Chỉ đăng nhập + phân quyền + chuyển dữ liệu + kiểm thử tính tiền; nhập liệu hộ bằng script | 80–100 giờ không đủ làm hết |
 | Mốc 20/01/2027 | Có khách trả phí trước Tết | 5 chủ trọ beta chạy kỳ thu tiền thật | Khả năng trễ quá cao |
-| Báo có tự động | SePay/Casso, giá chưa rõ | Cách chính: khách bấm "Tôi đã chuyển" trên trang hóa đơn, chủ trọ xác nhận 1 chạm (0đ). SePay OAuth là tùy chọn. Bỏ khớp file sao kê khỏi P1 (Phụ lục C, E) | App ngân hàng trên điện thoại hầu như không xuất được CSV; liên kết ngân hàng là rào cản lớn |
+| Báo có tự động | SePay/Casso, giá chưa rõ | Cách chính: khách bấm "Tôi đã chuyển" trên trang hóa đơn, chủ trọ xác nhận 1 chạm (0đ). SePay OAuth là tùy chọn. Bỏ khớp file sao kê khỏi P1 | App ngân hàng trên điện thoại hầu như không xuất được CSV; liên kết ngân hàng là rào cản lớn |
 | Hỗ trợ mùng 1–5 | Chưa tính | Có kế hoạch riêng (mục 7) | Hỗ trợ dồn vào đúng giờ đi làm |
 | Kênh môi giới | Hoa hồng 20–30% năm đầu | Bỏ | Khoảng 300k không đủ hấp dẫn môi giới |
 
-Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm: chi phí SePay, cách xử lý tiền điện, cách xử lý thuế. Chi tiết ở **Phụ lục A** và vòng phản biện tiếp theo ở **Phụ lục C**.
+Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm: chi phí SePay, cách xử lý tiền điện, cách xử lý thuế. Tóm tắt các vòng phản biện ở [AI-CHAT.md](AI-CHAT.md).
 
 ---
 
@@ -49,11 +50,11 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | Phòng | Sơ đồ theo tầng, chỉnh giá lẻ/hàng loạt, đồng bộ sang hợp đồng và hóa đơn chưa thu | Hợp với mùa tăng giá sau Tết |
 | Khách thuê & xe | Khách đại diện/ở cùng, CCCD, xe, mẫu CT01 | — |
 | Hợp đồng | Tạo hợp đồng, có ô SĐT/CCCD, kiểm tra ngày, tự sinh hóa đơn kỳ đầu theo số ngày ở | Lỗi #4–#6 đã sửa |
-| Hóa đơn | Ghi chỉ số hàng loạt (chặn khi chỉ số mới < cũ), phiếu báo VietQR, tin Zalo soạn sẵn | Lỗi #3 đã sửa |
-| Tài chính | Sổ thu chi, quỹ, công nợ, cọc phải trả, thu tiền FIFO | FIFO là điểm mạnh thật |
-| Báo cáo | Doanh thu, chi phí, lợi nhuận, xếp hạng phòng | — |
+| Hóa đơn | Ghi chỉ số hàng loạt (chặn khi chỉ số mới < cũ), phiếu báo VietQR (đã trừ phần khách trả trước), tin Zalo soạn sẵn có link QR, nút Chia sẻ | Lỗi #3 đã sửa |
+| Tài chính | Sổ thu chi, quỹ (thu trừ chi theo hình thức), công nợ, cọc phải trả, thu tiền FIFO | FIFO là điểm mạnh thật |
+| Báo cáo | Thực thu (theo sổ thu chi), chi phí, lợi nhuận, xếp hạng phòng, xuất CSV | Chưa lọc được theo kỳ |
 | Nhiều cơ sở | Đổi cơ sở thì mọi màn hình chỉ hiện dữ liệu cơ sở đó | Lỗi #1 đã sửa, quan trọng với phân khúc nhiều khu |
-| Đồng bộ Google Sheets | Gửi kèm mã `SYNC_TOKEN`, báo lỗi thật, dữ liệu web được ghi đúng cột | Đã triển khai Apps Script `@13` ngày 19/10 |
+| Đồng bộ Google Sheets | Gửi kèm mã `SYNC_TOKEN`, báo lỗi thật, dữ liệu web được ghi đúng cột | Apps Script `@15` (19/10) |
 | Cảnh báo | Thanh "Bản demo" ở đầu trang; cảnh báo khi giá điện > 3.460 đ/kWh | Dữ liệu mẫu vẫn để 3.500 đ/kWh |
 
 ### 2.2 Còn thiếu để bán được
@@ -66,9 +67,9 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 | Thành phần | Trạng thái | Ghi chú |
 |---|---|---|
-| Code trên `main` | Đã merge (PR #1, commit `e3966f9` & `2674d1d`) | Gộp bản sửa của 2 phiên làm việc: giữ bản của `main`, thêm phần còn thiếu |
+| Code trên `main` | Đã merge | Lịch sử sửa lỗi và review chéo ở [AI-CHAT.md](AI-CHAT.md) |
 | Web (GitHub Pages) | **Đã triển khai** | Workflow chạy thành công ngày 19/10; https://hienphuong99.github.io/phongtro/ đang chạy bản mới |
-| Apps Script Web App | **Đã triển khai (`@13`)** | Đã cập nhật deployment `AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea` lên version `@13` ngày 19/10; đã kiểm chứng `GET ?action=getState`, `POST` sai mã trả về `UNAUTHORIZED`, và `setupSyncToken()` trên server gọi `assertSheetUi_()` ở dòng đầu |
+| Apps Script Web App | **Đã triển khai (`@15`)** | Deployment `AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea`: `@13` (khóa API) rồi `@15` (sửa lỗi demo) ngày 19/10; đã kiểm chứng `GET ?action=getState`, `POST` sai mã trả về `UNAUTHORIZED`, và `setupSyncToken()` trên server gọi `assertSheetUi_()` ở dòng đầu |
 | Mã `SYNC_TOKEN` | **Cần chủ dự án tự đổi** | Mã cũ (nếu có) có thể đã lộ trước bản `@13`. Xoá khóa trong Script Properties, rồi tạo lại bằng menu 🔑 trên Google Sheets |
 | Dữ liệu Google Sheets | Không đổi | Không chạy `seed:sheets` |
 
@@ -104,7 +105,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | Quy định (theo báo chí) | Cách app xử lý |
 |---|---|
 | **NĐ 133/2026** (từ 25/5/2026): phạt 20–30 triệu nếu thu tiền điện cao hơn giá bán lẻ, buộc hoàn trả | Đã có cảnh báo ở trang Cài đặt. Sẽ thêm công cụ "tính lại cơ cấu giá": điện đúng giá + 10% hao hụt, cộng phí dịch vụ thật có trong hợp đồng, tách dòng trên phiếu, giữ gần nguyên thu nhập |
-| **Thuế cho thuê nhà 2026**: bỏ khoán, tự kê khai; ngưỡng miễn thuế ⚠️ 500 triệu hay 1 tỷ/năm (NĐ 141/2026) | Báo cáo doanh thu theo kỳ, chỉ tạo khi chủ trọ bấm. Không làm mồi bán hàng. Ở TP.HCM/Hà Nội, nhà 20–60 phòng thường **chạm hoặc vượt** ngưỡng (Phụ lục C.2 #2), nên nỗi sợ lộ doanh thu là thật: cam kết tải dữ liệu ra và xoá sạch bất cứ lúc nào, không bắt khai địa chỉ thật hay CCCD của chủ trọ |
+| **Thuế cho thuê nhà 2026**: bỏ khoán, tự kê khai; ngưỡng miễn thuế ⚠️ 500 triệu hay 1 tỷ/năm (NĐ 141/2026) | Báo cáo doanh thu theo kỳ, chỉ tạo khi chủ trọ bấm. Không làm mồi bán hàng. Ở TP.HCM/Hà Nội, nhà 20–60 phòng thường **chạm hoặc vượt** ngưỡng, nên nỗi sợ lộ doanh thu là thật: cam kết tải dữ liệu ra và xoá sạch bất cứ lúc nào, không bắt khai địa chỉ thật hay CCCD của chủ trọ |
 | **Luật Cư trú sửa đổi** (từ 1/7/2026): thông báo lưu trú, phạt 500k–1 triệu/người | Danh sách "ai chưa khai báo", xuất các trường cần khai. Không hứa tích hợp VNeID |
 | **Luật BVDLCN** (từ 1/1/2026): phạt tới 3 tỷ | Đây là rủi ro của mình (bên cung cấp phần mềm), không phải lý do chủ trọ mua. Vẫn bắt buộc làm: phân quyền dữ liệu, mã hóa ảnh CCCD, phiếu đồng ý, xóa dữ liệu khi khách trả phòng lâu |
 
@@ -133,6 +134,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 - Đồng bộ Sheets chạy thật và báo lỗi thật. Dữ liệu web được ghi đúng cột. JSON được chia nhiều dòng để tránh giới hạn 50.000 ký tự mỗi ô.
 - Tắt đồng bộ của app Expo.
 - Sửa 7 lỗi trong danh sách dogfood. Thêm thanh "Bản demo" và cảnh báo giá điện.
+- Review chéo Opus ⇄ Argon (tin #7–#13 ở [AI-CHAT.md](AI-CHAT.md)): sửa nhóm lỗi demo, tách `billing.ts` + 7 test, sửa lỗi đồng bộ giá làm hóa đơn kỳ đầu thành nguyên tháng, script E2E báo lỗi khi không thấy nút. Viết [hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md).
 
 ### 5.2 P0: tháng 11/2026 (chỉ phần nền)
 
@@ -140,7 +142,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 |---|---|---|
 | 1 | Supabase: schema Postgres + Auth (đăng nhập Google hoặc email) + Row Level Security theo `owner_id`. Viết test cho RLS: tài khoản A không đọc được dữ liệu B | 1,5–2 tuần |
 | 2 | Chuyển đọc/ghi từ `localStorage` sang Supabase: trạng thái đang tải, báo lỗi, không mất dữ liệu khi mạng chập chờn | 1–1,5 tuần |
-| 3 | Kiểm thử tự động cho phần tính tiền: hóa đơn, FIFO, pro-rata, hoàn cọc, chỉnh giá. Sai 1 đồng là mất khách. **Làm đầu tiên (tuần 1 tháng 11), trước khi chuyển sang Supabase**: tách hàm thuần ra `src/utils/billing.ts`, test bằng `node --test` (không thêm thư viện), để test canh cho lần chuyển dữ liệu | 3–4 ngày |
+| 3 | Kiểm thử tự động cho phần tính tiền. **Phần lớn đã làm sớm ngày 19/10**: `src/utils/billing.ts` + 7 test bằng `node --test` (FIFO, kỳ đầu theo ngày ở, điện nước, số phải trả, chỉnh giá). Còn lại: tách và test phần hoàn cọc / thanh lý | 0,5–1 ngày |
 | 4 | "Hôm nay" theo ngày thật, kỳ hóa đơn sinh theo tháng (gỡ các chỗ gắn cứng `'2026-10'`) | 2–3 ngày |
 | 5 | Script nhập liệu hộ chạy trên máy của bạn: nhận file Excel hoặc ảnh sổ qua Zalo, đẩy thẳng vào Supabase. **Không làm giao diện nhập Excel trên web** | 2 ngày |
 
@@ -166,7 +168,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 - Báo cáo doanh thu theo kỳ khai thuế.
 - OCR đồng hồ.
 
-**Không làm năm đầu:** app native trên store, sàn tìm phòng, thu hộ tiền (cần giấy phép), AI chatbot. Thư mục `mobile-expo/` **đóng băng**: không sửa thêm, không dùng khi phỏng vấn; bản di động là Web `?mode=mobile` (Phụ lục J).
+**Không làm năm đầu:** app native trên store, sàn tìm phòng, thu hộ tiền (cần giấy phép), AI chatbot. Thư mục `mobile-expo/` **đóng băng**: không sửa thêm, không dùng khi phỏng vấn; bản di động là Web `?mode=mobile`.
 
 ---
 
@@ -196,7 +198,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | Luật sư rà chính sách bảo mật và điều khoản | khoảng 2–5 triệu (một lần) |
 | Marketing | 1–3 triệu/tháng (chủ yếu in ấn, quà giới thiệu) |
 
-**Tổng chi cố định khoảng 1–1,5 triệu/tháng, chưa tính công của bạn.** Hòa vốn tiền mặt ở khoảng 10–15 khách trả phí.
+**Tổng chi cố định khoảng 1,7–3,7 triệu/tháng khi đã có khách thật** (Supabase khoảng 650k + tên miền khoảng 25–70k + marketing 1–3 triệu; luật sư là chi một lần), chưa tính công của bạn. Trước đó dùng gói Supabase miễn phí thì chủ yếu chỉ có tiền marketing. **Hòa vốn tiền mặt ở khoảng 10–20 khách trả phí** (180k/khách).
 
 ---
 
@@ -233,7 +235,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 
 - **Kỹ thuật (khoảng 1 giờ):**
   - Merge và triển khai web: đã xong ngày 19/10.
-  - Triển khai Apps Script: `npm run deploy:sheets`, tự làm hoặc giao cho Antigravity (Phụ lục B).
+  - Triển khai Apps Script: đã xong (`@13` ngày 19/10, `@15` sau đợt sửa lỗi demo).
   - Đổi mã: xoá `SYNC_TOKEN` trong Script Properties → menu **🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ** → chép mã vào trang Cài đặt của web.
   - Thử lại: mở `.../exec?action=getState` không kèm mã phải bị từ chối.
 - **Phỏng vấn 15 chủ trọ** đúng phân khúc mới, dùng bản demo đang chạy (bộ câu hỏi ở mục 11).
@@ -258,7 +260,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
   - Test tính tiền qua.
   - Chạy được 1 chu kỳ đầy đủ trên dữ liệu thật của 1 chủ trọ.
 - **Ngân sách:** khoảng 1–3 triệu.
-- **Mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 (mục 5.2) ra khoảng 4–5,5 tuần, dài hơn 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
+- **Mốc kiểm tra 15/11:** cộng ước lượng 5 hạng mục P0 (mục 5.2) ra khoảng 3,5–5 tuần (P0 #3 đã làm phần lớn), vẫn có thể dài hơn 3,5 tuần trước 25/11, nên Beta kỳ tháng 12 là **trường hợp tốt nhất**, không phải mặc định. Ngày 15/11 mà P0 #1 (Supabase + RLS có test) chưa xong → báo ngay cho chủ trọ beta là bắt đầu từ kỳ tháng 1, không đợi tới 25/11 mới báo.
 - **Nếu trễ mốc 25/11:** dời kỳ thu tiền beta đầu tiên sang kỳ tháng 1/2027. Không cắt phần test.
 
 ### Tháng 12/2026: Beta kỳ 1 + Phát triển P1 (#1, #2)
@@ -367,7 +369,8 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 - [ ] Nhắn SePay và Casso hỏi về OAuth cho phần mềm nhiều chủ nhà.
 - [ ] Chọn tên thương hiệu, tra trùng, mua tên miền.
 - [ ] Hỏi 1 kế toán thuế để chốt ngưỡng 500 triệu hay 1 tỷ.
-- [ ] Sửa 6 lỗi demo trước buổi phỏng vấn đầu tiên ([docs/AI-CHAT.md](AI-CHAT.md), nhóm A).
+- [x] Sửa các lỗi demo trước buổi phỏng vấn đầu tiên (nhóm A + B, [AI-CHAT.md](AI-CHAT.md) #10–#13), triển khai Web và Apps Script `@15` (19/10).
+- [ ] Đọc [hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md) và tập đi một vòng demo (mục 9 của hướng dẫn) trước buổi phỏng vấn đầu tiên.
 - [ ] Tạo project Supabase (Singapore) trước 01/11. Chỉ `anon key` được nằm trong code web; `service_role key` chỉ để ở máy bạn cho script nhập liệu, không đặt tên bắt đầu bằng `VITE_`.
 
 ---

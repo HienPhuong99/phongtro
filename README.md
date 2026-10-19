@@ -7,7 +7,8 @@ Hệ thống hoạt động đồng bộ trên **Web Quản trị**, **Mobile PW
 - **🏢 Cơ sở vận hành**: **Nhà trọ Bình An** (`128 Nguyễn Văn Thương, Bình Thạnh, TP. Hồ Chí Minh`)
 - **🚀 Live Web Quản trị (GitHub Pages)**: [https://hienphuong99.github.io/phongtro/](https://hienphuong99.github.io/phongtro/)
 - **📱 Live Mobile App (PWA)**: [https://hienphuong99.github.io/phongtro/?mode=mobile](https://hienphuong99.github.io/phongtro/?mode=mobile)
-- **📲 Native Mobile App (Expo Go)**: `exp://192.168.0.23:8081` (thư mục [`mobile-expo/`](./mobile-expo))
+- **📖 Hướng dẫn sử dụng**: [docs/HUONG-DAN-SU-DUNG.md](docs/HUONG-DAN-SU-DUNG.md)
+- **📲 Expo Go (`mobile-expo/`)**: đã đóng băng, không dùng khi demo
 - **⚡ Google Apps Script Web App (Độc lập 100%)**: [https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec](https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec)
 - **📊 Google Sheets Database (7 trang tính)**: [https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit](https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit)
 

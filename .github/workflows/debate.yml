@@ -1,0 +1,90 @@
+# Opus (Claude) ⇄ Argon (Gemini) lần lượt phản biện docs/KE-HOACH-KINH-DOANH.md.
+# Ai đi tiếp do dòng cuối file quyết định: <!-- DEBATE_STATUS: WAITING_FOR_OPUS|WAITING_FOR_ARGON|CONSENSUS_REACHED -->
+# Mỗi lượt = 1 commit trên nhánh debate/business-plan. Đọc xong thì tự merge vào main.
+name: Phản biện kế hoạch (Opus ⇄ Argon)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_turns:
+        description: Số lượt tối đa (mỗi AI viết 1 lần = 1 lượt)
+        default: "6"
+
+permissions:
+  contents: write
+
+concurrency: debate
+
+jobs:
+  debate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PLAN: docs/KE-HOACH-KINH-DOANH.md
+      BRANCH: debate/business-plan
+      MAX_TURNS: ${{ inputs.max_turns }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cài Claude Code và Gemini CLI
+        run: npm install -g @anthropic-ai/claude-code @google/gemini-cli
+
+      - name: Hai AI lần lượt phản biện
+        run: |
+          set -euo pipefail
+          # Secret nào để trống thì bỏ, tránh CLI dùng khoá rỗng
+          [ -n "$ANTHROPIC_API_KEY" ] || unset ANTHROPIC_API_KEY
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || unset CLAUDE_CODE_OAUTH_TOKEN
+
+          git config user.name "debate-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Có nhánh debate rồi thì đi tiếp từ đó, chưa có thì tách từ main
+          git checkout -B "$BRANCH" "origin/$BRANCH" 2>/dev/null || git checkout -B "$BRANCH"
+
+          status_of() { grep -o 'DEBATE_STATUS: [A-Z_]*' "$PLAN" | tail -1 | cut -d' ' -f2 || true; }
+
+          for turn in $(seq 1 "$MAX_TURNS"); do
+            status=$(status_of)
+            case "$status" in
+              WAITING_FOR_OPUS)  me=Opus;  other=Argon ;;
+              WAITING_FOR_ARGON) me=Argon; other=Opus ;;
+              *) echo "Trạng thái '$status' — dừng."; break ;;
+            esac
+            other_up=$(echo "$other" | tr a-z A-Z)
+
+            prompt="Bạn là $me, đang phản biện cùng $other để hoàn thiện file $PLAN (kế hoạch kinh doanh OptiRent). Chỉ được sửa đúng file này.
+          Đọc toàn bộ file, nhất là phụ lục phản biện mới nhất của $other và các câu hỏi gửi bạn. Sau đó:
+          1. Trả lời từng điểm/câu hỏi của $other: Đồng ý / Phản đối / Đồng ý một phần, kèm lý do và số liệu cụ thể. Không đồng ý cho có; điểm nào sai thì nói thẳng.
+          2. Điểm nào hai bên đã cùng đồng ý thì sửa thẳng vào thân kế hoạch (các mục 0–13), không chỉ ghi ở phụ lục.
+          3. Thêm một phụ lục mới ngay trước dòng DEBATE_STATUS, tiêu đề dạng 'Phụ lục <chữ cái tiếp theo>. Vòng <số vòng> — $me'. Viết ngắn, gạch đầu dòng, không chép lại nội dung cũ. Cuối phụ lục: các câu hỏi cho $other về những điểm còn vênh, và mục 'Cần chủ dự án quyết' nếu có điểm hai AI không tự chốt được.
+          4. Đổi dòng DEBATE_STATUS cuối file thành <!-- DEBATE_STATUS: WAITING_FOR_${other_up} | ROUND: <số vòng tiếp theo> -->. Nếu không còn điểm nào vênh giữa hai AI thì đổi thành <!-- DEBATE_STATUS: CONSENSUS_REACHED -->.
+          Viết tiếng Việt, dễ hiểu."
+
+            echo "::group::Lượt $turn — $me"
+            if [ "$me" = Opus ]; then
+              claude -p "$prompt" --model opus --permission-mode acceptEdits \
+                --allowedTools "Read,Edit,Write,Grep,Glob,WebSearch,WebFetch"
+            else
+              gemini --approval-mode auto_edit -p "$prompt"
+            fi
+            echo "::endgroup::"
+
+            if [ "$(status_of)" = "$status" ]; then
+              echo "::error::$me không đổi DEBATE_STATUS — dừng để tránh lặp."
+              exit 1
+            fi
+            git add "$PLAN"
+            git commit -m "review($me): lượt $turn — $(status_of)"
+            git push origin "$BRANCH"
+          done
+
+          echo "### Xong. Xem diff: https://github.com/$GITHUB_REPOSITORY/compare/main...$BRANCH" >> "$GITHUB_STEP_SUMMARY"

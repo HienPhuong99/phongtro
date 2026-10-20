@@ -1253,13 +1253,92 @@ export function App() {
   // RENDER TỪNG MÀN HÌNH CHÍNH
   // ============================================================================
 
-  // 1. TỔNG QUAN
+  // 1. TỔNG QUAN (DASHBOARD TRỰC QUAN + BIỂU ĐỒ)
   const renderOverview = () => {
     const octoberReceivableTotal = invoices
       .filter((i) => i.billingMonth === '2026-10' && i.status !== 'draft')
       .reduce((sum, i) => sum + i.totalAmount, 0);
 
+    const octoberPaidTotal = invoices
+      .filter((i) => i.billingMonth === '2026-10' && i.status !== 'draft')
+      .reduce((sum, i) => sum + i.paidAmount, 0);
+
+    const collectionRatePct =
+      octoberReceivableTotal > 0
+        ? Math.min(100, Math.round((octoberPaidTotal / octoberReceivableTotal) * 100))
+        : 0;
+
     const safeRoomDenom = Math.max(1, propertyRooms.length);
+
+    // Dữ liệu cơ cấu khoản thu kỳ 10/2026 (Tiền phòng, Điện, Nước, Dịch vụ & Xe)
+    const octInvoicesActive = invoices.filter(
+      (i) => i.billingMonth === '2026-10' && i.status !== 'draft'
+    );
+    const octRentSum = octInvoicesActive.reduce((s, i) => s + i.rentAmount, 0);
+    const octElecSum = octInvoicesActive.reduce((s, i) => s + i.elecAmount, 0);
+    const octWaterSum = octInvoicesActive.reduce((s, i) => s + i.waterAmount, 0);
+    const octServiceSum = octInvoicesActive.reduce(
+      (s, i) => s + i.trashAmount + i.internetAmount + i.vehicleAmount,
+      0
+    );
+    const octBreakdownTotal = Math.max(
+      1,
+      octRentSum + octElecSum + octWaterSum + octServiceSum
+    );
+
+    const revenueSegments = [
+      {
+        label: 'Tiền thuê phòng',
+        amount: octRentSum,
+        pct: Math.round((octRentSum / octBreakdownTotal) * 100),
+        color: '#2563EB',
+        bgClass: 'bg-blue-600',
+        badgeBg: 'bg-blue-50 text-blue-700',
+      },
+      {
+        label: 'Tiền điện',
+        amount: octElecSum,
+        pct: Math.round((octElecSum / octBreakdownTotal) * 100),
+        color: '#F59E0B',
+        bgClass: 'bg-amber-500',
+        badgeBg: 'bg-amber-50 text-amber-700',
+      },
+      {
+        label: 'Tiền nước',
+        amount: octWaterSum,
+        pct: Math.round((octWaterSum / octBreakdownTotal) * 100),
+        color: '#06B6D4',
+        bgClass: 'bg-cyan-500',
+        badgeBg: 'bg-cyan-50 text-cyan-700',
+      },
+      {
+        label: 'Rác · Wifi · Gửi xe',
+        amount: octServiceSum,
+        pct: Math.max(
+          0,
+          100 -
+            Math.round((octRentSum / octBreakdownTotal) * 100) -
+            Math.round((octElecSum / octBreakdownTotal) * 100) -
+            Math.round((octWaterSum / octBreakdownTotal) * 100)
+        ),
+        color: '#10B981',
+        bgClass: 'bg-emerald-500',
+        badgeBg: 'bg-emerald-50 text-emerald-700',
+      },
+    ];
+
+    // Thang đo biểu đồ 5 tháng
+    const dashboardMaxChart = Math.max(
+      1,
+      ...SEED_MONTHLY_CHART.map((d) => Math.max(d.income, d.expense, d.profit))
+    );
+
+    // Thông số SVG Donut cho Trạng thái phòng (r = 44 => chu vi C ≈ 276.46)
+    const donutRadius = 44;
+    const donutCircumference = 2 * Math.PI * donutRadius;
+    const occDash = (occupiedRooms.length / safeRoomDenom) * donutCircumference;
+    const vacDash = (vacantRooms.length / safeRoomDenom) * donutCircumference;
+    const maintDash = (maintenanceRooms.length / safeRoomDenom) * donutCircumference;
 
     const todoItems = [
       {
@@ -1369,9 +1448,16 @@ export function App() {
         {/* Title + Quick Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Tổng quan</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                Tổng quan vận hành
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-200/60">
+                {currentProperty.name}
+              </span>
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chào buổi tối · Chủ nhật, ngày 11/10/2026
+              Chào buổi tối · Chủ nhật, ngày 11/10/2026 · Theo dõi dòng tiền, công nợ FIFO và hiệu suất phòng trực quan
             </p>
           </div>
 
@@ -1409,22 +1495,23 @@ export function App() {
           </div>
         </div>
 
-        {/* 3 Top KPI Cards */}
+        {/* 4 Top KPI Cards with Mini Visuals */}
         <div
           className={`grid grid-cols-1 ${
-            isMobilePreview ? 'gap-3' : 'md:grid-cols-3 gap-4'
+            isMobilePreview ? 'gap-3' : 'sm:grid-cols-2 xl:grid-cols-4 gap-4'
           }`}
         >
+          {/* Card 1: Tỷ lệ lấp đầy */}
           <div
             onClick={() => setActiveTab('rooms')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition space-y-2.5"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition flex flex-col justify-between space-y-3"
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
                   <LayoutGrid className="w-4 h-4" />
                 </span>
-                <span className="font-medium">
+                <span className="font-semibold text-slate-700">
                   Tỷ lệ lấp đầy ({occupiedRooms.length}/{propertyRooms.length} phòng)
                 </span>
               </div>
@@ -1432,69 +1519,585 @@ export function App() {
                 {vacantRooms.length} trống
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
-              {occupancyRate}%
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                  {occupancyRate}%
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Giá trị HĐ: {formatVND(totalMonthlyContractRent)}/tháng
+                </div>
+              </div>
+              {/* Mini room pill bar */}
+              <div className="flex items-center gap-0.5">
+                {propertyRooms.slice(0, 12).map((r) => (
+                  <span
+                    key={r.id}
+                    title={`${r.code}: ${r.status}`}
+                    className={`w-1.5 h-6 rounded-full ${
+                      r.status === 'occupied'
+                        ? 'bg-blue-600'
+                        : r.status === 'vacant'
+                          ? 'bg-emerald-400'
+                          : 'bg-rose-400'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
             <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-full rounded-full bg-blue-600 transition-all"
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-teal-500 transition-all"
                 style={{ width: `${occupancyRate}%` }}
               />
             </div>
           </div>
 
+          {/* Card 2: Thu hôm nay */}
           <div
             onClick={() => setActiveTab('finance-cashbook')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-emerald-300 cursor-pointer transition space-y-2.5"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-emerald-300 cursor-pointer transition flex flex-col justify-between space-y-3"
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
                   <ArrowUpRight className="w-4 h-4" />
                 </span>
-                <span className="font-medium">Thu hôm nay</span>
+                <span className="font-semibold text-slate-700">Thu hôm nay</span>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
                 Khớp VietQR
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600 tabular-nums">
-              {formatVND(collectedToday)}
+            <div className="flex items-end justify-between">
+              <div>
+                <div className="text-2xl font-extrabold text-emerald-600 tabular-nums">
+                  {formatVND(collectedToday)}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Đã thu kỳ 10: {formatVND(octoberPaidTotal)} ({collectionRatePct}%)
+                </div>
+              </div>
+              <svg viewBox="0 0 64 28" className="w-16 h-7 shrink-0">
+                <polyline
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="2,22 16,18 30,20 44,10 62,4"
+                />
+              </svg>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Tự động phân bổ công nợ FIFO kỳ cũ trước
+            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${collectionRatePct}%` }}
+              />
             </div>
           </div>
 
+          {/* Card 3: Lợi nhuận tháng này */}
           <div
             onClick={() => setActiveTab('reports')}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition space-y-2.5"
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition flex flex-col justify-between space-y-3"
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-slate-100 text-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
                   <TrendingUp className="w-4 h-4" />
                 </span>
-                <span className="font-medium">Lợi nhuận tháng này</span>
+                <span className="font-semibold text-slate-700">Lợi nhuận tháng này</span>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
                 Kỳ 10/2026
               </span>
             </div>
-            <div
-              className={`text-2xl font-extrabold tabular-nums ${
-                currentMonthProfit < 0 ? 'text-rose-600' : 'text-slate-900'
-              }`}
-            >
-              {formatVND(currentMonthProfit)}
+            <div className="flex items-end justify-between">
+              <div>
+                <div
+                  className={`text-2xl font-extrabold tabular-nums ${
+                    currentMonthProfit < 0 ? 'text-rose-600' : 'text-slate-900'
+                  }`}
+                >
+                  {formatVND(currentMonthProfit)}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Thực thu trừ chi phí vận hành & hoàn cọc
+                </div>
+              </div>
+              <div className="flex items-end gap-1 h-7">
+                {SEED_MONTHLY_CHART.map((m, i) => (
+                  <span
+                    key={m.month}
+                    className={`w-2 rounded-t ${
+                      i === SEED_MONTHLY_CHART.length - 1 ? 'bg-indigo-600' : 'bg-indigo-200'
+                    }`}
+                    style={{
+                      height: `${Math.max(25, Math.round((m.profit / dashboardMaxChart) * 100))}%`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Tổng thu trừ chi phí vận hành & hoàn cọc
+            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full bg-indigo-600 w-4/5" />
+            </div>
+          </div>
+
+          {/* Card 4: Tổng công nợ cần thu */}
+          <div
+            onClick={() => {
+              setFinanceExpanded(true);
+              setActiveTab('finance-debts');
+            }}
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-rose-300 cursor-pointer transition flex flex-col justify-between space-y-3"
+          >
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                  <AlertTriangle className="w-4 h-4" />
+                </span>
+                <span className="font-semibold text-slate-700">Công nợ cần thu</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold">
+                {overdueInvoices.length} quá hạn
+              </span>
+            </div>
+            <div>
+              <div className="text-2xl font-extrabold text-rose-600 tabular-nums">
+                {formatVND(overdueTotalAmount + dueSoonTotalAmount)}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5 tabular-nums">
+                Quá hạn: {formatVND(overdueTotalAmount)} · Tới hạn: {formatVND(dueSoonTotalAmount)}
+              </div>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden flex">
+              <div
+                className="h-full bg-rose-500"
+                style={{
+                  width: `${
+                    overdueTotalAmount + dueSoonTotalAmount > 0
+                      ? Math.round(
+                          (overdueTotalAmount / (overdueTotalAmount + dueSoonTotalAmount)) * 100
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+              <div className="h-full bg-amber-400 flex-1" />
             </div>
           </div>
         </div>
 
-        {/* Main Grid: Left (Việc cần làm hôm nay + Hoạt động gần đây) + Right (Tiến độ thu & Trạng thái phòng) */}
+        {/* ROW BIỂU ĐỒ TRỰC QUAN: Biểu đồ Xu hướng Dòng tiền 5 tháng + Biểu đồ Tròn Donut Trạng thái & Cơ cấu Thu */}
+        <div
+          className={`grid grid-cols-1 ${
+            isMobilePreview ? 'gap-5' : 'xl:grid-cols-3 gap-6'
+          }`}
+        >
+          {/* Biểu đồ kết hợp Cột + Đường: Xu hướng Doanh thu · Chi phí · Lợi nhuận */}
+          <div
+            className={`bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between ${
+              isMobilePreview ? '' : 'xl:col-span-2'
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  <span>Biểu đồ Dòng tiền & Lợi nhuận qua các kỳ</span>
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Rê chuột vào từng tháng để xem chi tiết Thu · Chi · Lợi nhuận ròng
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-600" /> Doanh thu
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-500" /> Chi phí
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Lợi nhuận
+                </span>
+              </div>
+            </div>
+
+            <div className="relative h-56 w-full pt-2">
+              <svg viewBox="0 0 720 205" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="dashIncomeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.85" />
+                  </linearGradient>
+                  <linearGradient id="dashProfitArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10B981" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity="0.01" />
+                  </linearGradient>
+                </defs>
+
+                {/* Đường lưới ngang */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                  const y = 170 - ratio * 140;
+                  const valLabel = Math.round((dashboardMaxChart * ratio) / 1000000);
+                  return (
+                    <g key={idx}>
+                      <line
+                        x1="46"
+                        y1={y}
+                        x2="690"
+                        y2={y}
+                        stroke="#F1F5F9"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="38"
+                        y={y + 4}
+                        textAnchor="end"
+                        className="fill-slate-400 text-[10px] tabular-nums"
+                      >
+                        {valLabel === 0 ? '0' : `${valLabel}tr`}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Vùng màu dưới đường lợi nhuận */}
+                <polygon
+                  points={[
+                    '115,170',
+                    ...SEED_MONTHLY_CHART.map((pt, i) => {
+                      const x = 115 + i * 130;
+                      const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                      return `${x},${y}`;
+                    }),
+                    `${115 + (SEED_MONTHLY_CHART.length - 1) * 130},170`,
+                  ].join(' ')}
+                  fill="url(#dashProfitArea)"
+                />
+
+                {/* Cột Doanh thu & Chi phí */}
+                {SEED_MONTHLY_CHART.map((pt, i) => {
+                  const xCenter = 115 + i * 130;
+                  const incH = (pt.income / dashboardMaxChart) * 140;
+                  const expH = Math.max(4, (pt.expense / dashboardMaxChart) * 140);
+                  const isHovered = hoveredChartIdx === i;
+                  return (
+                    <g
+                      key={pt.month}
+                      onMouseEnter={() => setHoveredChartIdx(i)}
+                      onMouseLeave={() => setHoveredChartIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      {isHovered && (
+                        <rect
+                          x={xCenter - 38}
+                          y="20"
+                          width="76"
+                          height="152"
+                          rx="8"
+                          fill="#F8FAFC"
+                        />
+                      )}
+                      {/* Cột Thu */}
+                      <rect
+                        x={xCenter - 22}
+                        y={170 - incH}
+                        width="20"
+                        height={incH}
+                        rx="4"
+                        fill="url(#dashIncomeGrad)"
+                      />
+                      {/* Cột Chi */}
+                      <rect
+                        x={xCenter + 2}
+                        y={170 - expH}
+                        width="18"
+                        height={expH}
+                        rx="4"
+                        fill="#F59E0B"
+                      />
+                      {/* Giá trị tóm tắt trên đỉnh cột */}
+                      <text
+                        x={xCenter - 12}
+                        y={170 - incH - 5}
+                        textAnchor="middle"
+                        className="fill-blue-700 text-[9px] font-bold tabular-nums"
+                      >
+                        {(pt.income / 1000000).toFixed(1)}tr
+                      </text>
+                      {/* Nhãn trục X */}
+                      <text
+                        x={xCenter}
+                        y="190"
+                        textAnchor="middle"
+                        className="fill-slate-600 text-[10px] font-semibold tabular-nums"
+                      >
+                        {pt.month}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Đường biểu diễn Lợi nhuận */}
+                <polyline
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={SEED_MONTHLY_CHART.map((pt, i) => {
+                    const x = 115 + i * 130;
+                    const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                    return `${x},${y}`;
+                  }).join(' ')}
+                />
+
+                {/* Điểm tròn Lợi nhuận */}
+                {SEED_MONTHLY_CHART.map((pt, i) => {
+                  const x = 115 + i * 130;
+                  const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                  return (
+                    <circle
+                      key={pt.month}
+                      cx={x}
+                      cy={y}
+                      r={hoveredChartIdx === i ? '5.5' : '4'}
+                      className="fill-emerald-500 stroke-white stroke-2 transition-all"
+                    />
+                  );
+                })}
+              </svg>
+
+              {hoveredChartIdx !== null && (
+                <div className="absolute top-1 right-2 bg-slate-900/95 text-white rounded-xl px-3.5 py-2 text-xs shadow-xl space-y-0.5 pointer-events-none">
+                  <div className="font-bold text-slate-200">
+                    Kỳ {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                  </div>
+                  <div className="text-sky-300 tabular-nums">
+                    Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                  </div>
+                  <div className="text-amber-300 tabular-nums">
+                    Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                  </div>
+                  <div className="text-emerald-300 font-bold tabular-nums">
+                    Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cơ cấu doanh thu hóa đơn tháng (Stacked Progress Bar) */}
+            <div className="pt-4 mt-2 border-t border-slate-100 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800">
+                  Cơ cấu khoản thu hóa đơn kỳ 10/2026
+                </span>
+                <span className="text-slate-500 font-semibold tabular-nums">
+                  Tổng lập HĐ: {formatVND(octoberReceivableTotal)}
+                </span>
+              </div>
+
+              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden flex gap-0.5">
+                {revenueSegments.map((seg) => (
+                  <div
+                    key={seg.label}
+                    className={`${seg.bgClass} h-full transition-all`}
+                    style={{ width: `${Math.max(4, seg.pct)}%` }}
+                    title={`${seg.label}: ${formatVND(seg.amount)} (${seg.pct}%)`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+                {revenueSegments.map((seg) => (
+                  <div
+                    key={seg.label}
+                    className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 text-[11px]"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium truncate">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: seg.color }}
+                        />
+                        <span className="truncate">{seg.label}</span>
+                      </span>
+                      <span className="font-bold text-slate-500">{seg.pct}%</span>
+                    </div>
+                    <div className="font-extrabold text-slate-900 mt-0.5 tabular-nums">
+                      {formatVND(seg.amount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Cột phải: Biểu đồ Tròn Donut Trạng thái Phòng + Sơ đồ Ô Phòng Nhanh */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Biểu đồ Trạng thái phòng
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('rooms')}
+                  className="text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  Mở sơ đồ phòng →
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Phân bổ {propertyRooms.length} phòng tại {currentProperty.name}
+              </p>
+            </div>
+
+            {/* SVG Donut Chart + Legend */}
+            <div className="flex items-center gap-4">
+              <div className="relative w-28 h-28 shrink-0">
+                <svg viewBox="0 0 110 110" className="w-full h-full -rotate-90">
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#F1F5F9"
+                    strokeWidth="12"
+                  />
+                  {/* Đã thuê (Blue) */}
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth="12"
+                    strokeDasharray={`${occDash} ${donutCircumference}`}
+                    strokeDashoffset="0"
+                    strokeLinecap="butt"
+                  />
+                  {/* Trống (Emerald) */}
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#10B981"
+                    strokeWidth="12"
+                    strokeDasharray={`${vacDash} ${donutCircumference}`}
+                    strokeDashoffset={-occDash}
+                    strokeLinecap="butt"
+                  />
+                  {/* Đang sửa chữa (Rose) */}
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#F43F5E"
+                    strokeWidth="12"
+                    strokeDasharray={`${maintDash} ${donutCircumference}`}
+                    strokeDashoffset={-(occDash + vacDash)}
+                    strokeLinecap="butt"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+                    {occupancyRate}%
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Lấp đầy
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-2 text-xs tabular-nums">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-blue-50/60 border border-blue-100">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    Đã thuê
+                  </span>
+                  <span className="font-bold text-blue-700">
+                    {occupiedRooms.length} phòng
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    Trống
+                  </span>
+                  <span className="font-bold text-emerald-700">
+                    {vacantRooms.length} phòng
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50/60 border border-rose-100">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    Đang sửa chữa
+                  </span>
+                  <span className="font-bold text-rose-700">
+                    {maintenanceRooms.length} phòng
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bản đồ nhiệt trạng thái từng phòng (Interactive Room Matrix) */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span className="font-semibold text-slate-700">
+                  Bản đồ nhanh {propertyRooms.length} phòng (Bấm để xem):
+                </span>
+                <span>Xanh dương: Đang ở · Xanh lá: Trống</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {propertyRooms.map((r) => {
+                  const hasDebt = invoices.some(
+                    (inv) =>
+                      inv.roomCode === r.code &&
+                      inv.status !== 'draft' &&
+                      inv.totalAmount - inv.paidAmount > 0
+                  );
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setActiveTab('rooms')}
+                      className={`p-2 rounded-xl border text-left transition flex flex-col justify-between ${
+                        r.status === 'occupied'
+                          ? 'bg-blue-50/50 border-blue-200 hover:bg-blue-100/70'
+                          : r.status === 'vacant'
+                            ? 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/70'
+                            : 'bg-rose-50/70 border-rose-200 hover:bg-rose-100/70'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-extrabold text-slate-900">
+                          {r.code}
+                        </span>
+                        {hasDebt && (
+                          <span
+                            title="Còn nợ hóa đơn"
+                            className="w-2 h-2 rounded-full bg-rose-500"
+                          />
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                        {r.tenantName ? r.tenantName.split(' ').slice(-2).join(' ') : 'Phòng trống'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Grid: Left (Việc cần làm hôm nay + Hoạt động gần đây) + Right (Tiến độ thu tháng này) */}
         <div
           className={`grid grid-cols-1 ${
             isMobilePreview ? 'gap-5' : 'xl:grid-cols-3 gap-6'
@@ -1550,10 +2153,71 @@ export function App() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Right Column: Tiến độ thu tháng này + Hoạt động gần đây */}
+          <div className="space-y-6">
+            {/* Tiến độ thu tiền tháng này */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Tiến độ thu tháng này
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold tabular-nums">
+                  Đạt {collectionRatePct}%
+                </span>
+              </div>
+
+              <div className="space-y-2.5 text-xs tabular-nums">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Phải thu kỳ 10/2026</span>
+                  <span className="font-bold text-slate-900">
+                    {formatVND(octoberReceivableTotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Đã thu trong kỳ</span>
+                  <span className="font-bold text-emerald-600">
+                    {formatVND(octoberPaidTotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Đã thu hôm nay</span>
+                  <span className="font-bold text-teal-600">
+                    {formatVND(collectedToday)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-slate-100">
+                  <span className="text-slate-600 font-medium">Còn phải thu</span>
+                  <span className="font-extrabold text-rose-600">
+                    {formatVND(dueSoonTotalAmount)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
+                  style={{ width: `${collectionRatePct}%` }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target =
+                    invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
+                  if (target) setCollectModalInvoice(target);
+                }}
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
+              >
+                Thu tiền nhanh (P101 · HD-IV-00089)
+              </button>
+            </div>
 
             {/* Hoạt động gần đây */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-slate-900">Hoạt động gần đây</h2>
                 <button
                   type="button"
@@ -1569,30 +2233,30 @@ export function App() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {transactions.slice(0, 6).map((tx) => (
+                {transactions.slice(0, 5).map((tx) => (
                   <div
                     key={tx.id}
-                    className="py-3 flex items-center justify-between gap-3"
+                    className="py-2.5 flex items-center justify-between gap-3"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
                           tx.type === 'income'
                             ? 'bg-emerald-50 text-emerald-600'
                             : tx.category === 'Vệ sinh'
-                            ? 'bg-slate-100 text-slate-700'
-                            : 'bg-amber-50 text-amber-600'
+                              ? 'bg-slate-100 text-slate-700'
+                              : 'bg-amber-50 text-amber-600'
                         }`}
                       >
                         {tx.type === 'income' ? (
-                          <ArrowUpRight className="w-4 h-4" />
+                          <ArrowUpRight className="w-3.5 h-3.5" />
                         ) : (
-                          <ArrowDownRight className="w-4 h-4" />
+                          <ArrowDownRight className="w-3.5 h-3.5" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-900 truncate">
                             {tx.category}
                           </span>
                           {tx.roomCode && (
@@ -1620,127 +2284,6 @@ export function App() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Right Column Summary Widgets */}
-          <div className="space-y-6">
-            {/* Tiến độ thu tiền tháng này */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                Tiến độ thu tháng này
-              </h3>
-              <div className="space-y-2.5 text-xs tabular-nums">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Phải thu kỳ 10/2026</span>
-                  <span className="font-bold text-slate-900">
-                    {formatVND(octoberReceivableTotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Đã thu hôm nay</span>
-                  <span className="font-bold text-emerald-600">
-                    {formatVND(collectedToday)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Còn phải thu</span>
-                  <span className="font-bold text-rose-600">
-                    {formatVND(dueSoonTotalAmount)}
-                  </span>
-                </div>
-              </div>
-              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all"
-                  style={{
-                    width: `${
-                      octoberReceivableTotal > 0
-                        ? Math.min(
-                            100,
-                            Math.round((collectedToday / octoberReceivableTotal) * 100)
-                          )
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const target =
-                    invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
-                  if (target) setCollectModalInvoice(target);
-                }}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
-              >
-                Thu tiền nhanh (P101 · HD-IV-00089)
-              </button>
-            </div>
-
-            {/* Trạng thái phòng */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900">Trạng thái phòng</h3>
-              <div className="space-y-3 text-xs tabular-nums">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-slate-600">Trống</span>
-                    <span className="font-bold text-emerald-600">
-                      {vacantRooms.length} phòng
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{
-                        width: `${(vacantRooms.length / safeRoomDenom) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-slate-600">Đã thuê</span>
-                    <span className="font-bold text-blue-600">
-                      {occupiedRooms.length} phòng
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-blue-600"
-                      style={{
-                        width: `${(occupiedRooms.length / safeRoomDenom) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-slate-600">Đang sửa chữa</span>
-                    <span className="font-bold text-rose-600">
-                      {maintenanceRooms.length} phòng
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-rose-500"
-                      style={{
-                        width: `${(maintenanceRooms.length / safeRoomDenom) * 100}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('rooms')}
-                className="w-full py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-              >
-                Mở sơ đồ phòng
-              </button>
             </div>
           </div>
         </div>

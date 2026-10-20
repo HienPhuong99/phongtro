@@ -32,6 +32,11 @@ import {
   Sparkles,
   ExternalLink,
   RotateCcw,
+  Cloud,
+  LogIn,
+  LogOut,
+  ShieldCheck,
+  UserPlus,
 } from 'lucide-react';
 import {
   NavTab,
@@ -73,6 +78,8 @@ import {
   TempResidenceModal,
   RoomPricingModal,
 } from './components/Modals';
+import { AuthModal } from './components/AuthModal';
+import { supabase } from './utils/supabase';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
 const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
@@ -261,6 +268,25 @@ export function App() {
   const [pricingMode, setPricingMode] = useState<'single' | 'bulk'>('single');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Supabase Auth & Cloud / Demo Mode state
+  const [authUser, setAuthUser] = useState<{ id: string; email: string } | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [cloudLoading, setCloudLoading] = useState<boolean>(false);
+  const [cloudLastSavedAt, setCloudLastSavedAt] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<
+    Array<{
+      id: string;
+      staff_email: string;
+      role: string;
+      can_record_meters: boolean;
+      can_collect_payments: boolean;
+      can_view_reports: boolean;
+    }>
+  >([]);
+  const [newStaffEmail, setNewStaffEmail] = useState<string>('');
+  const [newStaffRole, setNewStaffRole] = useState<'staff' | 'viewer'>('staff');
+
   const openRoomPricingModal = (roomCode?: string, mode: 'single' | 'bulk' = 'single') => {
     setPricingRoomCode(roomCode || rooms[0]?.code || 'P101');
     setPricingMode(mode);
@@ -272,20 +298,205 @@ export function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  // Lưu tự động vào LocalStorage
+  // Tải dữ liệu đám mây từ bảng user_app_state của chủ trọ
+  const loadCloudStateForUser = async (userId: string, userEmail: string) => {
+    setCloudLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_app_state')
+        .select('state, updated_at')
+        .eq('owner_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        showToast('Không tải được dữ liệu đám mây: ' + error.message);
+        return;
+      }
+
+      if (data && data.state && typeof data.state === 'object') {
+        const st = data.state as Record<string, unknown>;
+        if (Array.isArray(st.properties)) setProperties(st.properties as Property[]);
+        if (Array.isArray(st.rooms)) setRooms(st.rooms as Room[]);
+        if (Array.isArray(st.tenants)) setTenants(st.tenants as Tenant[]);
+        if (Array.isArray(st.vehicles)) setVehicles(st.vehicles as Vehicle[]);
+        if (Array.isArray(st.contracts)) setContracts(st.contracts as Contract[]);
+        if (Array.isArray(st.invoices)) setInvoices(st.invoices as Invoice[]);
+        if (Array.isArray(st.transactions)) setTransactions(st.transactions as CashTransaction[]);
+        setCloudLastSavedAt(
+          data.updated_at ? new Date(data.updated_at).toLocaleTimeString('vi-VN') : 'Vừa xong'
+        );
+        showToast(`Đã tải sổ quản lý đám mây của ${userEmail}`);
+      } else {
+        // Tài khoản mới chưa có dữ liệu trên mây -> lưu dữ liệu khởi tạo lên mây
+        await supabase.from('user_app_state').upsert({
+          owner_id: userId,
+          schema_version: SHEETS_SYNC_SCHEMA,
+          state: {
+            properties,
+            rooms,
+            tenants: allTenants,
+            vehicles: allVehicles,
+            contracts: allContracts,
+            invoices: allInvoices,
+            transactions: allTransactions,
+          },
+          updated_at: new Date().toISOString(),
+        });
+        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
+        showToast(`Đã khởi tạo sổ đám mây riêng cho ${userEmail}!`);
+      }
+
+      // Tải danh sách nhân viên/quản lý được phân quyền
+      const { data: staffs } = await supabase
+        .from('property_staff')
+        .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+        .eq('owner_id', userId)
+        .order('created_at', { ascending: false });
+      if (staffs) {
+        setStaffList(staffs);
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  // Kiểm tra phiên đăng nhập Supabase khi mở ứng dụng
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        properties,
-        rooms,
-        tenants: allTenants,
-        vehicles: allVehicles,
-        contracts: allContracts,
-        invoices: allInvoices,
-        transactions: allTransactions,
-      })
-    );
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const u = { id: session.user.id, email: session.user.email || 'Chủ trọ' };
+        setAuthUser(u);
+        setIsDemoMode(false);
+        loadCloudStateForUser(u.id, u.email);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuthUser({ id: session.user.id, email: session.user.email || 'Chủ trọ' });
+      } else {
+        setAuthUser(null);
+        setIsDemoMode(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Chuyển nhanh sang chế độ Bản Demo (12 phòng mẫu) khi đi gặp khách
+  const handleSwitchToDemoMode = () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setProperties(parsed.properties || SEED_PROPERTIES);
+        setRooms(parsed.rooms || SEED_ROOMS);
+        setTenants(parsed.tenants || SEED_TENANTS);
+        setVehicles(parsed.vehicles || SEED_VEHICLES);
+        setContracts(parsed.contracts || SEED_CONTRACTS);
+        setInvoices(parsed.invoices || SEED_INVOICES);
+        setTransactions(parsed.transactions || SEED_TRANSACTIONS);
+      } catch {
+        setProperties(SEED_PROPERTIES);
+        setRooms(SEED_ROOMS);
+        setTenants(SEED_TENANTS);
+        setVehicles(SEED_VEHICLES);
+        setContracts(SEED_CONTRACTS);
+        setInvoices(SEED_INVOICES);
+        setTransactions(SEED_TRANSACTIONS);
+      }
+    }
+    setIsDemoMode(true);
+    showToast('Đang ở Chế độ Bản Demo (12 phòng mẫu để giới thiệu khách hàng)');
+  };
+
+  const handleSignOutCloud = async () => {
+    await supabase.auth.signOut();
+    setAuthUser(null);
+    setStaffList([]);
+    handleSwitchToDemoMode();
+    showToast('Đã đăng xuất và quay về Bản Demo.');
+  };
+
+  const handleAddPropertyStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const emailClean = newStaffEmail.trim().toLowerCase();
+    if (!emailClean) return;
+
+    const { data, error } = await supabase
+      .from('property_staff')
+      .upsert(
+        {
+          owner_id: authUser.id,
+          property_id: currentProperty.id,
+          staff_email: emailClean,
+          role: newStaffRole,
+          can_record_meters: true,
+          can_collect_payments: newStaffRole === 'staff',
+          can_view_reports: false,
+        },
+        { onConflict: 'owner_id,property_id,staff_email' }
+      )
+      .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+      .single();
+
+    if (error) {
+      showToast('Không thêm được tài khoản phụ: ' + error.message);
+      return;
+    }
+    if (data) {
+      setStaffList((prev) => [data, ...prev.filter((item) => item.id !== data.id)]);
+      setNewStaffEmail('');
+      showToast(`Đã phân quyền cho ${emailClean} vào cơ sở ${currentProperty.name}!`);
+    }
+  };
+
+  const handleRemovePropertyStaff = async (staffId: string, staffEmail: string) => {
+    const { error } = await supabase.from('property_staff').delete().eq('id', staffId);
+    if (!error) {
+      setStaffList((prev) => prev.filter((item) => item.id !== staffId));
+      showToast(`Đã thu hồi quyền của ${staffEmail}`);
+    }
+  };
+
+  // Lưu tự động: Nếu ở Bản Demo -> lưu LocalStorage; Nếu ở Tài khoản thật -> đồng bộ Supabase Cloud
+  useEffect(() => {
+    const snapshot = {
+      properties,
+      rooms,
+      tenants: allTenants,
+      vehicles: allVehicles,
+      contracts: allContracts,
+      invoices: allInvoices,
+      transactions: allTransactions,
+    };
+
+    if (isDemoMode || !authUser) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      return;
+    }
+
+    if (cloudLoading) return;
+
+    const timer = setTimeout(async () => {
+      const { error } = await supabase.from('user_app_state').upsert({
+        owner_id: authUser.id,
+        schema_version: SHEETS_SYNC_SCHEMA,
+        state: snapshot,
+        updated_at: new Date().toISOString(),
+      });
+      if (!error) {
+        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [
     properties,
     rooms,
@@ -294,6 +505,9 @@ export function App() {
     allContracts,
     allInvoices,
     allTransactions,
+    isDemoMode,
+    authUser,
+    cloudLoading,
   ]);
 
   // Hỗ trợ phím Escape đóng hộp thoại đang mở
@@ -3973,6 +4187,120 @@ export function App() {
             </div>
           )}
         </div>
+
+        {/* 3. Tài khoản Đám mây Supabase & Phân quyền Quản lý / Người nhà */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                3. Tài khoản Đám mây (Supabase) & Phân quyền Quản lý / Người nhà
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Tách biệt dữ liệu tuyệt đối theo từng chủ trọ (Row Level Security) và vẫn giữ nút chuyển nhanh sang Bản Demo khi đi gặp khách.
+              </p>
+            </div>
+            <Cloud className="w-5 h-5 text-teal-600" />
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div>
+              <div className="font-bold text-slate-900">
+                Trạng thái hiện tại:{' '}
+                {isDemoMode ? (
+                  <span className="text-amber-700">🎭 Đang ở Chế độ Bản Demo (12 phòng mẫu)</span>
+                ) : (
+                  <span className="text-teal-700">☁️ Đang dùng Sổ Đám mây ({authUser?.email})</span>
+                )}
+              </div>
+              <div className="text-slate-500 mt-0.5">
+                {isDemoMode
+                  ? 'Mọi thao tác sửa/xóa chỉ nằm trên trình duyệt này để bạn tự tin demo với khách.'
+                  : 'Mọi thay đổi được tự động đồng bộ vào cơ sở dữ liệu Supabase của riêng bạn.'}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isDemoMode && authUser ? (
+                <button
+                  type="button"
+                  onClick={handleSwitchToDemoMode}
+                  className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition"
+                >
+                  Chuyển sang Bản Demo
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition"
+                >
+                  Đăng nhập / Tạo tài khoản Chủ trọ
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Phân quyền tài khoản phụ */}
+          <div className="space-y-3 pt-2 border-t border-slate-100 text-xs">
+            <div className="font-bold text-slate-800">
+              Cấp quyền Tài khoản phụ cho Quản lý / Người nhà tại cơ sở: {currentProperty.name}
+            </div>
+            <form onSubmit={handleAddPropertyStaff} className="flex flex-wrap gap-2">
+              <input
+                type="email"
+                value={newStaffEmail}
+                onChange={(e) => setNewStaffEmail(e.target.value)}
+                placeholder="Nhập email người quản lý / người nhà..."
+                className="flex-1 min-w-[220px] rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900"
+              />
+              <select
+                value={newStaffRole}
+                onChange={(e) => setNewStaffRole(e.target.value as 'staff' | 'viewer')}
+                className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 bg-white"
+              >
+                <option value="staff">Quản lý (Ghi điện nước & Thu tiền, ẩn Lợi nhuận)</option>
+                <option value="viewer">Chỉ xem sơ đồ phòng & hóa đơn</option>
+              </select>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold flex items-center gap-1.5 transition"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Cấp quyền</span>
+              </button>
+            </form>
+
+            {staffList.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                {staffList.map((st) => (
+                  <div
+                    key={st.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200"
+                  >
+                    <div>
+                      <span className="font-bold text-slate-900">{st.staff_email}</span>
+                      <span className="ml-2 px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold">
+                        {st.role === 'staff' ? 'Ghi số & Thu tiền (Ẩn lợi nhuận)' : 'Chỉ xem'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePropertyStaff(st.id, st.staff_email)}
+                      className="text-rose-600 hover:underline font-semibold"
+                    >
+                      Thu hồi
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                {authUser
+                  ? 'Chưa có tài khoản phụ nào được cấp quyền tại cơ sở này.'
+                  : 'Đăng nhập tài khoản Chủ trọ để thêm và quản lý danh sách nhân viên/người nhà.'}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -4251,13 +4579,72 @@ export function App() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
-        <div
-          role="note"
-          className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900"
-        >
-          <strong>Bản demo.</strong> Dữ liệu chỉ lưu trên trình duyệt này. Không nhập họ tên, SĐT hay
-          CCCD của khách thuê thật.
-        </div>
+        {isDemoMode ? (
+          <div
+            role="note"
+            className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2"
+          >
+            <div>
+              <strong>Bản demo.</strong> Dữ liệu chỉ lưu trên trình duyệt này. Không nhập họ tên, SĐT hay
+              CCCD của khách thuê thật.
+            </div>
+            <div className="flex items-center gap-2">
+              {authUser ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDemoMode(false);
+                    loadCloudStateForUser(authUser.id, authUser.email);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition flex items-center gap-1"
+                >
+                  <Cloud className="w-3 h-3" />
+                  <span>Quay lại Sổ Đám mây ({authUser.email})</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-900 hover:bg-slate-900 text-white font-bold text-[11px] transition flex items-center gap-1"
+                >
+                  <LogIn className="w-3 h-3" />
+                  <span>Đăng nhập Chủ trọ (Lưu Đám mây)</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            role="note"
+            className="bg-teal-50 border-b border-teal-200 px-4 lg:px-8 py-2 text-xs text-teal-900 flex flex-wrap items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />
+              <span>
+                <strong>Sổ Quản lý Đám mây (Supabase RLS):</strong> Đang đăng nhập tài khoản{' '}
+                <strong>{authUser?.email}</strong>
+                {cloudLastSavedAt ? ` · Đã lưu tự động lúc ${cloudLastSavedAt}` : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSwitchToDemoMode}
+                className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] border border-amber-300 transition"
+              >
+                🎭 Bật Chế độ Demo (Khi gặp khách)
+              </button>
+              <button
+                type="button"
+                onClick={handleSignOutCloud}
+                className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-50 text-rose-600 font-bold text-[11px] border border-rose-200 transition flex items-center gap-1"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+        )}
         {/* TOPBAR */}
         <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">
@@ -4333,6 +4720,19 @@ export function App() {
               }`}
             >
               {isMobilePreview ? '💻 Giao diện Web' : '📱 Khung Mobile'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
+                !isDemoMode && authUser
+                  ? 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100'
+                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5" />
+              <span>{!isDemoMode && authUser ? 'Tài khoản Cloud' : 'Đăng nhập / Demo'}</span>
             </button>
 
             <button
@@ -4568,6 +4968,23 @@ export function App() {
         initialRoomCode={pricingRoomCode}
         initialMode={pricingMode}
         onSaveRoomPricing={handleSaveRoomPricing}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        isCurrentlyCloud={!isDemoMode && !!authUser}
+        currentEmail={authUser?.email}
+        onSwitchToDemo={handleSwitchToDemoMode}
+        onAuthSuccess={(email) => {
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+              setAuthUser({ id: user.id, email });
+              setIsDemoMode(false);
+              loadCloudStateForUser(user.id, email);
+            }
+          });
+        }}
       />
 
       {/* MÃ QR MỞ BẢN WEB TRÊN ĐIỆN THOẠI */}

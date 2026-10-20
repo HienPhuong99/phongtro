@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kế hoạch Triển khai & Kinh doanh — Phần mềm Quản lý Phòng trọ (2026–2027)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-light: #f0fdfa;
+      --primary-border: #99f6e4;
+      --accent: #1d4ed8;
+      --accent-light: #eff6ff;
+      --amber: #b45309;
+      --amber-light: #fffbeb;
+      --amber-border: #fde68a;
+      --rose: #be123c;
+      --rose-light: #fff1f2;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 8mm 10mm 8mm 10mm;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--slate-800);
+      background: #ffffff;
+      font-size: 8.1pt;
+      line-height: 1.32;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Header Cover Banner */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #0f766e 100%);
+      color: #ffffff;
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      color: #5eead4;
+      font-size: 7.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 9px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+
+    .hero h1 {
+      font-size: 15.5pt;
+      font-weight: 700;
+      line-height: 1.22;
+      margin-bottom: 4px;
+    }
+
+    .hero p {
+      font-size: 9pt;
+      color: #cbd5e1;
+      margin-bottom: 9px;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding-top: 9px;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 8pt;
+    }
+
+    .hero-meta div strong {
+      display: block;
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 7pt;
+      text-transform: uppercase;
+    }
+
+    .hero-meta div span {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Section Styling */
+    .section {
+      margin-bottom: 12px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 4px;
+      margin-bottom: 7px;
+      page-break-after: avoid;
+    }
+
+    .section-num {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 8pt;
+      padding: 1.5px 7px;
+      border-radius: 5px;
+    }
+
+    .section-title {
+      font-size: 11.2pt;
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+
+    h3 {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: var(--slate-900);
+      margin: 7px 0 4px 0;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 4px;
+    }
+
+    /* Grid & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-bottom: 7px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .card {
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 7px;
+      padding: 8px 10px;
+      page-break-inside: avoid;
+    }
+
+    .card-primary {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+    }
+
+    .card-accent {
+      background: var(--accent-light);
+      border-color: #bfdbfe;
+    }
+
+    .card-amber {
+      background: var(--amber-light);
+      border-color: var(--amber-border);
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 9pt;
+      color: var(--slate-900);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+
+    .badge-teal {
+      background: #ccfbf1;
+      color: #115e59;
+    }
+
+    .badge-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-amber {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-rose {
+      background: #ffe4e6;
+      color: #9f1239;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 5px;
+      font-size: 7.9pt;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+
+    th {
+      background: var(--slate-100);
+      color: var(--slate-900);
+      font-weight: 700;
+      text-align: left;
+      padding: 3.5px 6px;
+      border: 1px solid var(--slate-200);
+    }
+
+    td {
+      padding: 3.5px 6px;
+      border: 1px solid var(--slate-200);
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td {
+      background: #fcfcfd;
+    }
+
+    /* Lists */
+    ul, ol {
+      padding-left: 15px;
+      margin-bottom: 4px;
+    }
+
+    li {
+      margin-bottom: 2px;
+    }
+
+    li strong {
+      color: var(--slate-900);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8pt;
+      background: var(--slate-100);
+      padding: 0.5px 3.5px;
+      border-radius: 3px;
+      color: #0f766e;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .callout {
+      border-left: 4px solid var(--primary);
+      background: var(--primary-light);
+      padding: 7px 10px;
+      border-radius: 0 7px 7px 0;
+      margin-bottom: 7px;
+      page-break-inside: avoid;
+    }
+
+    .callout-amber {
+      border-left-color: var(--amber);
+      background: var(--amber-light);
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      padding-top: 7px;
+      border-top: 1px solid var(--slate-200);
+      font-size: 7.5pt;
+      color: var(--slate-500);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- HERO BANNER -->
+    <div class="hero">
+      <div class="hero-badge">Tài liệu Kiến trúc Triển khai & Kế hoạch Kinh doanh v2</div>
+      <h1>KẾ HOẠCH TRIỂN KHAI & PHÂN QUYỀN HỆ THỐNG QUẢN LÝ PHÒNG TRỌ</h1>
+      <p>Định vị: "Chốt sổ 20–60 phòng trong vài phút qua Zalo, gạch nợ đúng thứ tự FIFO, không phải dò sao kê"</p>
+      <div class="hero-meta">
+        <div>
+          <strong>Phân khúc mục tiêu</strong>
+          <span>Chủ trọ 20–60 phòng (2–3 khu)</span>
+        </div>
+        <div>
+          <strong>Mô hình triển khai</strong>
+          <span>Web SaaS + Mobile PWA + Zalo</span>
+        </div>
+        <div>
+          <strong>Mục tiêu 12 tháng</strong>
+          <span>60–100 chủ trọ (11–18 triệu/tháng)</span>
+        </div>
+        <div>
+          <strong>Cập nhật lần cuối</strong>
+          <span>20/10/2026 (Bản v2)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 1: CƠ CHẾ CẤP TÀI KHOẢN & PHÂN QUYỀN -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">PHẦN 1</span>
+        <h2 class="section-title">Cơ chế Triển khai, Cấp Tài khoản & Phân quyền Người dùng</h2>
+      </div>
+
+      <p>Hệ thống được thiết kế theo lộ trình chuyển đổi mượt mà từ <strong>Giai đoạn Demo / Cá nhân (Google Sheets)</strong> sang <strong>Giai đoạn Thương mại SaaS nhiều chủ trọ (Supabase PostgreSQL + Auth)</strong>.</p>
+
+      <div class="grid-2" style="margin-top: 8px;">
+        <div class="card card-amber">
+          <div class="card-title">
+            <span>Giai đoạn 1: Bản Demo & Nội bộ (Hiện tại)</span>
+            <span class="badge badge-amber">Đang chạy</span>
+          </div>
+          <ul>
+            <li><strong>Lưu trữ:</strong> Trình duyệt (<code>localStorage</code>) đồng bộ 2 chiều với Google Sheets (7 bảng tính).</li>
+            <li><strong>Cơ chế cấp quyền:</strong> Dùng khóa bí mật <code>SYNC_TOKEN</code> tạo từ menu <strong>🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ</strong> trên Google Sheets.</li>
+            <li><strong>Bảo mật API:</strong> Toàn bộ hàm nội bộ trong <code>Code.gs</code> đã khóa private (<code>_</code>), chặn gọi trái phép từ bên ngoài.</li>
+            <li><strong>Cách giao cho khách lẻ:</strong> Nhân bản (<em>Make a copy</em>) file Google Sheets riêng cho từng chủ trọ hoặc dùng để demo trực tiếp.</li>
+          </ul>
+        </div>
+
+        <div class="card card-primary">
+          <div class="card-title">
+            <span>Giai đoạn 2: Bản Thương mại SaaS (Từ T11/2026)</span>
+            <span class="badge badge-teal">Trọng tâm P0 & P1</span>
+          </div>
+          <ul>
+            <li><strong>Hạ tầng:</strong> Cơ sở dữ liệu <strong>Supabase PostgreSQL</strong> (region Singapore) + <strong>Supabase Auth</strong>.</li>
+            <li><strong>Cấp tài khoản:</strong> Chủ trọ tự đăng ký / đăng nhập bằng <strong>Google (1 chạm)</strong> hoặc <strong>Email & Mật khẩu</strong>.</li>
+            <li><strong>Cách ly dữ liệu tuyệt đối:</strong> Áp dụng <strong>Row Level Security (RLS)</strong> theo <code>owner_id</code> — tài khoản A tuyệt đối không thể đọc/sửa dữ liệu của tài khoản B.</li>
+            <li><strong>Hỗ trợ ban đầu:</strong> Nhập liệu hộ từ file Excel/ảnh sổ của chủ trọ bằng script quản trị viên trong 24h.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Mô hình Phân quyền 3 Cấp độ (Role-Based Access Control)</h3>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">
+            <span>1. Chủ trọ (Owner)</span>
+            <span class="badge badge-teal">Toàn quyền</span>
+          </div>
+          <ul>
+            <li>Quản lý tất cả cơ sở / khu trọ (<code>properties</code>).</li>
+            <li>Xem <strong>Báo cáo lợi nhuận</strong>, dòng tiền, quỹ tiền mặt & ngân hàng.</li>
+            <li>Chỉnh bảng giá phòng hàng loạt, cấu hình đơn giá điện/nước, tài khoản ngân hàng nhận VietQR.</li>
+            <li>Tải toàn bộ dữ liệu ra Excel (<code>.xlsx</code>) hoặc xóa sạch tài khoản (tuân thủ Luật BVDLCN).</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>2. Quản lý / Người nhà (Staff)</span>
+            <span class="badge badge-blue">Giới hạn (P1 #6)</span>
+          </div>
+          <ul>
+            <li>Chủ trọ cấp tài khoản phụ theo khu trọ được giao.</li>
+            <li><strong>Được phép:</strong> Ghi chỉ số điện nước, phát hành hóa đơn, gửi phiếu Zalo, xác nhận thu tiền, thêm/sửa khách thuê.</li>
+            <li><strong>Bị chặn:</strong> Không xem được Báo cáo lợi nhuận tổng, không đổi được STK ngân hàng nhận tiền, không xóa được cơ sở.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>3. Người thuê phòng (Tenant)</span>
+            <span class="badge badge-amber">Không cần tài khoản</span>
+          </div>
+          <ul>
+            <li><strong>Không bắt tải app hay đăng nhập.</strong></li>
+            <li>Mỗi hóa đơn sinh 1 <strong>Link bảo mật (Token ngẫu nhiên)</strong> gửi qua Zalo.</li>
+            <li>Mở trực tiếp trong Zalo để xem đúng hóa đơn phòng mình (ẩn CCCD), quét <strong>VietQR</strong> và bấm nút <strong>"Tôi đã chuyển"</strong>.</li>
+            <li>Chủ trọ nhận thông báo và bấm <strong>Xác nhận 1 chạm</strong> để gạch nợ FIFO.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: HIỆN TRẠNG & CÁC ĐƯỜNG DẪN HỆ THỐNG -->
+    <div class="section page-break">
+      <div class="section-header">
+        <span class="section-num">PHẦN 2</span>
+        <h2 class="section-title">Hiện trạng Sản phẩm & Hạ tầng Kỹ thuật (20/10/2026)</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 24%;">Phân hệ</th>
+            <th style="width: 48%;">Tính năng đã hoàn thiện & Kiểm thử E2E</th>
+            <th style="width: 28%;">Điểm mạnh bán hàng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Tổng quan & Lịch</strong></td>
+            <td>Tỷ lệ lấp đầy, thu hôm nay, lợi nhuận, việc cần làm, lịch ghi điện nước / hạn thu / sắp hết hạn hợp đồng.</td>
+            <td>Nhìn ngay phòng nào nợ, hợp đồng nào sắp hết hạn.</td>
+          </tr>
+          <tr>
+            <td><strong>Quản lý Phòng (Nhiều khu)</strong></td>
+            <td>Sơ đồ phòng theo tầng, lọc riêng từng cơ sở, chỉnh giá phòng lẻ hoặc hàng loạt đồng bộ sang hợp đồng & hóa đơn nháp.</td>
+            <td>Rất hợp mùa tăng giá phòng sau Tết cho chủ nhiều khu.</td>
+          </tr>
+          <tr>
+            <td><strong>Khách thuê, Xe & Hợp đồng</strong></td>
+            <td>Quản lý khách đại diện/ở cùng, CCCD, biển số xe, xuất tờ khai lưu trú <strong>CT01</strong>; tự tính tiền phòng kỳ đầu theo số ngày ở thực tế (prorate).</td>
+            <td>Chuẩn bị sẵn tờ khai cư trú, không tính nhầm kỳ đầu.</td>
+          </tr>
+          <tr>
+            <td><strong>Hóa đơn & VietQR Zalo</strong></td>
+            <td>Ghi điện nước hàng loạt (chặn nhập số mới &lt; số cũ), phiếu báo VietQR tự trừ phần trả trước, mẫu tin nhắn Zalo kèm nút Chia sẻ nhanh.</td>
+            <td>Chốt sổ 30 phòng chỉ trong vài phút trên điện thoại.</td>
+          </tr>
+          <tr>
+            <td><strong>Tài chính & Gạch nợ FIFO</strong></td>
+            <td>Sổ thu chi, quỹ tiền mặt/chuyển khoản, theo dõi tiền cọc, quyết toán hoàn cọc, <strong>thu nợ tự động gạch từ hóa đơn cũ đến mới (FIFO)</strong>.</td>
+            <td>Khách trả thiếu hay trả gộp nhiều tháng không bao giờ nhầm.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>Đường dẫn triển khai thực tế đang hoạt động (100% miễn phí hạ tầng ban đầu):</strong>
+        <ul style="margin-top: 4px; margin-bottom: 0;">
+          <li><strong>Web App Quản trị (Desktop):</strong> <code>https://hienphuong99.github.io/phongtro/</code></li>
+          <li><strong>Giao diện Mobile PWA (Chủ trọ dùng trên điện thoại):</strong> <code>https://hienphuong99.github.io/phongtro/?mode=mobile</code></li>
+          <li><strong>Google Sheets Database (7 trang tính):</strong> <code>https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SECTION 3: CHIẾN LƯỢC KHÁCH HÀNG, ĐỊNH GIÁ & CHI PHÍ -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">PHẦN 3</span>
+        <h2 class="section-title">Chân dung Khách hàng, Bảng giá & Bài toán Tài chính</h2>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">
+            <span>Chân dung Khách hàng Mục tiêu</span>
+            <span class="badge badge-teal">20–60 phòng</span>
+          </div>
+          <ul>
+            <li><strong>Độ tuổi & Công việc:</strong> 30–45 tuổi, quản lý 20–60 phòng hoặc 2–3 khu trọ gia đình, vẫn đang đi làm hành chính hoặc kinh doanh riêng.</li>
+            <li><strong>Nỗi đau lớn nhất:</strong> Mất nửa ngày đến 1 ngày đầu tháng để tính điện nước, gửi Zalo từng phòng và dò sao kê ngân hàng; dễ nhầm khi khách trả lẻ/trả gộp.</li>
+            <li><strong>Rào cản cần tháo gỡ:</strong> Ngại nhập liệu từ đầu (→ mình nhập hộ bằng script) và sợ lộ doanh thu (→ cam kết xuất/xóa dữ liệu bất cứ lúc nào).</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>So sánh Đối thủ & Định vị</span>
+            <span class="badge badge-blue">Giá bằng 1/3 MONA</span>
+          </div>
+          <ul>
+            <li><strong>MONA House:</strong> 490k–890k/tháng (20–50 phòng) — Mạnh nhưng quá đắt với chủ nhà trọ bình dân.</li>
+            <li><strong>SmartOS:</strong> 360k–1,5 triệu/tháng — Thiên về CHDV cao cấp, nhiều tính năng thừa.</li>
+            <li><strong>Quản Lý Trọ / Room Easy:</strong> Rẻ hoặc miễn phí ≤15 phòng nhưng gửi Zalo thủ công, thiếu gạch nợ FIFO thông minh.</li>
+            <li><strong>Định vị của mình:</strong> 149k–249k/tháng, chuyên sâu chốt sổ nhanh + gạch nợ FIFO + xác nhận chuyển khoản 1 chạm.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Bảng giá Gói cước & Phân quyền theo Gói</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Gói cước</th>
+            <th style="width: 22%;">Mức giá</th>
+            <th style="width: 22%;">Giới hạn quy mô</th>
+            <th style="width: 38%;">Quyền lợi & Phân quyền đi kèm</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Miễn phí</strong></td>
+            <td><strong>0đ</strong></td>
+            <td>≤ 10 phòng, 1 khu trọ</td>
+            <td>Tính năng cơ bản, 1 tài khoản chủ trọ, không có tài khoản phụ, không có SePay.</td>
+          </tr>
+          <tr>
+            <td><strong>Tiêu chuẩn</strong> <span class="badge badge-teal">Chủ lực</span></td>
+            <td><strong>149.000đ / tháng</strong><br><span style="font-size:8pt;color:#64748b;">(1,49 triệu / năm)</span></td>
+            <td>≤ 30 phòng, tối đa 3 khu</td>
+            <td>Đầy đủ tính năng P1: Trang hóa đơn Zalo cho khách, xác nhận chuyển khoản 1 chạm, gạch nợ FIFO, công cụ tính lại giá điện.</td>
+          </tr>
+          <tr>
+            <td><strong>Chuyên nghiệp</strong></td>
+            <td><strong>249.000đ / tháng</strong><br><span style="font-size:8pt;color:#64748b;">(2,49 triệu / năm)</span></td>
+            <td>≤ 60 phòng, không giới hạn khu</td>
+            <td>Toàn bộ gói Tiêu chuẩn + <strong>Cấp tài khoản phụ cho quản lý/người nhà</strong> + Kết nối SePay OAuth tự động.</td>
+          </tr>
+          <tr>
+            <td><strong>Doanh nghiệp</strong></td>
+            <td><strong>Từ 399.000đ / tháng</strong></td>
+            <td>Trên 60 phòng</td>
+            <td>Theo thỏa thuận, hỗ trợ ưu tiên và tùy chỉnh biểu mẫu hợp đồng riêng.</td>
+          </tr>
+          <tr>
+            <td><strong>Dịch vụ Nhập liệu hộ</strong></td>
+            <td><strong>Miễn phí 30 khách đầu</strong><br><span style="font-size:8pt;color:#64748b;">(Sau đó 300k–500k/lần)</span></td>
+            <td>Mọi gói trả phí</td>
+            <td>Chủ trọ chỉ cần chụp ảnh sổ tay hoặc gửi file Excel qua Zalo, nhận ngay tài khoản đã lên đủ phòng và hợp đồng.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Chi phí Vận hành Cố định & Điểm Hòa vốn</h3>
+      <div class="callout">
+        <strong>Tổng chi phí cố định khi vận hành thật: ~1,7 – 3,7 triệu đồng/tháng</strong>
+        (Supabase Pro ~650k/tháng + Tên miền/Email ~50k/tháng + Marketing 1–3 triệu/tháng; Hosting Web và Xác nhận 1 chạm tốn 0đ; SePay do chủ trọ dùng gói Free 50 giao dịch hoặc tự trả).<br>
+        👉 <strong>Điểm hòa vốn tiền mặt: Chỉ cần 10 – 20 khách hàng trả phí</strong> (doanh thu trung bình ~180.000đ/khách/tháng).
+      </div>
+    </div>
+
+    <!-- SECTION 4: LỘ TRÌNH PHÁT TRIỂN KỸ THUẬT P0 - P1 - P2 -->
+    <div class="section page-break">
+      <div class="section-header">
+        <span class="section-num">PHẦN 4</span>
+        <h2 class="section-title">Lộ trình Phát triển Kỹ thuật (P0 → P1 → P2)</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 16%;">Giai đoạn</th>
+            <th style="width: 26%;">Hạng mục Kỹ thuật</th>
+            <th style="width: 44%;">Chi tiết Triển khai</th>
+            <th style="width: 14%;">Thời gian</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="4"><strong>P0: Nền tảng SaaS</strong><br><span class="badge badge-teal">Tháng 11/2026</span></td>
+            <td><strong>1. Supabase Auth + RLS</strong></td>
+            <td>Thiết kế bảng Postgres, đăng nhập Google/Email, bật Row Level Security theo <code>owner_id</code> và viết test kiểm chứng A không đọc được B.</td>
+            <td>1,5 – 2 tuần</td>
+          </tr>
+          <tr>
+            <td><strong>2. Đồng bộ Cloud</strong></td>
+            <td>Chuyển đọc/ghi từ <code>localStorage</code> sang Supabase, có trạng thái chờ và chống mất dữ liệu khi mạng yếu.</td>
+            <td>1 – 1,5 tuần</td>
+          </tr>
+          <tr>
+            <td><strong>3. Thời gian thực & Kỳ</strong></td>
+            <td>Gỡ ngày gắn cứng của bản demo, tự động sinh kỳ hóa đơn theo tháng hiện tại. (Bộ unit test tính tiền <code>billing.ts</code> đã xong 100%).</td>
+            <td>2 – 3 ngày</td>
+          </tr>
+          <tr>
+            <td><strong>4. Script nhập liệu hộ</strong></td>
+            <td>Công cụ CLI chạy trên máy quản trị để đẩy nhanh dữ liệu Excel/sổ tay của khách Beta vào thẳng tài khoản Supabase của họ.</td>
+            <td>2 ngày</td>
+          </tr>
+          <tr>
+            <td rowspan="5"><strong>P1: Tự động hóa thu tiền & Phân quyền</strong><br><span class="badge badge-blue">T12/2026 – T3/2027</span></td>
+            <td><strong>1. Trang hóa đơn Zalo + Xác nhận 1 chạm</strong></td>
+            <td>Link hóa đơn mở trong Zalo (ẩn CCCD), khách quét VietQR và bấm <em>"Tôi đã chuyển"</em>. Chủ trọ đối chiếu biến động số dư và bấm xác nhận 1 chạm để gạch nợ FIFO.</td>
+            <td>Tháng 12/2026</td>
+          </tr>
+          <tr>
+            <td><strong>2. Tự sửa/hủy hóa đơn</strong></td>
+            <td>Cho phép chủ trọ tự chỉnh lại chỉ số điện nước, hủy hoặc phát hành lại phiếu để giảm tải hỗ trợ ngày mùng 1–5.</td>
+            <td>Tháng 12/2026</td>
+          </tr>
+          <tr>
+            <td><strong>3. Công cụ cơ cấu giá điện & Chủ quyền dữ liệu</strong></td>
+            <td>Tính lại giá điện đúng trần quy định + tách phí dịch vụ; nút xuất toàn bộ dữ liệu ra Excel (<code>.xlsx</code>) và xóa sạch dữ liệu.</td>
+            <td>Tháng 01/2027</td>
+          </tr>
+          <tr>
+            <td><strong>4. Tài khoản phụ & Tổng quan nhiều khu</strong></td>
+            <td>Cấp tài khoản nhân viên/người nhà (chỉ ghi số & thu tiền, ẩn lợi nhuận); màn hình tổng hợp tất cả khu trọ.</td>
+            <td>Tháng 03/2027</td>
+          </tr>
+          <tr>
+            <td><strong>5. SePay OAuth 2.0</strong></td>
+            <td>Kết nối tự động báo có ngân hàng cho chủ trọ có nhu cầu (khuyên dùng STK riêng nhận tiền trọ để miễn phí ≤50 giao dịch/tháng).</td>
+            <td>Tháng 03–04/2027</td>
+          </tr>
+          <tr>
+            <td><strong>P2: Mở rộng</strong><br><span class="badge badge-amber">Từ T4/2027</span></td>
+            <td><strong>Tiện ích nâng cao</strong></td>
+            <td>Chỉ làm khi đã có &gt;40 khách trả phí: Đăng tin phòng trống nhanh, nhắc nợ tự động qua Zalo ZNS, OCR đọc số đồng hồ điện nước.</td>
+            <td>Quý 2–3/2027</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECTION 5: KẾ HOẠCH HÀNH ĐỘNG TỪNG THÁNG & KPI -->
+    <div class="section page-break">
+      <div class="section-header">
+        <span class="section-num">PHẦN 5</span>
+        <h2 class="section-title">Lộ trình Triển khai 12 Tháng & Mục tiêu Doanh thu (10/2026 – 10/2027)</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 13%;">Tháng</th>
+            <th style="width: 16%;">Khách trả phí</th>
+            <th style="width: 19%;">Doanh thu định kỳ (MRR)</th>
+            <th style="width: 52%;">Trọng tâm Triển khai & Điều kiện kiểm chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>10/2026</strong></td>
+            <td>0 (Phỏng vấn)</td>
+            <td>0đ</td>
+            <td>Đổi <code>SYNC_TOKEN</code>, phỏng vấn 15 chủ trọ (20–60 phòng). <strong>Điều kiện qua P0:</strong> ≥8 cuộc phỏng vấn và ≥3 chủ trọ đồng ý gửi sổ dùng thử Beta.</td>
+          </tr>
+          <tr>
+            <td><strong>11/2026</strong></td>
+            <td>0 (Làm P0)</td>
+            <td>0đ</td>
+            <td>Hoàn tất Supabase Auth + RLS + nhập liệu hộ cho 3–5 chủ trọ Beta trước ngày đóng băng code 25/11. Đăng ký Hộ kinh doanh.</td>
+          </tr>
+          <tr>
+            <td><strong>12/2026</strong></td>
+            <td>0 (3–5 Beta)</td>
+            <td>0đ</td>
+            <td>Chạy kỳ thu tiền Beta 1 (01–10/12). Phát triển Trang hóa đơn Zalo + nút "Tôi đã chuyển" + Tự sửa hóa đơn trước 25/12.</td>
+          </tr>
+          <tr>
+            <td><strong>01/2027</strong></td>
+            <td>5–10 Beta<br><span style="font-size:8pt;color:#0f766e;">(≥3 mua gói năm)</span></td>
+            <td>Bán trước gói năm (~3,6 – 5 triệu)</td>
+            <td>Chạy kỳ thu tiền Beta 2 với xác nhận 1 chạm (mục tiêu ≥80% gạch nợ 1 chạm). Ra mắt công cụ tính lại giá điện trước Tết.</td>
+          </tr>
+          <tr>
+            <td><strong>02/2027</strong></td>
+            <td><strong>10 khách</strong></td>
+            <td><strong>~1,8 triệu/tháng</strong></td>
+            <td>Mở bán chính thức sau Tết (đúng mùa chuyển trọ và điều chỉnh giá thuê đầu năm).</td>
+          </tr>
+          <tr>
+            <td><strong>03/2027</strong></td>
+            <td><strong>20 khách</strong></td>
+            <td><strong>~3,6 triệu/tháng</strong></td>
+            <td>Ra mắt <strong>Tài khoản phụ cho quản lý/người nhà</strong> và Tổng quan nhiều khu. Khởi động chương trình giới thiệu tặng 1 tháng. <em>(Đạt điểm hòa vốn)</em>.</td>
+          </tr>
+          <tr>
+            <td><strong>04/2027</strong></td>
+            <td><strong>28 khách</strong></td>
+            <td><strong>~5,0 triệu/tháng</strong></td>
+            <td>Tích hợp SePay OAuth. Thử nghiệm quảng cáo ngân sách nhỏ (2–3 triệu) nếu tỷ lệ chuyển đổi từ dùng thử ≥20%.</td>
+          </tr>
+          <tr>
+            <td><strong>05/2027</strong></td>
+            <td><strong>35 khách</strong></td>
+            <td><strong>~6,3 triệu/tháng</strong></td>
+            <td>Triển khai tính năng P2 theo nhu cầu thực tế của khách hàng hiện hữu.</td>
+          </tr>
+          <tr>
+            <td><strong>06/2027</strong></td>
+            <td><strong>42 khách</strong></td>
+            <td><strong>~7,6 triệu/tháng</strong></td>
+            <td>Chuẩn bị mùa sinh viên trả phòng: tính năng quyết toán trả phòng hàng loạt & xuất mẫu đăng tin phòng trống.</td>
+          </tr>
+          <tr>
+            <td><strong>07/2027</strong></td>
+            <td><strong>50 khách</strong></td>
+            <td><strong>~9,0 triệu/tháng</strong></td>
+            <td>Cập nhật quy định pháp lý giữa năm; chiến dịch "Lấp phòng trống trước mùa nhập học".</td>
+          </tr>
+          <tr>
+            <td><strong>08/2027</strong></td>
+            <td><strong>62 khách</strong></td>
+            <td><strong>~11,0 triệu/tháng</strong></td>
+            <td>Chiến dịch cao điểm mùa tân sinh viên nhập học, đẩy mạnh kênh giới thiệu truyền miệng giữa các chủ trọ.</td>
+          </tr>
+          <tr>
+            <td><strong>09–10/2027</strong></td>
+            <td><strong>60 – 100 khách</strong></td>
+            <td><strong>11 – 18 triệu/tháng</strong></td>
+            <td>Tỷ lệ hủy &lt;3%/tháng. Cân nhắc thuê cộng tác viên hỗ trợ bán thời gian vào ngày mùng 1–5 hàng tháng.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Quy tắc Vận hành & Hỗ trợ Khách hàng Cao điểm (Mùng 1 – Mùng 5 hàng tháng)</h3>
+      <div class="grid-2">
+        <div class="card">
+          <ul>
+            <li><strong>Đóng băng code (Code Freeze):</strong> Tuyệt đối không phát hành tính năng mới từ ngày 25 cuối tháng đến mùng 5 đầu tháng sau.</li>
+            <li><strong>Tự phục vụ (Self-service):</strong> Cho phép chủ trọ tự sửa chỉ số, hủy hóa đơn nhầm và gửi lại phiếu kèm video hướng dẫn 1 phút.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <ul>
+            <li><strong>Giới hạn tăng trưởng an toàn:</strong> Tối đa 10 khách Beta đến tháng 1/2027, tối đa 40–50 khách đến tháng 6/2027 để đảm bảo chất lượng hỗ trợ.</li>
+            <li><strong>Cam kết phản hồi (SLA):</strong> Xử lý trong 2 giờ với lỗi chặn thu tiền; 24 giờ với câu hỏi thông thường qua nhóm Zalo hỗ trợ.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: CHECKLIST VIỆC CẦN LÀM NGAY -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-num">PHẦN 6</span>
+        <h2 class="section-title">Checklist 6 Việc Cần Chủ Dự Án Thực Hiện Ngay</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 6%;">#</th>
+            <th style="width: 30%;">Hạng mục cần quyết định / thao tác</th>
+            <th style="width: 44%;">Hướng dẫn thực hiện cụ thể</th>
+            <th style="width: 20%;">Mốc hoàn thành</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Đổi mã bí mật <code>SYNC_TOKEN</code> trên Google Sheets</strong></td>
+            <td>Vào Apps Script → <em>Project Settings → Script Properties</em> xóa khóa cũ → Mở Google Sheets bấm menu <strong>🏠 Quản lý phòng trọ → 🔑 Tạo / xem mã đồng bộ</strong> → Dán vào mục Cài đặt trên Web App.</td>
+            <td><span class="badge badge-rose">Làm ngay</span></td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Phỏng vấn 15 chủ trọ (20–60 phòng)</strong></td>
+            <td>Lọc SĐT chủ trọ có từ 2 địa chỉ hoặc nhà 4–5 tầng trên hội nhóm/Chợ Tốt. Gửi clip 15s demo gạch nợ FIFO & chỉnh giá hàng loạt, xin cuộc gọi 15 phút buổi tối.</td>
+            <td>Trước 31/10/2026</td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Khởi tạo Project Supabase</strong></td>
+            <td>Tạo project Supabase (region Singapore <code>ap-southeast-1</code>), lưu <code>SUPABASE_URL</code> và <code>SUPABASE_ANON_KEY</code> vào <code>.env.local</code> để sẵn sàng dựng bảng và đăng nhập.</td>
+            <td>Trước 01/11/2026</td>
+          </tr>
+          <tr>
+            <td><strong>4</strong></td>
+            <td><strong>Chốt Tên thương hiệu & Mua tên miền</strong></td>
+            <td>Chọn tên riêng dễ đăng ký nhãn hiệu (vd: <em>TroNhanh, SoTro, AnTamTro...</em>), tra cứu trên Cục SHTT (<code>ipvietnam.gov.vn</code>) và mua tên miền <code>.vn</code> / <code>.com</code>.</td>
+            <td>Tháng 11/2026</td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td><strong>Hỏi Kế toán thuế về NĐ 141/2026</strong></td>
+            <td>Xác nhận ngưỡng miễn thuế (500 triệu hay 1 tỷ/năm) và cách tách khoản thu hộ điện/nước trên phiếu thu để không bị cộng vào doanh thu tính thuế 10%.</td>
+            <td>Tháng 11/2026</td>
+          </tr>
+          <tr>
+            <td><strong>6</strong></td>
+            <td><strong>Liên hệ SePay / Casso về OAuth 2.0</strong></td>
+            <td>Hỏi điều kiện cấp <code>client_id</code> OAuth cho phần mềm nhiều chủ nhà và cách tính 50 giao dịch miễn phí/tháng (chỉ đếm tiền vào hay cả tiền ra).</td>
+            <td>Tháng 11/2026</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer-note">
+      <span>Tài liệu Kế hoạch Triển khai & Kinh doanh — Dự án Phần mềm Quản lý Phòng trọ</span>
+      <span>Nguồn gốc: docs/KE-HOACH-KINH-DOANH.md • Xuất bản: 20/10/2026</span>
+    </div>
+
+  </div>
+</body>
+</html>

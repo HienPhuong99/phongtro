@@ -110,19 +110,44 @@ export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
 
 const BrandLogoIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8' }) => (
-  <div
-    className={`${className} rounded-xl bg-gradient-to-br from-blue-600 via-sky-600 to-teal-500 flex items-center justify-center text-white shadow-2xs shrink-0`}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 64 64"
+    fill="none"
+    className={`${className} rounded-xl shadow-2xs shrink-0`}
+    aria-hidden="true"
   >
-    <svg
-      viewBox="0 0 24 24"
-      className="w-4 h-4 fill-none stroke-current"
+    <rect width="64" height="64" rx="16" fill="#2563EB" />
+    <path
+      d="M32 13L12 28.5V50C12 51.6569 13.3431 53 15 53H49C50.6569 53 52 51.6569 52 50V28.5L32 13Z"
+      fill="white"
+      fillOpacity="0.16"
+      stroke="white"
+      strokeWidth="3.2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9 30.5L32 12.5L55 30.5"
+      stroke="white"
+      strokeWidth="3.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <rect x="20" y="29" width="9" height="9" rx="2" fill="white" />
+    <rect x="35" y="29" width="9" height="9" rx="2" fill="#93C5FD" />
+    <path
+      d="M27 53V43C27 41.3431 28.3431 40 30 40H34C35.6569 40 37 41.3431 37 43V53"
+      fill="white"
+    />
+    <circle cx="48" cy="17" r="7" fill="#10B981" stroke="#2563EB" strokeWidth="2.5" />
+    <path
+      d="M45 17L47.2 19.2L51.5 14.8"
+      stroke="white"
       strokeWidth="2.2"
-    >
-      <path d="M3 10.5L12 3l9 7.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5.5 9v11h13V9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 20v-5h4v5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  </div>
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
 );
 
 export function App() {

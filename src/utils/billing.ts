@@ -244,3 +244,44 @@ export function calculateDepositRefund(
   };
 }
 
+
+/** Các ô chủ trọ được tự sửa trên hóa đơn đã lập. */
+export type InvoiceEdit = Pick<
+  Invoice,
+  | 'rentAmount'
+  | 'elecOld'
+  | 'elecNew'
+  | 'waterOld'
+  | 'waterNew'
+  | 'trashAmount'
+  | 'internetAmount'
+  | 'vehicleAmount'
+>;
+
+/**
+ * 7. Sửa hóa đơn đã lập: tính lại điện nước + tổng, đánh dấu cần gửi lại phiếu.
+ * Không cho tổng mới nhỏ hơn số khách đã trả (phải hoàn tiền trước).
+ */
+export function applyInvoiceEdit(
+  inv: Invoice,
+  edit: InvoiceEdit
+): { invoice: Invoice } | { error: string } {
+  const vals = Object.values(edit);
+  if (vals.some((v) => !Number.isFinite(v) || v < 0)) return { error: 'Số tiền và chỉ số không được âm.' };
+  if (edit.elecNew < edit.elecOld) return { error: 'Chỉ số điện mới nhỏ hơn chỉ số cũ.' };
+  if (edit.waterNew < edit.waterOld) return { error: 'Chỉ số nước mới nhỏ hơn chỉ số cũ.' };
+  const calc = calculateInvoiceFromReadings({ ...inv, ...edit }, edit);
+  if (calc.totalAmount < inv.paidAmount) {
+    return { error: 'Tổng mới nhỏ hơn số khách đã trả. Hoàn lại phần thừa cho khách trước khi giảm.' };
+  }
+  const changed = calc.totalAmount !== inv.totalAmount;
+  return {
+    invoice: {
+      ...inv,
+      ...edit,
+      ...calc,
+      status: inv.status === 'draft' ? 'draft' : calc.status,
+      sentZalo: changed ? false : inv.sentZalo,
+    },
+  };
+}

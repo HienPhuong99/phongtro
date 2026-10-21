@@ -87,6 +87,7 @@ import {
   RoomPricingModal,
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
+import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { buildCalendarEvents, buildMonthlyChart } from './utils/insights';
 import { supabase } from './utils/supabase';
 import {
@@ -308,6 +309,7 @@ export function App() {
   const [meterInitialRoom, setMeterInitialRoom] = useState<string | undefined>(undefined);
   const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
+  const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [isTempResidenceOpen, setIsTempResidenceOpen] = useState<boolean>(false);
   const [isRoomPricingOpen, setIsRoomPricingOpen] = useState<boolean>(false);
   const [pricingRoomCode, setPricingRoomCode] = useState<string | undefined>(undefined);
@@ -718,6 +720,7 @@ export function App() {
         setIsMeterModalOpen(false);
         setZaloModalInvoice(null);
         setCollectModalInvoice(null);
+        setEditInvoice(null);
         setIsTempResidenceOpen(false);
         setIsRoomPricingOpen(false);
         setIsPhoneQrOpen(false);
@@ -3684,13 +3687,23 @@ export function App() {
                             Nháp — điền chỉ số
                           </button>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setZaloModalInvoice(inv)}
-                            className="font-bold text-blue-600 hover:underline"
-                          >
-                            {inv.code}
-                          </button>
+                          <span className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setZaloModalInvoice(inv)}
+                              className="font-bold text-blue-600 hover:underline"
+                            >
+                              {inv.code}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditInvoice(inv)}
+                              aria-label={`Sửa hóa đơn ${inv.code}`}
+                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-100"
+                            >
+                              Sửa
+                            </button>
+                          </span>
                         )}
                       </td>
                       <td className="py-3.5 px-3 text-right font-semibold text-slate-900">
@@ -5767,6 +5780,51 @@ export function App() {
         targetInvoice={collectModalInvoice}
         unpaidRoomInvoices={collectUnpaidRoomInvoices}
         onConfirmCollect={handleConfirmCollectFIFO}
+      />
+
+      <InvoiceEditModal
+        invoice={editInvoice}
+        onClose={() => setEditInvoice(null)}
+        onSave={(updated) => {
+          const old = allInvoices.find((i) => i.id === updated.id);
+          setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+          // Hóa đơn mới nhất của phòng: chỉ số đồng hồ của phòng đi theo số vừa sửa
+          if (old) {
+            setRooms((prev) =>
+              prev.map((r) =>
+                r.propertyId === updated.propertyId && r.code === updated.roomCode
+                  ? {
+                      ...r,
+                      elecIndex: r.elecIndex === old.elecNew ? updated.elecNew : r.elecIndex,
+                      waterIndex: r.waterIndex === old.waterNew ? updated.waterNew : r.waterIndex,
+                    }
+                  : r
+              )
+            );
+          }
+          setEditInvoice(null);
+          showToast(
+            updated.sentZalo
+              ? `Đã lưu hóa đơn ${updated.code}`
+              : `Đã lưu hóa đơn ${updated.code}: tổng mới ${formatVND(updated.totalAmount)}, nhớ gửi lại phiếu cho khách`
+          );
+        }}
+        onCancelInvoice={(inv) => {
+          setInvoices((prev) => prev.filter((i) => i.id !== inv.id));
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.propertyId === inv.propertyId && r.code === inv.roomCode
+                ? {
+                    ...r,
+                    elecIndex: r.elecIndex === inv.elecNew ? inv.elecOld : r.elecIndex,
+                    waterIndex: r.waterIndex === inv.waterNew ? inv.waterOld : r.waterIndex,
+                  }
+                : r
+            )
+          );
+          setEditInvoice(null);
+          showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
       />
 
       <TempResidenceModal

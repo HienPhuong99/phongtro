@@ -18,6 +18,7 @@ import {
   applyRoomPricingToInvoice,
   calculateDepositRefund,
   applyInvoiceEdit,
+  planElectricityRestructure,
   computeDaysRemaining,
   extractBillingMonth,
 } from './billing.ts';
@@ -328,4 +329,30 @@ test('applyInvoiceEdit: tính lại tổng, cần gửi lại phiếu, chặn ch
   assert.match((applyInvoiceEdit(inv, { ...base, rentAmount: 0, elecNew: 100, waterNew: 10, trashAmount: 0, internetAmount: 0, vehicleAmount: 0 }) as { error: string }).error, /đã trả/);
   const paid = applyInvoiceEdit({ ...inv, paidAmount: 2960000 }, { ...base, elecNew: 140 });
   assert.ok('invoice' in paid && paid.invoice.status === 'paid');
+});
+
+test('planElectricityRestructure: hạ giá điện 4.000 -> 3.460, bù vào tiền phòng theo kWh trung bình 3 kỳ', () => {
+  const rooms = [
+    { code: 'P101', price: 2500000, status: 'occupied' },
+    { code: 'P102', price: 2600000, status: 'vacant' },
+    { code: 'P103', price: 2700000, status: 'maintenance' },
+  ] as Parameters<typeof planElectricityRestructure>[0]['rooms'];
+  const invoices = [
+    { roomCode: 'P101', billingMonth: '2026-10', elecUsage: 100, status: 'unpaid' },
+    { roomCode: 'P101', billingMonth: '2026-09', elecUsage: 80, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-08', elecUsage: 120, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-07', elecUsage: 999, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-11', elecUsage: 999, status: 'draft' },
+  ] as Parameters<typeof planElectricityRestructure>[0]['invoices'];
+  const plan = planElectricityRestructure({ rooms, invoices, oldRate: 4000, newRate: 3460 });
+  assert.deepEqual(plan.items.map((i) => i.roomCode), ['P101', 'P102']);
+  const p101 = plan.items[0];
+  assert.equal(p101.avgKwh, 100);
+  assert.equal(p101.oldElec, 400000);
+  assert.equal(p101.newElec, 346000);
+  assert.equal(p101.rentIncrease, 60000); // 54.000 làm tròn lên 10.000
+  assert.equal(p101.newRent, 2560000);
+  assert.equal(plan.items[1].rentIncrease, 0);
+  assert.equal(plan.incomeDelta, 6000);
+  assert.equal(planElectricityRestructure({ rooms, invoices, oldRate: 3000, newRate: 3460 }).totalRentIncrease, 0);
 });

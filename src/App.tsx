@@ -88,6 +88,7 @@ import {
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
+import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
 import { buildCalendarEvents, buildMonthlyChart } from './utils/insights';
 import { supabase } from './utils/supabase';
 import {
@@ -311,6 +312,7 @@ export function App() {
   const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  const [isElecToolOpen, setIsElecToolOpen] = useState(false);
   // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
   const [paymentReports, setPaymentReports] = useState<
     Array<{ id: string; invoice_code: string; room_code: string; property_id: string; amount: number; payer_note: string | null; created_at: string }>
@@ -763,6 +765,7 @@ export function App() {
         setZaloModalInvoice(null);
         setCollectModalInvoice(null);
         setEditInvoice(null);
+        setIsElecToolOpen(false);
         setIsTempResidenceOpen(false);
         setIsRoomPricingOpen(false);
         setIsPhoneQrOpen(false);
@@ -4923,6 +4926,13 @@ export function App() {
                   trong hợp đồng.
                 </p>
               )}
+              <button
+                type="button"
+                onClick={() => setIsElecToolOpen(true)}
+                className="mt-2 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold text-[11px]"
+              >
+                ⚡ Tính lại cơ cấu giá điện & in phụ lục hợp đồng
+              </button>
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">
@@ -5926,6 +5936,33 @@ export function App() {
           );
           setEditInvoice(null);
           showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
+      />
+
+      <ElectricityRestructureModal
+        isOpen={isElecToolOpen}
+        onClose={() => setIsElecToolOpen(false)}
+        property={currentProperty}
+        rooms={propertyRooms}
+        invoices={invoices}
+        contracts={contracts}
+        rateCap={ELECTRICITY_RATE_CAP}
+        effectiveDate={`01/${nextMonth.slice(5)}/${nextMonth.slice(0, 4)}`}
+        onApply={(newRate, inc) => {
+          const pid = currentProperty.id;
+          setProperties((prev) => prev.map((x) => (x.id === pid ? { ...x, electricityRate: newRate } : x)));
+          setRooms((prev) =>
+            prev.map((r) => (r.propertyId === pid && inc[r.code] ? { ...r, price: r.price + inc[r.code] } : r))
+          );
+          setContracts((prev) =>
+            prev.map((c) =>
+              c.propertyId === pid && c.status === 'active' && inc[c.roomCode]
+                ? { ...c, rentAmount: c.rentAmount + inc[c.roomCode] }
+                : c
+            )
+          );
+          setIsElecToolOpen(false);
+          showToast(`Đã áp dụng giá điện ${formatVND(newRate)}/kWh và tiền phòng mới từ kỳ sau`);
         }}
       />
 

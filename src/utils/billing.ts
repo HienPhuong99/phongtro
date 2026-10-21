@@ -1,4 +1,4 @@
-import type { FifoAllocatedItem, Invoice, RoomPriceUpdateItem } from '../types.ts';
+import type { FifoAllocatedItem, Invoice, Room, RoomPriceUpdateItem } from '../types.ts';
 import { parseDateVN, todayVN } from './format.ts';
 
 /**
@@ -283,5 +283,53 @@ export function applyInvoiceEdit(
       status: inv.status === 'draft' ? 'draft' : calc.status,
       sentZalo: changed ? false : inv.sentZalo,
     },
+  };
+}
+
+/**
+ * 8. Tính lại cơ cấu giá khi hạ giá điện về đúng giá bán lẻ (NĐ 133/2026):
+ * số kWh trung bình mỗi phòng (tối đa `months` hóa đơn gần nhất) × phần giá bị hạ
+ * được bù vào tiền phòng (làm tròn lên `roundTo`), để thu nhập gần như không đổi.
+ */
+export function planElectricityRestructure(params: {
+  rooms: Pick<Room, 'code' | 'price' | 'status'>[];
+  invoices: Pick<Invoice, 'roomCode' | 'billingMonth' | 'elecUsage' | 'status'>[];
+  oldRate: number;
+  newRate: number;
+  months?: number;
+  roundTo?: number;
+}) {
+  const { rooms, invoices, oldRate, newRate, months = 3, roundTo = 10000 } = params;
+  const cut = Math.max(0, oldRate - newRate);
+  const items = rooms
+    .filter((r) => r.status !== 'maintenance')
+    .map((r) => {
+      const recent = invoices
+        .filter((i) => i.roomCode === r.code && i.status !== 'draft')
+        .sort((a, b) => b.billingMonth.localeCompare(a.billingMonth))
+        .slice(0, months);
+      const avgKwh = recent.length
+        ? Math.round(recent.reduce((s, i) => s + i.elecUsage, 0) / recent.length)
+        : 0;
+      const lost = avgKwh * cut;
+      const rentIncrease = lost > 0 ? Math.ceil(lost / roundTo) * roundTo : 0;
+      return {
+        roomCode: r.code,
+        avgKwh,
+        oldElec: avgKwh * oldRate,
+        newElec: avgKwh * newRate,
+        rentIncrease,
+        oldRent: r.price,
+        newRent: r.price + rentIncrease,
+      };
+    });
+  const sum = (k: 'oldElec' | 'newElec' | 'rentIncrease') => items.reduce((s, i) => s + i[k], 0);
+  return {
+    items,
+    totalOldElec: sum('oldElec'),
+    totalNewElec: sum('newElec'),
+    totalRentIncrease: sum('rentIncrease'),
+    /** Thu nhập tháng thay đổi (dương = nhiều hơn trước một chút do làm tròn). */
+    incomeDelta: sum('newElec') + sum('rentIncrease') - sum('oldElec'),
   };
 }

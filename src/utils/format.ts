@@ -87,6 +87,24 @@ export function removeAccents(str: string): string {
 // Ngày "hôm nay" của bộ dữ liệu demo (toàn bộ dữ liệu mẫu xoay quanh kỳ 10/2026)
 export const APP_TODAY = '11/10/2026';
 
+// ponytail: đồng hồ dùng chung cấp module, App bật/tắt theo chế độ Demo/Cloud; chuyển sang Context nếu cần nhiều đồng hồ song song
+let demoClock = true;
+export function setDemoClock(on: boolean): void {
+  demoClock = on;
+}
+
+/** "Hôm nay" dạng 'DD/MM/YYYY': chế độ Demo cố định APP_TODAY, tài khoản Cloud dùng ngày thật. */
+export function todayVN(): string {
+  return demoClock ? APP_TODAY : formatDateVN(new Date());
+}
+
+/** Kỳ 'YYYY-MM' cộng/trừ `delta` tháng. */
+export function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /** Đổi 'DD/MM/YYYY' hoặc 'YYYY-MM-DD' thành Date (giờ địa phương); trả về null nếu sai định dạng hoặc ngày không tồn tại. */
 export function parseDateVN(value: string): Date | null {
   const s = value.trim();

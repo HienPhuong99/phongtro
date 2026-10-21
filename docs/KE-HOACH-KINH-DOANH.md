@@ -61,7 +61,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 1. **Đăng nhập và tách dữ liệu theo chủ trọ.** Hiện cả hệ thống dùng chung một Google Sheet.
 2. **Dữ liệu chỉ nằm trong trình duyệt.** Đồng bộ Sheets mới chỉ là bản sao lưu một chiều.
-3. **Ngày và kỳ bị gắn cứng.** "Hôm nay" luôn là 11/10/2026. Bộ chọn kỳ chỉ có 09–11/2026, cộng thêm kỳ của hóa đơn mới tạo.
+3. ~~**Ngày và kỳ bị gắn cứng.**~~ Đã sửa 21/10/2026 (P0 #4): tài khoản Cloud dùng ngày thật, bản Demo vẫn cố định 11/10/2026 để khớp dữ liệu mẫu.
 
 ### 2.3 Trạng thái triển khai (19/10/2026)
 
@@ -143,7 +143,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | 1 | Supabase: schema Postgres + Auth (đăng nhập Google hoặc email) + Row Level Security theo `owner_id`. Viết test cho RLS: tài khoản A không đọc được dữ liệu B | 1,5–2 tuần |
 | 2 | Chuyển đọc/ghi từ `localStorage` sang Supabase: trạng thái đang tải, báo lỗi, không mất dữ liệu khi mạng chập chờn | 1–1,5 tuần |
 | 3 | Kiểm thử tự động cho phần tính tiền. **Đã hoàn thành sớm 100% ngày 19/10**: `src/utils/billing.ts` + 8 bộ test bằng `node --test` (FIFO, kỳ đầu theo ngày ở, điện nước, số phải trả, chỉnh giá, quyết toán & hoàn cọc) | Đã xong (0 ngày) |
-| 4 | "Hôm nay" theo ngày thật, kỳ hóa đơn sinh theo tháng (gỡ các chỗ gắn cứng `'2026-10'`) | 2–3 ngày |
+| 4 | "Hôm nay" theo ngày thật, kỳ hóa đơn sinh theo tháng (gỡ các chỗ gắn cứng `'2026-10'`). **Đã xong 21/10**: `todayVN()`/`shiftMonth()` trong `format.ts`; Demo cố định 11/10/2026, Cloud theo ngày thật; quá hạn = mọi kỳ trước kỳ hiện tại; bộ chọn kỳ = kỳ trước/hiện tại/sau + kỳ có hóa đơn. Còn lại: Lịch và biểu đồ 5 kỳ vẫn đọc dữ liệu mẫu | Đã xong |
 | 5 | Script nhập liệu hộ chạy trên máy của bạn: nhận file Excel hoặc ảnh sổ qua Zalo, đẩy thẳng vào Supabase. **Không làm giao diện nhập Excel trên web** | 2 ngày |
 
 **Không làm trong tháng 11:** giao diện onboarding đầy đủ, nhập Excel trên web, báo có tự động, app native.

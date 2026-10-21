@@ -59,8 +59,8 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 
 ### 2.2 Còn thiếu để bán được
 
-1. **Đăng nhập và tách dữ liệu theo chủ trọ.** Hiện cả hệ thống dùng chung một Google Sheet.
-2. **Dữ liệu chỉ nằm trong trình duyệt.** Đồng bộ Sheets mới chỉ là bản sao lưu một chiều.
+1. ~~**Đăng nhập và tách dữ liệu theo chủ trọ.**~~ Đã có (Supabase Auth + RLS, test RLS qua PGlite, 21/10/2026).
+2. ~~**Dữ liệu chỉ nằm trong trình duyệt.**~~ Tài khoản Cloud lưu lên Supabase, có bản sao trên máy khi mất mạng (21/10/2026).
 3. ~~**Ngày và kỳ bị gắn cứng.**~~ Đã sửa 21/10/2026 (P0 #4): tài khoản Cloud dùng ngày thật, bản Demo vẫn cố định 11/10/2026 để khớp dữ liệu mẫu.
 
 ### 2.3 Trạng thái triển khai (19/10/2026)
@@ -127,6 +127,25 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 ---
 
 ## 5. Tính năng (theo thứ tự ưu tiên)
+
+### 5.0 Trạng thái code ngày 21/10/2026 (làm sớm trong lúc chờ phỏng vấn)
+
+| Hạng mục | Trạng thái | Kiểm thử |
+|---|---|---|
+| P0 #1 Supabase + RLS | Xong. Migration 2 (`supabase/migrations/20261021000000_…`) thêm quyền tài khoản phụ, trang hóa đơn công khai, lời báo đã chuyển, xoá tài khoản | `supabase/tests/rls.test.mjs`: 7 test trên Postgres thật (PGlite), A không đọc/ghi được B |
+| P0 #2 Đồng bộ Cloud | Xong: khóa phiên bản theo `updated_at`, bản sao trên máy, tự thử lại khi có mạng, báo xung đột, tài khoản mới bắt đầu sổ trống | `src/utils/cloudSync.test.ts` |
+| P0 #4 Ngày thật, kỳ theo tháng | Xong, kể cả Lịch và biểu đồ 5 kỳ tính từ dữ liệu | `insights.test.ts`, `billing.test.ts` |
+| P0 #5 Script nhập liệu hộ | Xong: `npm run import:beta -- --template mau.xlsx`, `--dry-run`, `--email` | `scripts/import-beta.test.mjs` |
+| P1 #1 Trang hóa đơn người thuê + "Tôi đã chuyển" | Xong (`?hd=<mã>`), chủ trọ xác nhận trên Tổng quan rồi mới gạch nợ FIFO | RLS test + thử trên trình duyệt (giả lập máy chủ) |
+| P1 #2 Sửa/huỷ hóa đơn, gửi lại | Xong | `applyInvoiceEdit` test + thử trên trình duyệt |
+| P1 #3 Cơ cấu giá điện + phụ lục | Xong (Cài đặt › ⚡) | `planElectricityRestructure` test + thử trên trình duyệt |
+| P1 #4 Tải Excel, xoá tài khoản | Xong | `exportData.test.ts`, RLS test xoá tài khoản |
+| P1 #5 Tổng quan nhiều khu | Xong (hiện khi có từ 2 khu) | `summarizeProperties` test |
+| P1 #6 Tài khoản phụ | Xong: chỉ Tổng quan, Lịch, Phòng, Khách, Hóa đơn, Sổ thu chi, Công nợ | RLS test staff/viewer |
+| P1 #7 SePay OAuth | **Chờ SePay duyệt `client_id`** | — |
+
+**Còn chặn:** (1) chạy migration 2 trên Supabase (SQL Editor) — chưa chạy thì trang hóa đơn người thuê, tài khoản phụ và xoá tài khoản báo lỗi, phần còn lại vẫn chạy; (2) chưa thử với tài khoản Supabase thật (cần 1 tài khoản đã xác nhận email); (3) script nhập liệu cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local`.
+
 
 ### 5.1 Đã xong ngày 18–19/10/2026
 

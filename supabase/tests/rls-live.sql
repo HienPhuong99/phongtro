@@ -24,9 +24,9 @@ do $$ declare n int; begin
   if n <> 0 then raise exception 'FAIL A updated B'; end if;
   delete from public.user_app_state where owner_id='11111111-0000-4000-8000-00000000000b'; get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL A deleted B'; end if;
-end $;
+end $$;
 -- Optimistic lock used by the web app: update only when updated_at still matches what this device loaded
-do $ declare v timestamptz; n int; begin
+do $$ declare v timestamptz; n int; begin
   select updated_at into v from public.user_app_state where owner_id='11111111-0000-4000-8000-00000000000a';
   update public.user_app_state set state = state || '{"dev":1}', updated_at = v + interval '1 second'
    where owner_id='11111111-0000-4000-8000-00000000000a' and updated_at = v; get diagnostics n = row_count;
@@ -39,7 +39,7 @@ do $ declare v timestamptz; n int; begin
     raise exception 'FAIL lock: second insert for same owner allowed';
   exception when unique_violation then null;
   end;
-end $;
+end $$;
 reset role;
 
 -- B

@@ -972,6 +972,8 @@ interface InvoiceZaloModalProps {
   previousDebtAmount: number;
   depositHeld: number;
   onMarkSentZalo: (invoiceId: string) => void;
+  /** Link trang hóa đơn cho người thuê (chỉ tài khoản Cloud). */
+  publicInvoiceUrl?: string;
 }
 
 export const InvoiceZaloModal: React.FC<InvoiceZaloModalProps> = ({
@@ -982,6 +984,7 @@ export const InvoiceZaloModal: React.FC<InvoiceZaloModalProps> = ({
   previousDebtAmount,
   depositHeld,
   onMarkSentZalo,
+  publicInvoiceUrl,
 }) => {
   const [subTab, setSubTab] = useState<'image' | 'message'>('image');
   const [copied, setCopied] = useState(false);
@@ -1017,7 +1020,9 @@ Khách thuê: ${invoice.tenantName}
 --------------------------------
 🏦 Chuyển khoản: ${property.bankName} - ${property.bankAccount} (${property.bankOwner})
 Nội dung CK: Thanh toan ${invoice.roomCode} ${invoice.code}
-📷 Mã QR chuyển khoản (đã điền sẵn số tiền): ${qrUrl}
+📷 Mã QR chuyển khoản (đã điền sẵn số tiền): ${qrUrl}${
+    publicInvoiceUrl ? `\n🔗 Xem hóa đơn & bấm "Tôi đã chuyển": ${publicInvoiceUrl}` : ''
+  }
 Hạn thanh toán: ${invoice.dueDate}`;
 
   // Chỉ đánh dấu "đã gửi Zalo" khi sao chép / chia sẻ thật sự thành công
@@ -1417,6 +1422,8 @@ interface CollectPaymentModalProps {
     note: string;
     billImage?: string;
   }) => FifoAllocatedItem[];
+  /** Số tiền điền sẵn (VD: khách báo đã chuyển); mặc định = toàn bộ nợ của phòng. */
+  initialAmount?: number;
 }
 
 export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
@@ -1425,6 +1432,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   targetInvoice,
   unpaidRoomInvoices,
   onConfirmCollect,
+  initialAmount,
 }) => {
   const totalRoomDebt = useMemo(
     () =>
@@ -1447,7 +1455,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
 
   // Không phụ thuộc totalRoomDebt: sau khi thu, nợ đổi sẽ xoá mất màn hình kết quả FIFO
   React.useEffect(() => {
-    setAmount(totalRoomDebt);
+    setAmount(initialAmount ?? totalRoomDebt);
     setAllocatedResult(null);
   }, [targetInvoice?.id, isOpen]);
 

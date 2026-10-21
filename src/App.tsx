@@ -113,7 +113,8 @@ const ELECTRICITY_RATE_CAP = 3460;
 // URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
-const MOBILE_WEB_URL = 'https://hienphuong99.github.io/phongtro/?mode=mobile';
+const PUBLIC_WEB_URL = 'https://hienphuong99.github.io/phongtro/';
+const MOBILE_WEB_URL = `${PUBLIC_WEB_URL}?mode=mobile`;
 // Thanh cuộn ngang trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
 const MOBILE_NAV: { id: NavTab; label: string }[] = [
   { id: 'overview', label: 'Tổng quan' },
@@ -310,6 +311,11 @@ export function App() {
   const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
+  const [paymentReports, setPaymentReports] = useState<
+    Array<{ id: string; invoice_code: string; room_code: string; property_id: string; amount: number; payer_note: string | null; created_at: string }>
+  >([]);
+  const [confirmingReport, setConfirmingReport] = useState<{ id: string; amount: number } | null>(null);
   const [isTempResidenceOpen, setIsTempResidenceOpen] = useState<boolean>(false);
   const [isRoomPricingOpen, setIsRoomPricingOpen] = useState<boolean>(false);
   const [pricingRoomCode, setPricingRoomCode] = useState<string | undefined>(undefined);
@@ -697,6 +703,42 @@ export function App() {
     authUser,
     cloudCtx,
   ]);
+
+  const loadPaymentReports = async () => {
+    const ctx = cloudCtxRef.current;
+    if (!ctx) return;
+    const { data, error } = await supabase
+      .from('invoice_payment_reports')
+      .select('id, invoice_code, room_code, property_id, amount, payer_note, created_at')
+      .eq('owner_id', ctx.ownerId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    if (!error && data) setPaymentReports(data);
+  };
+  const setReportStatus = async (id: string, status: 'confirmed' | 'dismissed') => {
+    setPaymentReports((prev) => prev.filter((r) => r.id !== id));
+    const { error } = await supabase.from('invoice_payment_reports').update({ status }).eq('id', id);
+    if (error) showToast('Không cập nhật được lời báo: ' + error.message);
+  };
+  useEffect(() => {
+    if (isDemoMode || !authUser || !cloudCtx || cloudCtx.role === 'viewer') {
+      setPaymentReports([]);
+      return;
+    }
+    loadPaymentReports();
+    const iv = setInterval(loadPaymentReports, 60000);
+    return () => clearInterval(iv);
+  }, [isDemoMode, authUser, cloudCtx]);
+
+  // Tài khoản Cloud: mỗi hóa đơn có mã ngẫu nhiên khó đoán để người thuê mở trang hóa đơn từ Zalo
+  useEffect(() => {
+    if (isDemoMode || !zaloModalInvoice || zaloModalInvoice.publicToken) return;
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    const updated = { ...zaloModalInvoice, publicToken: token };
+    setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    setZaloModalInvoice(updated);
+  }, [zaloModalInvoice, isDemoMode]);
 
   // Mất mạng / lỗi máy chủ: thử lại khi có mạng và mỗi 30 giây
   useEffect(() => {
@@ -1710,6 +1752,50 @@ export function App() {
             </button>
           </div>
         </div>
+
+        {/* Phòng vừa báo "Tôi đã chuyển" (trang hóa đơn người thuê) */}
+        {paymentReports.filter((r) => r.property_id === currentProperty.id).length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-xs" data-testid="payment-reports">
+            <div className="font-bold text-amber-900">
+              Phòng vừa báo đã chuyển tiền — đối chiếu biến động số dư của bạn rồi bấm Xác nhận
+            </div>
+            {paymentReports
+              .filter((r) => r.property_id === currentProperty.id)
+              .map((r) => {
+                const inv = invoices.find((i) => i.code === r.invoice_code);
+                return (
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-xl border border-amber-100 px-3 py-2">
+                    <div>
+                      <strong>{r.room_code}</strong> · {r.invoice_code} · <strong className="tabular-nums">{formatVND(r.amount)}</strong>
+                      {r.payer_note ? <span className="text-slate-500"> · {r.payer_note}</span> : null}
+                      <span className="text-slate-400"> · {new Date(r.created_at).toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        disabled={!inv}
+                        onClick={() => {
+                          if (!inv) return;
+                          setConfirmingReport({ id: r.id, amount: r.amount });
+                          setCollectModalInvoice(inv);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-40"
+                      >
+                        Xác nhận
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportStatus(r.id, 'dismissed')}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-semibold"
+                      >
+                        Bỏ qua
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
 
         {/* 4 Top KPI Cards with Mini Visuals */}
         <div
@@ -5766,6 +5852,11 @@ export function App() {
         depositHeld={
           propertyRooms.find((r) => r.code === zaloModalInvoice?.roomCode)?.deposit || 0
         }
+        publicInvoiceUrl={
+          !isDemoMode && zaloModalInvoice?.publicToken
+            ? `${PUBLIC_WEB_URL}?hd=${zaloModalInvoice.publicToken}`
+            : undefined
+        }
         onMarkSentZalo={(invId) =>
           setInvoices((prev) =>
             prev.map((i) => (i.id === invId ? { ...i, sentZalo: true } : i))
@@ -5776,10 +5867,21 @@ export function App() {
       <CollectPaymentModal
         key={`collect-${today}`}
         isOpen={!!collectModalInvoice}
-        onClose={() => setCollectModalInvoice(null)}
+        onClose={() => {
+          setCollectModalInvoice(null);
+          setConfirmingReport(null);
+        }}
         targetInvoice={collectModalInvoice}
         unpaidRoomInvoices={collectUnpaidRoomInvoices}
-        onConfirmCollect={handleConfirmCollectFIFO}
+        initialAmount={confirmingReport?.amount}
+        onConfirmCollect={(payload) => {
+          const res = handleConfirmCollectFIFO(payload);
+          if (confirmingReport && res.length > 0) {
+            setReportStatus(confirmingReport.id, 'confirmed');
+            setConfirmingReport(null);
+          }
+          return res;
+        }}
       />
 
       <InvoiceEditModal

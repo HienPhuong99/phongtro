@@ -59,7 +59,6 @@ import {
   SEED_INVOICES,
   SEED_TRANSACTIONS,
   SEED_MONTHLY_CHART,
-  SEED_CALENDAR_EVENTS,
 } from './data/seedData';
 import {
   formatVND,
@@ -88,6 +87,7 @@ import {
   RoomPricingModal,
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
+import { buildCalendarEvents, buildMonthlyChart } from './utils/insights';
 import { supabase } from './utils/supabase';
 import {
   cloudCacheKey,
@@ -776,6 +776,16 @@ export function App() {
     [allTransactions, currentProperty.id]
   );
 
+  // Biểu đồ: Bản Demo giữ số liệu mẫu 5 kỳ; tài khoản thật tính từ sổ thu chi. Lịch luôn tính từ dữ liệu.
+  const monthlyChart = useMemo(
+    () => (isDemoMode ? SEED_MONTHLY_CHART : buildMonthlyChart(transactions, curMonth)),
+    [isDemoMode, transactions, curMonth]
+  );
+  const calendarEvents = useMemo(
+    () => buildCalendarEvents({ today, curMonth, rooms: propertyRooms, invoices, contracts }),
+    [today, curMonth, propertyRooms, invoices, contracts]
+  );
+
   const occupiedRooms = useMemo(
     () => propertyRooms.filter((r) => r.status === 'occupied'),
     [propertyRooms]
@@ -902,13 +912,17 @@ export function App() {
     [pendingRefundContracts]
   );
 
-  // Toàn bộ hóa đơn còn nợ (gồm cả 2026-09, 2026-10, 2026-11 trừ nháp)
+  // Toàn bộ hóa đơn còn nợ (mọi kỳ, trừ nháp)
   const allUnpaidInvoices = useMemo(
     () =>
       invoices.filter(
         (i) => i.status !== 'draft' && i.totalAmount - i.paidAmount > 0
       ),
     [invoices]
+  );
+  const quickCollectInvoice = useMemo(
+    () => [...allUnpaidInvoices].sort((a, b) => a.billingMonth.localeCompare(b.billingMonth))[0],
+    [allUnpaidInvoices]
   );
   const allUnpaidTotalAmount = useMemo(
     () =>
@@ -1513,7 +1527,7 @@ export function App() {
       {
         label: 'Rác · Wifi · Gửi xe',
         amount: octServiceSum,
-        pct: Math.max(
+        pct: octServiceSum === 0 ? 0 : Math.max(
           0,
           100 -
             Math.round((octRentSum / octBreakdownTotal) * 100) -
@@ -1529,7 +1543,7 @@ export function App() {
     // Thang đo biểu đồ 5 tháng
     const dashboardMaxChart = Math.max(
       1,
-      ...SEED_MONTHLY_CHART.map((d) => Math.max(d.income, d.expense, d.profit))
+      ...monthlyChart.map((d) => Math.max(d.income, d.expense, d.profit))
     );
 
     // Thông số SVG Donut cho Trạng thái phòng (r = 44 => chu vi C ≈ 276.46)
@@ -1827,11 +1841,11 @@ export function App() {
                 </div>
               </div>
               <div className="flex items-end gap-1 h-7">
-                {SEED_MONTHLY_CHART.map((m, i) => (
+                {monthlyChart.map((m, i) => (
                   <span
                     key={m.month}
                     className={`w-2 rounded-t ${
-                      i === SEED_MONTHLY_CHART.length - 1 ? 'bg-indigo-600' : 'bg-indigo-200'
+                      i === monthlyChart.length - 1 ? 'bg-indigo-600' : 'bg-indigo-200'
                     }`}
                     style={{
                       height: `${Math.max(25, Math.round((m.profit / dashboardMaxChart) * 100))}%`,
@@ -1970,18 +1984,18 @@ export function App() {
                 <polygon
                   points={[
                     '115,170',
-                    ...SEED_MONTHLY_CHART.map((pt, i) => {
+                    ...monthlyChart.map((pt, i) => {
                       const x = 115 + i * 130;
                       const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                       return `${x},${y}`;
                     }),
-                    `${115 + (SEED_MONTHLY_CHART.length - 1) * 130},170`,
+                    `${115 + (monthlyChart.length - 1) * 130},170`,
                   ].join(' ')}
                   fill="url(#dashProfitArea)"
                 />
 
                 {/* Cột Doanh thu & Chi phí */}
-                {SEED_MONTHLY_CHART.map((pt, i) => {
+                {monthlyChart.map((pt, i) => {
                   const xCenter = 115 + i * 130;
                   const incH = (pt.income / dashboardMaxChart) * 140;
                   const expH = Math.max(4, (pt.expense / dashboardMaxChart) * 140);
@@ -2050,7 +2064,7 @@ export function App() {
                   strokeWidth="2.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  points={SEED_MONTHLY_CHART.map((pt, i) => {
+                  points={monthlyChart.map((pt, i) => {
                     const x = 115 + i * 130;
                     const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                     return `${x},${y}`;
@@ -2058,7 +2072,7 @@ export function App() {
                 />
 
                 {/* Điểm tròn Lợi nhuận */}
-                {SEED_MONTHLY_CHART.map((pt, i) => {
+                {monthlyChart.map((pt, i) => {
                   const x = 115 + i * 130;
                   const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                   return (
@@ -2076,16 +2090,16 @@ export function App() {
               {hoveredChartIdx !== null && (
                 <div className="absolute top-1 right-2 bg-slate-900/95 text-white rounded-xl px-3.5 py-2 text-xs shadow-xl space-y-0.5 pointer-events-none">
                   <div className="font-bold text-slate-200">
-                    Kỳ {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                    Kỳ {monthlyChart[hoveredChartIdx].month}
                   </div>
                   <div className="text-sky-300 tabular-nums">
-                    Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                    Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
                   </div>
                   <div className="text-amber-300 tabular-nums">
-                    Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                    Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
                   </div>
                   <div className="text-emerald-300 font-bold tabular-nums">
-                    Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                    Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
                   </div>
                 </div>
               )}
@@ -2289,7 +2303,7 @@ export function App() {
                         )}
                       </div>
                       <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                        {r.tenantName ? r.tenantName.split(' ').slice(-2).join(' ') : 'Phòng trống'}
+                        {r.tenantName ? r.tenantName.split(' ').slice(-2).join(' ') : r.status === 'maintenance' ? 'Đang sửa' : 'Phòng trống'}
                       </div>
                     </button>
                   );
@@ -2407,13 +2421,14 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  const target =
-                    invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
-                  if (target) setCollectModalInvoice(target);
+                  if (quickCollectInvoice) setCollectModalInvoice(quickCollectInvoice);
                 }}
+                disabled={!quickCollectInvoice}
                 className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
               >
-                Thu tiền nhanh (P101 · HD-IV-00089)
+                {quickCollectInvoice
+                  ? `Thu tiền nhanh (${quickCollectInvoice.roomCode} · ${quickCollectInvoice.code})`
+                  : 'Không còn hóa đơn nào cần thu'}
               </button>
             </div>
 
@@ -4244,7 +4259,7 @@ export function App() {
     const handleExportReportCsv = () => {
       const rows = [
         ['Tháng', 'Doanh thu (VND)', 'Chi phí (VND)', 'Lợi nhuận (VND)'],
-        ...SEED_MONTHLY_CHART.map((m) => [
+        ...monthlyChart.map((m) => [
           m.month,
           String(m.income),
           String(m.expense),
@@ -4422,18 +4437,18 @@ export function App() {
               <polygon
                 points={[
                   `130,185`,
-                  ...SEED_MONTHLY_CHART.map((pt, i) => {
+                  ...monthlyChart.map((pt, i) => {
                     const x = 130 + i * 135;
                     const y = 185 - (pt.profit / maxChartVal) * 155;
                     return `${x},${y}`;
                   }),
-                  `${130 + (SEED_MONTHLY_CHART.length - 1) * 135},185`,
+                  `${130 + (monthlyChart.length - 1) * 135},185`,
                 ].join(' ')}
                 fill="rgba(16, 185, 129, 0.08)"
               />
 
               {/* Bars */}
-              {SEED_MONTHLY_CHART.map((pt, i) => {
+              {monthlyChart.map((pt, i) => {
                 const xCenter = 130 + i * 135;
                 const incH = (pt.income / maxChartVal) * 155;
                 const expH = Math.max(4, (pt.expense / maxChartVal) * 155);
@@ -4480,7 +4495,7 @@ export function App() {
                 fill="none"
                 stroke="#10B981"
                 strokeWidth="2.5"
-                points={SEED_MONTHLY_CHART.map((pt, i) => {
+                points={monthlyChart.map((pt, i) => {
                   const x = 130 + i * 135;
                   const y = 185 - (pt.profit / maxChartVal) * 155;
                   return `${x},${y}`;
@@ -4488,7 +4503,7 @@ export function App() {
               />
 
               {/* Profit Dots */}
-              {SEED_MONTHLY_CHART.map((pt, i) => {
+              {monthlyChart.map((pt, i) => {
                 const x = 130 + i * 135;
                 const y = 185 - (pt.profit / maxChartVal) * 155;
                 return (
@@ -4506,16 +4521,16 @@ export function App() {
             {hoveredChartIdx !== null && (
               <div className="absolute top-2 right-4 bg-slate-900 text-white rounded-xl px-3.5 py-2 text-xs shadow-lg space-y-0.5">
                 <div className="font-bold">
-                  {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                  {monthlyChart[hoveredChartIdx].month}
                 </div>
                 <div className="text-sky-300">
-                  Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                  Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
                 </div>
                 <div className="text-purple-300">
-                  Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                  Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
                 </div>
                 <div className="text-emerald-300 font-bold">
-                  Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                  Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
                 </div>
               </div>
             )}
@@ -4732,7 +4747,12 @@ export function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {SEED_CALENDAR_EVENTS.map((ev) => (
+          {calendarEvents.length === 0 && (
+            <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 text-center text-xs text-slate-500">
+              Chưa có việc nào trong tháng này. Lịch tự hiện khi có phòng đang thuê, hóa đơn và hợp đồng.
+            </div>
+          )}
+          {calendarEvents.map((ev) => (
             <div
               key={ev.id}
               onClick={() => setActiveTab(ev.actionTab)}

@@ -144,7 +144,7 @@ Bản v2 làm theo 6 điểm của bản đánh giá và phản biện 3 điểm
 | P1 #6 Tài khoản phụ | Xong: chỉ Tổng quan, Lịch, Phòng, Khách, Hóa đơn, Sổ thu chi, Công nợ | RLS test staff/viewer |
 | P1 #7 SePay OAuth | **Chờ SePay duyệt `client_id`** | — |
 
-**Còn chặn:** (1) chạy migration 2 trên Supabase (SQL Editor) — chưa chạy thì trang hóa đơn người thuê, tài khoản phụ và xoá tài khoản báo lỗi, phần còn lại vẫn chạy; (2) chưa thử với tài khoản Supabase thật (cần 1 tài khoản đã xác nhận email); (3) script nhập liệu cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local`.
+**Còn chặn:** (1) ~~chạy migration 2 trên Supabase~~ đã chạy 21/10/2026, kiểm tra RLS trên DB thật bằng `supabase/tests/rls-live.sql` (tự rollback) đều đạt; (2) chưa thử với tài khoản Supabase thật (cần 1 tài khoản đã xác nhận email); (3) script nhập liệu cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local`.
 
 
 ### 5.1 Đã xong ngày 18–19/10/2026

@@ -3,15 +3,12 @@
 Đọc file này đầu đoạn chat mới. Mọi thứ khác đã merge vào `main`, đã deploy GitHub Pages và Apps Script `@18`.
 Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KINH-DOANH.md).
 
-## 1. Chạy migration 2 trên Supabase (làm đầu tiên)
-- File: `supabase/migrations/20261021000000_staff_public_invoice_account.sql` (chạy lại nhiều lần vẫn an toàn).
-- Project `ymdnvpdgdpdjnqnraklg`. Người dùng đã đăng nhập GitHub và Claude in Chrome trên Chrome thật:
-  dùng Chrome mở `https://supabase.com/dashboard/project/ymdnvpdgdpdjnqnraklg/sql/new`, dán file, Run.
-- Kiểm tra sau khi chạy:
-  - `curl` RPC `get_public_invoice` với mã sai trả `null` (không phải lỗi 404 `PGRST202`).
-  - Trong SQL Editor chạy bài test RLS trong `begin; … rollback;` (tạo user giả trong `auth.users`, `set local role authenticated`, `set local request.jwt.claims`), theo kịch bản của `supabase/tests/rls.test.mjs`.
-  - Mở `https://hienphuong99.github.io/phongtro/?hd=<mã sai>` phải hiện "Không tìm thấy hóa đơn".
-- Chưa chạy thì: trang hóa đơn người thuê, tài khoản phụ, xoá tài khoản báo lỗi; phần còn lại vẫn chạy.
+## 1. Migration 2 trên Supabase — XONG (21/10/2026)
+- Đã chạy `supabase/migrations/20261021000000_staff_public_invoice_account.sql` trên project `ymdnvpdgdpdjnqnraklg`.
+- Đã kiểm tra trên DB thật:
+  - RPC `get_public_invoice` với mã sai trả `null`; `report_invoice_paid` trả `INVOICE_NOT_FOUND`; khách vô danh gọi `delete_my_account` bị chặn.
+  - `supabase/tests/rls-live.sql` (dán vào SQL Editor, chạy cả file): A/B tách nhau, staff đọc + ghi, viewer chỉ đọc, hóa đơn công khai không lộ tên/SĐT, lời báo chỉ chủ trọ thấy, xoá tài khoản chỉ xoá A. Đạt thì báo lỗi cố ý `ALL RLS CHECKS PASSED` để mọi thứ rollback.
+  - `https://hienphuong99.github.io/phongtro/?hd=<mã sai>` hiện "Không tìm thấy hóa đơn".
 
 ## 2. Thử với tài khoản Supabase thật
 - Phần lưu lên mây (khóa phiên bản, bản sao offline, xung đột) mới có unit test, chưa chạy với tài khoản thật.
@@ -25,7 +22,7 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
 - Đã có: menu trái + thanh trên bằng kính, thanh tab nổi trong suốt kiểu ảnh mẫu (tab đang chọn là viên thuốc xanh có chữ),
   chế độ ngày/đêm (nút trên thanh web, công tắc trong Cài đặt, lưu `localStorage` `qlpt-theme`). CSS ở cuối `src/index.css`.
 - Còn lại: rà từng màn ở chế độ đêm (ảnh minh họa, biểu đồ SVG màu cứng, hộp thoại trong `Modals.tsx`), trang người thuê
-  `PublicInvoicePage.tsx` chưa theo theme, thanh trạng thái giả trong "Khung Mobile", chạy lại `npm run test:e2e` và chụp lại ảnh.
+  `PublicInvoicePage.tsx` chưa theo theme, thanh trạng thái giả trong "Khung Mobile", ảnh chụp `docs/screenshots/` đã chụp lại theo giao diện mới.
 - Bản demo thiết kế: https://claude.ai/artifact/VkYL7tLbEe67oMKaibLVHo
 
 ## 5. Chờ bên ngoài

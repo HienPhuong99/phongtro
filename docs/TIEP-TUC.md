@@ -11,12 +11,12 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
   - `https://hienphuong99.github.io/phongtro/?hd=<mã sai>` hiện "Không tìm thấy hóa đơn".
 
 ## 2. Thử với tài khoản Supabase thật
-- Phần lưu lên mây (khóa phiên bản, bản sao offline, xung đột) mới có unit test, chưa chạy với tài khoản thật.
+- Khóa phiên bản đã kiểm tra trên DB thật (`rls-live.sql`: bản cũ không ghi đè được bản mới, không tạo 2 sổ cho 1 chủ). Bản sao offline và xung đột trên giao diện mới có unit test, chưa chạy qua đăng nhập thật.
 - Không tự tạo tài khoản: nhờ chủ dự án đăng ký 1 tài khoản (hoặc dùng tài khoản sẵn có) rồi thử: tạo sổ trống, sửa, mất mạng, mở 2 tab cùng sửa (phải báo xung đột), mở link hóa đơn người thuê, bấm "Tôi đã chuyển", chủ trọ xác nhận.
 
 ## 3. Script nhập liệu hộ đẩy lên mây
 - `npm run import:beta -- file.xlsx --email chu@tro.vn` cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local` (chủ dự án tự dán, không commit, không đặt tên `VITE_`).
-- `--template`, `--dry-run` đã chạy được.
+- `--template`, `--dry-run` đã chạy được. Phần đẩy lên mây có test với máy chủ giả (`scripts/import-beta.test.mjs`); chỉ còn chạy thật khi có khóa.
 
 ## 4. Giao diện iOS 27 (Liquid Glass) — đã làm phần khung, còn lại
 - Đã có: menu trái + thanh trên bằng kính, thanh tab nổi trong suốt kiểu ảnh mẫu (tab đang chọn là viên thuốc xanh có chữ),

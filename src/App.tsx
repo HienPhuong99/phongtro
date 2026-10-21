@@ -90,6 +90,7 @@ import { AuthModal } from './components/AuthModal';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
 import { buildCalendarEvents, buildMonthlyChart } from './utils/insights';
+import { downloadSnapshotXlsx } from './utils/exportData';
 import { supabase } from './utils/supabase';
 import {
   cloudCacheKey,
@@ -612,6 +613,48 @@ export function App() {
     setCloudStatus('idle');
     handleSwitchToDemoMode();
     showToast('Đã đăng xuất và quay về Bản Demo.');
+  };
+
+  // P1 #4 Chủ quyền dữ liệu: tải toàn bộ ra Excel, xoá tài khoản + dữ liệu trên máy chủ
+  const handleExportXlsx = async () => {
+    try {
+      await downloadSnapshotXlsx(
+        {
+          properties,
+          rooms,
+          tenants: allTenants,
+          vehicles: allVehicles,
+          contracts: allContracts,
+          invoices: allInvoices,
+          transactions: allTransactions,
+        },
+        `QuanLyPhongTro-${today.split('/').reverse().join('-')}.xlsx`
+      );
+      showToast('Đã tải toàn bộ dữ liệu ra file Excel.');
+    } catch {
+      showToast('Không tạo được file Excel trên bản này, hãy dùng bản web.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!authUser || cloudCtx?.role !== 'owner') return;
+    const typed = window.prompt(
+      `Xoá vĩnh viễn tài khoản và TOÀN BỘ dữ liệu trên máy chủ, không khôi phục được. Nên bấm "Tải toàn bộ dữ liệu" trước.\nGõ email ${authUser.email} để xác nhận:`
+    );
+    if ((typed || '').trim().toLowerCase() !== authUser.email.toLowerCase()) {
+      showToast('Email không khớp, chưa xoá gì.');
+      return;
+    }
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error) {
+      showToast('Không xoá được tài khoản: ' + error.message);
+      return;
+    }
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('qlpt-cloud-') && k.includes(authUser.id))
+      .forEach((k) => localStorage.removeItem(k));
+    await handleSignOutCloud();
+    showToast('Đã xoá tài khoản và toàn bộ dữ liệu trên máy chủ.');
   };
 
   const handleAddPropertyStaff = async (e: React.FormEvent) => {
@@ -5137,6 +5180,35 @@ export function App() {
               )}
             </div>
           </div>
+
+          {/* Chủ quyền dữ liệu */}
+          {canViewReports && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="font-bold text-slate-800">Dữ liệu của bạn</div>
+              <p className="text-slate-500">
+                Tải toàn bộ sổ (phòng, khách, hợp đồng, hóa đơn, sổ thu chi) ra file Excel bất cứ lúc nào.
+                {!isDemoMode && authUser ? ' Xoá tài khoản sẽ xoá sạch dữ liệu trên máy chủ.' : ''}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportXlsx}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition"
+                >
+                  ⬇ Tải toàn bộ dữ liệu (.xlsx)
+                </button>
+                {!isDemoMode && authUser && cloudCtx?.role === 'owner' && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="px-3.5 py-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold transition"
+                  >
+                    Xoá tài khoản và toàn bộ dữ liệu
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Phân quyền tài khoản phụ */}
           {canViewReports && (

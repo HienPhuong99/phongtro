@@ -17,6 +17,8 @@ import {
   allocatePaymentFIFO,
   applyRoomPricingToInvoice,
   calculateDepositRefund,
+  applyInvoiceEdit,
+  planElectricityRestructure,
   computeDaysRemaining,
   extractBillingMonth,
 } from './billing.ts';
@@ -304,4 +306,53 @@ test("todayVN & shiftMonth: Demo cố định 11/10/2026, Cloud theo ngày thậ
   assert.equal(shiftMonth("2026-12", 1), "2027-01");
   assert.equal(shiftMonth("2027-01", -1), "2026-12");
   assert.equal(shiftMonth("2026-10", 0), "2026-10");
+});
+
+test('applyInvoiceEdit: tính lại tổng, cần gửi lại phiếu, chặn chỉ số lùi và tổng < đã trả', () => {
+  const inv = {
+    id: 'i', code: 'HD', rentAmount: 2500000, elecOld: 100, elecNew: 150, elecUsage: 50, elecRate: 3500, elecAmount: 175000,
+    waterOld: 10, waterNew: 15, waterUsage: 5, waterRate: 18000, waterAmount: 90000, trashAmount: 30000, internetAmount: 100000,
+    vehicleAmount: 100000, totalAmount: 2995000, paidAmount: 1000000, status: 'partial', sentZalo: true,
+  } as unknown as Parameters<typeof applyInvoiceEdit>[0];
+  const base = { rentAmount: 2500000, elecOld: 100, elecNew: 150, waterOld: 10, waterNew: 15, trashAmount: 30000, internetAmount: 100000, vehicleAmount: 100000 };
+  const ok = applyInvoiceEdit(inv, { ...base, elecNew: 140 });
+  assert.ok('invoice' in ok);
+  if ('invoice' in ok) {
+    assert.equal(ok.invoice.elecUsage, 40);
+    assert.equal(ok.invoice.totalAmount, 2960000);
+    assert.equal(ok.invoice.sentZalo, false);
+    assert.equal(ok.invoice.status, 'partial');
+  }
+  const same = applyInvoiceEdit(inv, base);
+  assert.ok('invoice' in same && same.invoice.sentZalo === true);
+  assert.match((applyInvoiceEdit(inv, { ...base, elecNew: 90 }) as { error: string }).error, /điện mới/);
+  assert.match((applyInvoiceEdit(inv, { ...base, rentAmount: 0, elecNew: 100, waterNew: 10, trashAmount: 0, internetAmount: 0, vehicleAmount: 0 }) as { error: string }).error, /đã trả/);
+  const paid = applyInvoiceEdit({ ...inv, paidAmount: 2960000 }, { ...base, elecNew: 140 });
+  assert.ok('invoice' in paid && paid.invoice.status === 'paid');
+});
+
+test('planElectricityRestructure: hạ giá điện 4.000 -> 3.460, bù vào tiền phòng theo kWh trung bình 3 kỳ', () => {
+  const rooms = [
+    { code: 'P101', price: 2500000, status: 'occupied' },
+    { code: 'P102', price: 2600000, status: 'vacant' },
+    { code: 'P103', price: 2700000, status: 'maintenance' },
+  ] as Parameters<typeof planElectricityRestructure>[0]['rooms'];
+  const invoices = [
+    { roomCode: 'P101', billingMonth: '2026-10', elecUsage: 100, status: 'unpaid' },
+    { roomCode: 'P101', billingMonth: '2026-09', elecUsage: 80, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-08', elecUsage: 120, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-07', elecUsage: 999, status: 'paid' },
+    { roomCode: 'P101', billingMonth: '2026-11', elecUsage: 999, status: 'draft' },
+  ] as Parameters<typeof planElectricityRestructure>[0]['invoices'];
+  const plan = planElectricityRestructure({ rooms, invoices, oldRate: 4000, newRate: 3460 });
+  assert.deepEqual(plan.items.map((i) => i.roomCode), ['P101', 'P102']);
+  const p101 = plan.items[0];
+  assert.equal(p101.avgKwh, 100);
+  assert.equal(p101.oldElec, 400000);
+  assert.equal(p101.newElec, 346000);
+  assert.equal(p101.rentIncrease, 60000); // 54.000 làm tròn lên 10.000
+  assert.equal(p101.newRent, 2560000);
+  assert.equal(plan.items[1].rentIncrease, 0);
+  assert.equal(plan.incomeDelta, 6000);
+  assert.equal(planElectricityRestructure({ rooms, invoices, oldRate: 3000, newRate: 3460 }).totalRentIncrease, 0);
 });

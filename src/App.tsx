@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   BarChart3,
@@ -59,7 +59,6 @@ import {
   SEED_INVOICES,
   SEED_TRANSACTIONS,
   SEED_MONTHLY_CHART,
-  SEED_CALENDAR_EVENTS,
 } from './data/seedData';
 import {
   formatVND,
@@ -88,7 +87,21 @@ import {
   RoomPricingModal,
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
+import { InvoiceEditModal } from './components/InvoiceEditModal';
+import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
+import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './utils/insights';
+import { downloadSnapshotXlsx } from './utils/exportData';
 import { supabase } from './utils/supabase';
+import {
+  cloudCacheKey,
+  decideStartState,
+  emptySnapshot,
+  readCloudCache,
+  writeCloudCache,
+  type AppSnapshot,
+  type CloudOwnerContext,
+  type CloudStatus,
+} from './utils/cloudSync';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
 const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
@@ -102,8 +115,11 @@ const ELECTRICITY_RATE_CAP = 3460;
 // URL Web App Google Apps Script (tự động cập nhật khi chạy script deploy-sheets)
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
-const MOBILE_WEB_URL = 'https://hienphuong99.github.io/phongtro/?mode=mobile';
+const PUBLIC_WEB_URL = 'https://hienphuong99.github.io/phongtro/';
+const MOBILE_WEB_URL = `${PUBLIC_WEB_URL}?mode=mobile`;
 // Thanh cuộn ngang trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
+// Tài khoản phụ (người nhà / quản lý) chỉ ghi số điện nước, lập hóa đơn và thu tiền
+const STAFF_TABS: NavTab[] = ['overview', 'calendar', 'rooms', 'tenants', 'invoices', 'finance-cashbook', 'finance-debts'];
 const MOBILE_NAV: { id: NavTab; label: string }[] = [
   { id: 'overview', label: 'Tổng quan' },
   { id: 'calendar', label: 'Lịch' },
@@ -298,6 +314,13 @@ export function App() {
   const [meterInitialRoom, setMeterInitialRoom] = useState<string | undefined>(undefined);
   const [zaloModalInvoice, setZaloModalInvoice] = useState<Invoice | null>(null);
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
+  const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  const [isElecToolOpen, setIsElecToolOpen] = useState(false);
+  // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
+  const [paymentReports, setPaymentReports] = useState<
+    Array<{ id: string; invoice_code: string; room_code: string; property_id: string; amount: number; payer_note: string | null; created_at: string }>
+  >([]);
+  const [confirmingReport, setConfirmingReport] = useState<{ id: string; amount: number } | null>(null);
   const [isTempResidenceOpen, setIsTempResidenceOpen] = useState<boolean>(false);
   const [isRoomPricingOpen, setIsRoomPricingOpen] = useState<boolean>(false);
   const [pricingRoomCode, setPricingRoomCode] = useState<string | undefined>(undefined);
@@ -320,6 +343,8 @@ export function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
   const [cloudLastSavedAt, setCloudLastSavedAt] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus>('idle');
+  const [cloudCtx, setCloudCtx] = useState<CloudOwnerContext | null>(null);
   const [staffList, setStaffList] = useState<
     Array<{
       id: string;
@@ -344,62 +369,185 @@ export function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  // Tải dữ liệu đám mây từ bảng user_app_state của chủ trọ
-  const loadCloudStateForUser = async (userId: string, userEmail: string) => {
-    setCloudLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_app_state')
-        .select('state, updated_at')
-        .eq('owner_id', userId)
-        .maybeSingle();
+  // ===== ĐỒNG BỘ SỔ ĐÁM MÂY (user_app_state) =====
+  // Mỗi lần lưu chỉ ghi đè khi bản trên mây chưa bị thiết bị khác sửa (khóa theo updated_at).
+  // Bản sao trên máy (localStorage) giữ thay đổi chưa lên mây khi mất mạng hoặc đóng tab.
+  const cloudVersionRef = useRef<string | null>(null);
+  const cloudReadyRef = useRef(false);
+  const cloudSnapshotRef = useRef<AppSnapshot | null>(null);
+  const cloudPushingRef = useRef(false);
+  const cloudPendingRef = useRef(false);
+  const cloudCtxRef = useRef<CloudOwnerContext | null>(null);
+  cloudCtxRef.current = cloudCtx;
 
-      if (error) {
-        showToast('Không tải được dữ liệu đám mây: ' + error.message);
+  const applySnapshot = (s: AppSnapshot) => {
+    setProperties(s.properties);
+    setRooms(s.rooms);
+    setTenants(s.tenants);
+    setVehicles(s.vehicles);
+    setContracts(s.contracts);
+    setInvoices(s.invoices);
+    setTransactions(s.transactions);
+    if (!s.properties.some((p) => p.id === selectedPropertyId)) {
+      setSelectedPropertyId(s.properties[0]?.id || '');
+    }
+  };
+
+  const pushCloudNow = async (userId: string) => {
+    if (cloudPushingRef.current) {
+      cloudPendingRef.current = true;
+      return;
+    }
+    cloudPushingRef.current = true;
+    try {
+      do {
+        cloudPendingRef.current = false;
+        const ctx = cloudCtxRef.current;
+        const snapshot = cloudSnapshotRef.current;
+        if (!ctx || !snapshot || ctx.role === 'viewer') return;
+        setCloudStatus('saving');
+        const newVersion = new Date().toISOString();
+        const row = { state: snapshot, schema_version: SHEETS_SYNC_SCHEMA, updated_at: newVersion };
+        const res = cloudVersionRef.current
+          ? await supabase
+              .from('user_app_state')
+              .update(row)
+              .eq('owner_id', ctx.ownerId)
+              .eq('updated_at', cloudVersionRef.current)
+              .select('updated_at')
+          : await supabase
+              .from('user_app_state')
+              .insert({ owner_id: ctx.ownerId, ...row })
+              .select('updated_at');
+        if (res.error) {
+          // 23505: thiết bị khác vừa tạo sổ trước -> coi như xung đột
+          setCloudStatus(
+            res.error.code === '23505' ? 'conflict' : navigator.onLine ? 'error' : 'offline'
+          );
+          return;
+        }
+        if (!res.data || res.data.length === 0) {
+          setCloudStatus('conflict');
+          return;
+        }
+        cloudVersionRef.current = res.data[0].updated_at as string;
+        writeCloudCache(cloudCacheKey(ctx.ownerId, userId), {
+          state: snapshot,
+          baseVersion: cloudVersionRef.current,
+          dirty: snapshot !== cloudSnapshotRef.current,
+        });
+        setCloudStatus('saved');
+        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
+      } while (cloudPendingRef.current);
+    } finally {
+      cloudPushingRef.current = false;
+    }
+  };
+
+  // Tìm sổ được làm việc: sổ của chính mình, hoặc sổ chủ trọ đã cấp quyền tài khoản phụ
+  const resolveCloudOwner = async (userId: string) => {
+    const own = await supabase
+      .from('user_app_state')
+      .select('state, updated_at')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    if (own.error || own.data) {
+      return { ctx: { ownerId: userId, role: 'owner', propertyIds: null } as CloudOwnerContext, res: own };
+    }
+    const { data: links } = await supabase
+      .from('property_staff')
+      .select('owner_id, property_id, role')
+      .neq('owner_id', userId);
+    if (!links || links.length === 0) {
+      return { ctx: { ownerId: userId, role: 'owner', propertyIds: null } as CloudOwnerContext, res: own };
+    }
+    const ownerId = links[0].owner_id as string;
+    const mine = links.filter((l) => l.owner_id === ownerId);
+    const ctx: CloudOwnerContext = {
+      ownerId,
+      role: mine.some((l) => l.role === 'staff') ? 'staff' : 'viewer',
+      propertyIds: mine.map((l) => l.property_id as string),
+    };
+    const res = await supabase
+      .from('user_app_state')
+      .select('state, updated_at')
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    return { ctx, res };
+  };
+
+  // Tải sổ đám mây khi đăng nhập / quay lại từ Bản Demo
+  const loadCloudStateForUser = async (userId: string, userEmail: string) => {
+    cloudReadyRef.current = false;
+    setCloudLoading(true);
+    setCloudStatus('loading');
+    try {
+      const { ctx, res } = await resolveCloudOwner(userId);
+      if (ctx.role !== 'owner' && !res.error && !res.data) {
+        showToast('Chủ trọ chưa có sổ đám mây hoặc chưa cấp quyền cho tài khoản này.');
+        setCloudStatus('error');
+        setIsDemoMode(true);
         return;
       }
+      const key = cloudCacheKey(ctx.ownerId, userId);
+      const local = readCloudCache(key);
+      const decision = decideStartState({
+        local,
+        remote: res.data
+          ? { state: res.data.state, updatedAt: res.data.updated_at as string }
+          : null,
+        remoteFailed: !!res.error,
+      });
+      setCloudCtx(ctx);
+      cloudCtxRef.current = ctx;
 
-      if (data && data.state && typeof data.state === 'object') {
-        const st = data.state as Record<string, unknown>;
-        if (Array.isArray(st.properties)) setProperties(st.properties as Property[]);
-        if (Array.isArray(st.rooms)) setRooms(st.rooms as Room[]);
-        if (Array.isArray(st.tenants)) setTenants(st.tenants as Tenant[]);
-        if (Array.isArray(st.vehicles)) setVehicles(st.vehicles as Vehicle[]);
-        if (Array.isArray(st.contracts)) setContracts(st.contracts as Contract[]);
-        if (Array.isArray(st.invoices)) setInvoices(st.invoices as Invoice[]);
-        if (Array.isArray(st.transactions)) setTransactions(st.transactions as CashTransaction[]);
-        setCloudLastSavedAt(
-          data.updated_at ? new Date(data.updated_at).toLocaleTimeString('vi-VN') : 'Vừa xong'
-        );
-        showToast(`Đã tải sổ quản lý đám mây của ${userEmail}`);
-      } else {
-        // Tài khoản mới chưa có dữ liệu trên mây -> lưu dữ liệu khởi tạo lên mây
-        await supabase.from('user_app_state').upsert({
-          owner_id: userId,
-          schema_version: SHEETS_SYNC_SCHEMA,
-          state: {
-            properties,
-            rooms,
-            tenants: allTenants,
-            vehicles: allVehicles,
-            contracts: allContracts,
-            invoices: allInvoices,
-            transactions: allTransactions,
-          },
-          updated_at: new Date().toISOString(),
-        });
-        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
-        showToast(`Đã khởi tạo sổ đám mây riêng cho ${userEmail}!`);
+      if (decision.use === 'offline-none') {
+        showToast('Không kết nối được máy chủ và máy này chưa có bản sao. Đang dùng Bản Demo.');
+        setCloudStatus('offline');
+        setIsDemoMode(true);
+        return;
       }
+      if (decision.use === 'offline-local') {
+        cloudVersionRef.current = local?.baseVersion ?? null;
+        cloudSnapshotRef.current = decision.state;
+        applySnapshot(decision.state);
+        setCloudStatus('offline');
+        showToast('Mất kết nối: đang dùng bản sao trên máy, sẽ tự đồng bộ khi có mạng.');
+      } else if (decision.use === 'remote') {
+        if (decision.backupLocal && local) {
+          writeCloudCache(`${key}-backup-${Date.now()}`, local);
+          showToast('Sổ đã được sửa trên thiết bị khác. Đã tải bản mới nhất, bản trên máy được sao lưu.');
+        } else {
+          showToast(`Đã tải sổ đám mây của ${userEmail}`);
+        }
+        cloudVersionRef.current = res.data!.updated_at as string;
+        cloudSnapshotRef.current = decision.state;
+        writeCloudCache(key, { state: decision.state, baseVersion: cloudVersionRef.current, dirty: false });
+        applySnapshot(decision.state);
+        setCloudStatus('saved');
+        setCloudLastSavedAt(new Date(cloudVersionRef.current).toLocaleTimeString('vi-VN'));
+      } else {
+        const state = decision.use === 'local' ? decision.state : emptySnapshot(userEmail);
+        cloudVersionRef.current = decision.use === 'local' ? local?.baseVersion ?? null : null;
+        cloudSnapshotRef.current = state;
+        applySnapshot(state);
+        showToast(
+          decision.use === 'local'
+            ? 'Đang đẩy các thay đổi chưa lưu trên máy này lên mây...'
+            : `Đã tạo sổ đám mây trống cho ${userEmail}. Gửi file Excel hoặc ảnh sổ để được nhập hộ.`
+        );
+        cloudReadyRef.current = true;
+        await pushCloudNow(userId);
+      }
+      cloudReadyRef.current = true;
 
-      // Tải danh sách nhân viên/quản lý được phân quyền
-      const { data: staffs } = await supabase
-        .from('property_staff')
-        .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
-      if (staffs) {
-        setStaffList(staffs);
+      if (ctx.role === 'owner') {
+        const { data: staffs } = await supabase
+          .from('property_staff')
+          .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+          .eq('owner_id', userId)
+          .order('created_at', { ascending: false });
+        if (staffs) setStaffList(staffs);
       }
     } finally {
       setCloudLoading(false);
@@ -454,6 +602,7 @@ export function App() {
         setTransactions(SEED_TRANSACTIONS);
       }
     }
+    cloudReadyRef.current = false;
     setIsDemoMode(true);
     showToast('Đang ở Chế độ Bản Demo (12 phòng mẫu để giới thiệu khách hàng)');
   };
@@ -462,8 +611,52 @@ export function App() {
     await supabase.auth.signOut();
     setAuthUser(null);
     setStaffList([]);
+    setCloudCtx(null);
+    setCloudStatus('idle');
     handleSwitchToDemoMode();
     showToast('Đã đăng xuất và quay về Bản Demo.');
+  };
+
+  // P1 #4 Chủ quyền dữ liệu: tải toàn bộ ra Excel, xoá tài khoản + dữ liệu trên máy chủ
+  const handleExportXlsx = async () => {
+    try {
+      await downloadSnapshotXlsx(
+        {
+          properties,
+          rooms,
+          tenants: allTenants,
+          vehicles: allVehicles,
+          contracts: allContracts,
+          invoices: allInvoices,
+          transactions: allTransactions,
+        },
+        `QuanLyPhongTro-${today.split('/').reverse().join('-')}.xlsx`
+      );
+      showToast('Đã tải toàn bộ dữ liệu ra file Excel.');
+    } catch {
+      showToast('Không tạo được file Excel trên bản này, hãy dùng bản web.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!authUser || cloudCtx?.role !== 'owner') return;
+    const typed = window.prompt(
+      `Xoá vĩnh viễn tài khoản và TOÀN BỘ dữ liệu trên máy chủ, không khôi phục được. Nên bấm "Tải toàn bộ dữ liệu" trước.\nGõ email ${authUser.email} để xác nhận:`
+    );
+    if ((typed || '').trim().toLowerCase() !== authUser.email.toLowerCase()) {
+      showToast('Email không khớp, chưa xoá gì.');
+      return;
+    }
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error) {
+      showToast('Không xoá được tài khoản: ' + error.message);
+      return;
+    }
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('qlpt-cloud-') && k.includes(authUser.id))
+      .forEach((k) => localStorage.removeItem(k));
+    await handleSignOutCloud();
+    showToast('Đã xoá tài khoản và toàn bộ dữ liệu trên máy chủ.');
   };
 
   const handleAddPropertyStaff = async (e: React.FormEvent) => {
@@ -511,9 +704,9 @@ export function App() {
     }
   };
 
-  // Lưu tự động: Nếu ở Bản Demo -> lưu LocalStorage; Nếu ở Tài khoản thật -> đồng bộ Supabase Cloud
+  // Lưu tự động: Bản Demo -> localStorage; Tài khoản thật -> bản sao trên máy ngay, đẩy lên mây sau 800ms
   useEffect(() => {
-    const snapshot = {
+    const snapshot: AppSnapshot = {
       properties,
       rooms,
       tenants: allTenants,
@@ -527,21 +720,23 @@ export function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
       return;
     }
+    if (!cloudReadyRef.current || !cloudCtx) return;
 
-    if (cloudLoading) return;
+    const prev = cloudSnapshotRef.current;
+    const unchanged =
+      prev &&
+      (Object.keys(snapshot) as (keyof AppSnapshot)[]).every((k) => prev[k] === snapshot[k]);
+    if (unchanged) return;
 
-    const timer = setTimeout(async () => {
-      const { error } = await supabase.from('user_app_state').upsert({
-        owner_id: authUser.id,
-        schema_version: SHEETS_SYNC_SCHEMA,
-        state: snapshot,
-        updated_at: new Date().toISOString(),
-      });
-      if (!error) {
-        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
-      }
-    }, 600);
-
+    cloudSnapshotRef.current = snapshot;
+    const readOnly = cloudCtx.role === 'viewer';
+    writeCloudCache(cloudCacheKey(cloudCtx.ownerId, authUser.id), {
+      state: snapshot,
+      baseVersion: cloudVersionRef.current,
+      dirty: !readOnly,
+    });
+    if (readOnly) return;
+    const timer = setTimeout(() => pushCloudNow(authUser.id), 800);
     return () => clearTimeout(timer);
   }, [
     properties,
@@ -553,8 +748,58 @@ export function App() {
     allTransactions,
     isDemoMode,
     authUser,
-    cloudLoading,
+    cloudCtx,
   ]);
+
+  const loadPaymentReports = async () => {
+    const ctx = cloudCtxRef.current;
+    if (!ctx) return;
+    const { data, error } = await supabase
+      .from('invoice_payment_reports')
+      .select('id, invoice_code, room_code, property_id, amount, payer_note, created_at')
+      .eq('owner_id', ctx.ownerId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    if (!error && data) setPaymentReports(data);
+  };
+  const setReportStatus = async (id: string, status: 'confirmed' | 'dismissed') => {
+    setPaymentReports((prev) => prev.filter((r) => r.id !== id));
+    const { error } = await supabase.from('invoice_payment_reports').update({ status }).eq('id', id);
+    if (error) showToast('Không cập nhật được lời báo: ' + error.message);
+  };
+  useEffect(() => {
+    if (isDemoMode || !authUser || !cloudCtx || cloudCtx.role === 'viewer') {
+      setPaymentReports([]);
+      return;
+    }
+    loadPaymentReports();
+    const iv = setInterval(loadPaymentReports, 60000);
+    return () => clearInterval(iv);
+  }, [isDemoMode, authUser, cloudCtx]);
+
+  // Tài khoản Cloud: mỗi hóa đơn có mã ngẫu nhiên khó đoán để người thuê mở trang hóa đơn từ Zalo
+  useEffect(() => {
+    if (isDemoMode || !zaloModalInvoice || zaloModalInvoice.publicToken) return;
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    const updated = { ...zaloModalInvoice, publicToken: token };
+    setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    setZaloModalInvoice(updated);
+  }, [zaloModalInvoice, isDemoMode]);
+
+  // Mất mạng / lỗi máy chủ: thử lại khi có mạng và mỗi 30 giây
+  useEffect(() => {
+    if (isDemoMode || !authUser || (cloudStatus !== 'error' && cloudStatus !== 'offline')) return;
+    const retry = () => {
+      if (cloudReadyRef.current) pushCloudNow(authUser.id);
+    };
+    window.addEventListener('online', retry);
+    const iv = setInterval(retry, 30000);
+    return () => {
+      window.removeEventListener('online', retry);
+      clearInterval(iv);
+    };
+  }, [isDemoMode, authUser, cloudStatus]);
 
   // Hỗ trợ phím Escape đóng hộp thoại đang mở
   useEffect(() => {
@@ -564,6 +809,8 @@ export function App() {
         setIsMeterModalOpen(false);
         setZaloModalInvoice(null);
         setCollectModalInvoice(null);
+        setEditInvoice(null);
+        setIsElecToolOpen(false);
         setIsTempResidenceOpen(false);
         setIsRoomPricingOpen(false);
         setIsPhoneQrOpen(false);
@@ -573,9 +820,27 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Tài khoản phụ: không xem báo cáo/lợi nhuận/quỹ, chỉ thấy cơ sở được cấp quyền
+  const canViewReports = isDemoMode || !cloudCtx || cloudCtx.role === 'owner';
+  const visibleProperties = useMemo(
+    () =>
+      !isDemoMode && cloudCtx?.propertyIds
+        ? properties.filter((p) => cloudCtx.propertyIds!.includes(p.id))
+        : properties,
+    [properties, isDemoMode, cloudCtx]
+  );
+  const renderNoPermission = () => (
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-600">
+      Tài khoản phụ chỉ ghi số điện nước, lập hóa đơn và thu tiền. Mục này do chủ trọ quản lý.
+    </div>
+  );
+
   const currentProperty = useMemo(
-    () => properties.find((p) => p.id === selectedPropertyId) || properties[0],
-    [properties, selectedPropertyId]
+    () =>
+      visibleProperties.find((p) => p.id === selectedPropertyId) ||
+      visibleProperties[0] ||
+      properties[0],
+    [properties, visibleProperties, selectedPropertyId]
   );
 
   // Lọc toàn bộ dữ liệu theo cơ sở nhà trọ đang chọn trên thanh đầu trang (Bug 1)
@@ -602,6 +867,16 @@ export function App() {
   const transactions = useMemo(
     () => allTransactions.filter((tx) => tx.propertyId === currentProperty.id),
     [allTransactions, currentProperty.id]
+  );
+
+  // Biểu đồ: Bản Demo giữ số liệu mẫu 5 kỳ; tài khoản thật tính từ sổ thu chi. Lịch luôn tính từ dữ liệu.
+  const monthlyChart = useMemo(
+    () => (isDemoMode ? SEED_MONTHLY_CHART : buildMonthlyChart(transactions, curMonth)),
+    [isDemoMode, transactions, curMonth]
+  );
+  const calendarEvents = useMemo(
+    () => buildCalendarEvents({ today, curMonth, rooms: propertyRooms, invoices, contracts }),
+    [today, curMonth, propertyRooms, invoices, contracts]
   );
 
   const occupiedRooms = useMemo(
@@ -730,13 +1005,17 @@ export function App() {
     [pendingRefundContracts]
   );
 
-  // Toàn bộ hóa đơn còn nợ (gồm cả 2026-09, 2026-10, 2026-11 trừ nháp)
+  // Toàn bộ hóa đơn còn nợ (mọi kỳ, trừ nháp)
   const allUnpaidInvoices = useMemo(
     () =>
       invoices.filter(
         (i) => i.status !== 'draft' && i.totalAmount - i.paidAmount > 0
       ),
     [invoices]
+  );
+  const quickCollectInvoice = useMemo(
+    () => [...allUnpaidInvoices].sort((a, b) => a.billingMonth.localeCompare(b.billingMonth))[0],
+    [allUnpaidInvoices]
   );
   const allUnpaidTotalAmount = useMemo(
     () =>
@@ -1341,7 +1620,7 @@ export function App() {
       {
         label: 'Rác · Wifi · Gửi xe',
         amount: octServiceSum,
-        pct: Math.max(
+        pct: octServiceSum === 0 ? 0 : Math.max(
           0,
           100 -
             Math.round((octRentSum / octBreakdownTotal) * 100) -
@@ -1357,7 +1636,7 @@ export function App() {
     // Thang đo biểu đồ 5 tháng
     const dashboardMaxChart = Math.max(
       1,
-      ...SEED_MONTHLY_CHART.map((d) => Math.max(d.income, d.expense, d.profit))
+      ...monthlyChart.map((d) => Math.max(d.income, d.expense, d.profit))
     );
 
     // Thông số SVG Donut cho Trạng thái phòng (r = 44 => chu vi C ≈ 276.46)
@@ -1522,6 +1801,91 @@ export function App() {
           </div>
         </div>
 
+        {/* Phòng vừa báo "Tôi đã chuyển" (trang hóa đơn người thuê) */}
+        {paymentReports.filter((r) => r.property_id === currentProperty.id).length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-xs" data-testid="payment-reports">
+            <div className="font-bold text-amber-900">
+              Phòng vừa báo đã chuyển tiền — đối chiếu biến động số dư của bạn rồi bấm Xác nhận
+            </div>
+            {paymentReports
+              .filter((r) => r.property_id === currentProperty.id)
+              .map((r) => {
+                const inv = invoices.find((i) => i.code === r.invoice_code);
+                return (
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-xl border border-amber-100 px-3 py-2">
+                    <div>
+                      <strong>{r.room_code}</strong> · {r.invoice_code} · <strong className="tabular-nums">{formatVND(r.amount)}</strong>
+                      {r.payer_note ? <span className="text-slate-500"> · {r.payer_note}</span> : null}
+                      <span className="text-slate-400"> · {new Date(r.created_at).toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        disabled={!inv}
+                        onClick={() => {
+                          if (!inv) return;
+                          setConfirmingReport({ id: r.id, amount: r.amount });
+                          setCollectModalInvoice(inv);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-40"
+                      >
+                        Xác nhận
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportStatus(r.id, 'dismissed')}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 font-semibold"
+                      >
+                        Bỏ qua
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
+        {/* P1 #5: Tổng quan tất cả khu (chỉ hiện khi có từ 2 khu) */}
+        {visibleProperties.length > 1 && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs text-xs" data-testid="all-properties">
+            <div className="font-bold text-slate-800 mb-2">Tất cả khu · kỳ {periodLabel}</div>
+            <div className="overflow-x-auto">
+              <table className="w-full tabular-nums">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-100">
+                    <th className="py-1.5 pr-3 font-medium">Khu</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Đang thuê</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Phòng trống</th>
+                    {canViewReports && <th className="py-1.5 px-2 font-medium text-right">Đã thu kỳ này</th>}
+                    <th className="py-1.5 pl-2 font-medium text-right">Còn nợ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {summarizeProperties({
+                    properties: visibleProperties,
+                    rooms,
+                    invoices: allInvoices,
+                    transactions: allTransactions,
+                    curMonth,
+                  }).map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedPropertyId(row.id)}
+                      className={`cursor-pointer hover:bg-slate-50 ${row.id === currentProperty.id ? 'font-bold text-blue-700' : ''}`}
+                    >
+                      <td className="py-1.5 pr-3">{row.name}</td>
+                      <td className="py-1.5 px-2 text-right">{row.occupied}/{row.rooms}</td>
+                      <td className={`py-1.5 px-2 text-right ${row.vacant > 0 ? 'text-emerald-600' : ''}`}>{row.vacant}</td>
+                      {canViewReports && <td className="py-1.5 px-2 text-right">{formatVND(row.collected)}</td>}
+                      <td className={`py-1.5 pl-2 text-right ${row.debt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatVND(row.debt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* 4 Top KPI Cards with Mini Visuals */}
         <div
           className={`grid grid-cols-1 ${
@@ -1625,6 +1989,7 @@ export function App() {
           </div>
 
           {/* Card 3: Lợi nhuận tháng này */}
+          {canViewReports && (
           <div
             onClick={() => setActiveTab('reports')}
             className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition flex flex-col justify-between space-y-3"
@@ -1654,11 +2019,11 @@ export function App() {
                 </div>
               </div>
               <div className="flex items-end gap-1 h-7">
-                {SEED_MONTHLY_CHART.map((m, i) => (
+                {monthlyChart.map((m, i) => (
                   <span
                     key={m.month}
                     className={`w-2 rounded-t ${
-                      i === SEED_MONTHLY_CHART.length - 1 ? 'bg-indigo-600' : 'bg-indigo-200'
+                      i === monthlyChart.length - 1 ? 'bg-indigo-600' : 'bg-indigo-200'
                     }`}
                     style={{
                       height: `${Math.max(25, Math.round((m.profit / dashboardMaxChart) * 100))}%`,
@@ -1671,6 +2036,8 @@ export function App() {
               <div className="h-full rounded-full bg-indigo-600 w-4/5" />
             </div>
           </div>
+
+          )}
 
           {/* Card 4: Tổng công nợ cần thu */}
           <div
@@ -1795,18 +2162,18 @@ export function App() {
                 <polygon
                   points={[
                     '115,170',
-                    ...SEED_MONTHLY_CHART.map((pt, i) => {
+                    ...monthlyChart.map((pt, i) => {
                       const x = 115 + i * 130;
                       const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                       return `${x},${y}`;
                     }),
-                    `${115 + (SEED_MONTHLY_CHART.length - 1) * 130},170`,
+                    `${115 + (monthlyChart.length - 1) * 130},170`,
                   ].join(' ')}
                   fill="url(#dashProfitArea)"
                 />
 
                 {/* Cột Doanh thu & Chi phí */}
-                {SEED_MONTHLY_CHART.map((pt, i) => {
+                {monthlyChart.map((pt, i) => {
                   const xCenter = 115 + i * 130;
                   const incH = (pt.income / dashboardMaxChart) * 140;
                   const expH = Math.max(4, (pt.expense / dashboardMaxChart) * 140);
@@ -1875,7 +2242,7 @@ export function App() {
                   strokeWidth="2.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  points={SEED_MONTHLY_CHART.map((pt, i) => {
+                  points={monthlyChart.map((pt, i) => {
                     const x = 115 + i * 130;
                     const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                     return `${x},${y}`;
@@ -1883,7 +2250,7 @@ export function App() {
                 />
 
                 {/* Điểm tròn Lợi nhuận */}
-                {SEED_MONTHLY_CHART.map((pt, i) => {
+                {monthlyChart.map((pt, i) => {
                   const x = 115 + i * 130;
                   const y = 170 - (pt.profit / dashboardMaxChart) * 140;
                   return (
@@ -1901,16 +2268,16 @@ export function App() {
               {hoveredChartIdx !== null && (
                 <div className="absolute top-1 right-2 bg-slate-900/95 text-white rounded-xl px-3.5 py-2 text-xs shadow-xl space-y-0.5 pointer-events-none">
                   <div className="font-bold text-slate-200">
-                    Kỳ {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                    Kỳ {monthlyChart[hoveredChartIdx].month}
                   </div>
                   <div className="text-sky-300 tabular-nums">
-                    Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                    Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
                   </div>
                   <div className="text-amber-300 tabular-nums">
-                    Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                    Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
                   </div>
                   <div className="text-emerald-300 font-bold tabular-nums">
-                    Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                    Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
                   </div>
                 </div>
               )}
@@ -2114,7 +2481,7 @@ export function App() {
                         )}
                       </div>
                       <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                        {r.tenantName ? r.tenantName.split(' ').slice(-2).join(' ') : 'Phòng trống'}
+                        {r.tenantName ? r.tenantName.split(' ').slice(-2).join(' ') : r.status === 'maintenance' ? 'Đang sửa' : 'Phòng trống'}
                       </div>
                     </button>
                   );
@@ -2232,13 +2599,14 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  const target =
-                    invoices.find((i) => i.code === 'HD-IV-00089') || invoices[0];
-                  if (target) setCollectModalInvoice(target);
+                  if (quickCollectInvoice) setCollectModalInvoice(quickCollectInvoice);
                 }}
+                disabled={!quickCollectInvoice}
                 className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
               >
-                Thu tiền nhanh (P101 · HD-IV-00089)
+                {quickCollectInvoice
+                  ? `Thu tiền nhanh (${quickCollectInvoice.roomCode} · ${quickCollectInvoice.code})`
+                  : 'Không còn hóa đơn nào cần thu'}
               </button>
             </div>
 
@@ -3494,13 +3862,23 @@ export function App() {
                             Nháp — điền chỉ số
                           </button>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setZaloModalInvoice(inv)}
-                            className="font-bold text-blue-600 hover:underline"
-                          >
-                            {inv.code}
-                          </button>
+                          <span className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setZaloModalInvoice(inv)}
+                              className="font-bold text-blue-600 hover:underline"
+                            >
+                              {inv.code}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditInvoice(inv)}
+                              aria-label={`Sửa hóa đơn ${inv.code}`}
+                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-100"
+                            >
+                              Sửa
+                            </button>
+                          </span>
                         )}
                       </td>
                       <td className="py-3.5 px-3 text-right font-semibold text-slate-900">
@@ -4069,7 +4447,7 @@ export function App() {
     const handleExportReportCsv = () => {
       const rows = [
         ['Tháng', 'Doanh thu (VND)', 'Chi phí (VND)', 'Lợi nhuận (VND)'],
-        ...SEED_MONTHLY_CHART.map((m) => [
+        ...monthlyChart.map((m) => [
           m.month,
           String(m.income),
           String(m.expense),
@@ -4247,18 +4625,18 @@ export function App() {
               <polygon
                 points={[
                   `130,185`,
-                  ...SEED_MONTHLY_CHART.map((pt, i) => {
+                  ...monthlyChart.map((pt, i) => {
                     const x = 130 + i * 135;
                     const y = 185 - (pt.profit / maxChartVal) * 155;
                     return `${x},${y}`;
                   }),
-                  `${130 + (SEED_MONTHLY_CHART.length - 1) * 135},185`,
+                  `${130 + (monthlyChart.length - 1) * 135},185`,
                 ].join(' ')}
                 fill="rgba(16, 185, 129, 0.08)"
               />
 
               {/* Bars */}
-              {SEED_MONTHLY_CHART.map((pt, i) => {
+              {monthlyChart.map((pt, i) => {
                 const xCenter = 130 + i * 135;
                 const incH = (pt.income / maxChartVal) * 155;
                 const expH = Math.max(4, (pt.expense / maxChartVal) * 155);
@@ -4305,7 +4683,7 @@ export function App() {
                 fill="none"
                 stroke="#10B981"
                 strokeWidth="2.5"
-                points={SEED_MONTHLY_CHART.map((pt, i) => {
+                points={monthlyChart.map((pt, i) => {
                   const x = 130 + i * 135;
                   const y = 185 - (pt.profit / maxChartVal) * 155;
                   return `${x},${y}`;
@@ -4313,7 +4691,7 @@ export function App() {
               />
 
               {/* Profit Dots */}
-              {SEED_MONTHLY_CHART.map((pt, i) => {
+              {monthlyChart.map((pt, i) => {
                 const x = 130 + i * 135;
                 const y = 185 - (pt.profit / maxChartVal) * 155;
                 return (
@@ -4331,16 +4709,16 @@ export function App() {
             {hoveredChartIdx !== null && (
               <div className="absolute top-2 right-4 bg-slate-900 text-white rounded-xl px-3.5 py-2 text-xs shadow-lg space-y-0.5">
                 <div className="font-bold">
-                  {SEED_MONTHLY_CHART[hoveredChartIdx].month}
+                  {monthlyChart[hoveredChartIdx].month}
                 </div>
                 <div className="text-sky-300">
-                  Thu: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].income)}
+                  Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
                 </div>
                 <div className="text-purple-300">
-                  Chi: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].expense)}
+                  Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
                 </div>
                 <div className="text-emerald-300 font-bold">
-                  Lợi nhuận: {formatVND(SEED_MONTHLY_CHART[hoveredChartIdx].profit)}
+                  Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
                 </div>
               </div>
             )}
@@ -4557,7 +4935,12 @@ export function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {SEED_CALENDAR_EVENTS.map((ev) => (
+          {calendarEvents.length === 0 && (
+            <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 text-center text-xs text-slate-500">
+              Chưa có việc nào trong tháng này. Lịch tự hiện khi có phòng đang thuê, hóa đơn và hợp đồng.
+            </div>
+          )}
+          {calendarEvents.map((ev) => (
             <div
               key={ev.id}
               onClick={() => setActiveTab(ev.actionTab)}
@@ -4629,6 +5012,13 @@ export function App() {
                   trong hợp đồng.
                 </p>
               )}
+              <button
+                type="button"
+                onClick={() => setIsElecToolOpen(true)}
+                className="mt-2 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold text-[11px]"
+              >
+                ⚡ Tính lại cơ cấu giá điện & in phụ lục hợp đồng
+              </button>
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">
@@ -4834,7 +5224,37 @@ export function App() {
             </div>
           </div>
 
+          {/* Chủ quyền dữ liệu */}
+          {canViewReports && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="font-bold text-slate-800">Dữ liệu của bạn</div>
+              <p className="text-slate-500">
+                Tải toàn bộ sổ (phòng, khách, hợp đồng, hóa đơn, sổ thu chi) ra file Excel bất cứ lúc nào.
+                {!isDemoMode && authUser ? ' Xoá tài khoản sẽ xoá sạch dữ liệu trên máy chủ.' : ''}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportXlsx}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition"
+                >
+                  ⬇ Tải toàn bộ dữ liệu (.xlsx)
+                </button>
+                {!isDemoMode && authUser && cloudCtx?.role === 'owner' && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="px-3.5 py-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold transition"
+                  >
+                    Xoá tài khoản và toàn bộ dữ liệu
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Phân quyền tài khoản phụ */}
+          {canViewReports && (
           <div className="space-y-3 pt-2 border-t border-slate-100 text-xs">
             <div className="font-bold text-slate-800">
               Cấp quyền Tài khoản phụ cho Quản lý / Người nhà tại cơ sở: {currentProperty.name}
@@ -4895,6 +5315,7 @@ export function App() {
               </p>
             )}
           </div>
+          )}
         </div>
       </div>
     );
@@ -5218,7 +5639,29 @@ export function App() {
               <span>
                 <strong>Sổ Quản lý Đám mây (Supabase RLS):</strong> Đang đăng nhập tài khoản{' '}
                 <strong>{authUser?.email}</strong>
-                {cloudLastSavedAt ? ` · Đã lưu tự động lúc ${cloudLastSavedAt}` : ''}
+                {cloudCtx && cloudCtx.role !== 'owner'
+                  ? cloudCtx.role === 'staff'
+                    ? ' · Tài khoản phụ (ghi số, thu tiền)'
+                    : ' · Chỉ xem'
+                  : ''}
+                {' · '}
+                <span data-testid="cloud-status" className={cloudStatus === 'error' || cloudStatus === 'conflict' ? 'text-rose-700 font-bold' : cloudStatus === 'offline' ? 'text-amber-700 font-bold' : ''}>
+                  {cloudStatus === 'loading' && 'Đang tải sổ...'}
+                  {cloudStatus === 'saving' && 'Đang lưu...'}
+                  {cloudStatus === 'saved' && `Đã lưu lên mây lúc ${cloudLastSavedAt ?? ''}`}
+                  {cloudStatus === 'offline' && 'Mất mạng: thay đổi đang giữ trên máy, sẽ tự đồng bộ'}
+                  {cloudStatus === 'error' && 'Lưu lên mây lỗi, đang thử lại (dữ liệu vẫn giữ trên máy)'}
+                  {cloudStatus === 'conflict' && 'Sổ vừa được sửa ở thiết bị khác'}
+                </span>
+                {cloudStatus === 'conflict' && authUser && (
+                  <button
+                    type="button"
+                    onClick={() => loadCloudStateForUser(authUser.id, authUser.email)}
+                    className="ml-2 px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[11px]"
+                  >
+                    Tải bản mới nhất
+                  </button>
+                )}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -5246,11 +5689,11 @@ export function App() {
             {/* Property Selector */}
             <select
               aria-label="Chọn cơ sở nhà trọ"
-              value={selectedPropertyId}
+              value={currentProperty.id}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
               className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
             >
-              {properties.map((p) => (
+              {visibleProperties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -5440,15 +5883,21 @@ export function App() {
           )}
 
           <div className={isMobilePreview ? 'p-4 flex-1 overflow-y-auto space-y-5' : ''}>
-            {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'calendar' && renderCalendar()}
-            {activeTab === 'rooms' && renderRooms()}
-            {activeTab === 'tenants' && renderTenants()}
-            {activeTab === 'contracts' && renderContracts()}
-            {activeTab === 'invoices' && renderInvoices()}
-            {activeTab.startsWith('finance-') && renderFinance()}
-            {activeTab === 'reports' && renderReports()}
-            {activeTab === 'settings' && renderSettings()}
+            {!canViewReports && !STAFF_TABS.includes(activeTab) ? (
+              renderNoPermission()
+            ) : (
+              <>
+                {activeTab === 'overview' && renderOverview()}
+                {activeTab === 'calendar' && renderCalendar()}
+                {activeTab === 'rooms' && renderRooms()}
+                {activeTab === 'tenants' && renderTenants()}
+                {activeTab === 'contracts' && renderContracts()}
+                {activeTab === 'invoices' && renderInvoices()}
+                {activeTab.startsWith('finance-') && renderFinance()}
+                {activeTab === 'reports' && renderReports()}
+                {activeTab === 'settings' && renderSettings()}
+              </>
+            )}
           </div>
 
           {/* Persistent Bottom Navigation Bar inside Mobile Frame */}
@@ -5506,7 +5955,7 @@ export function App() {
       {/* MODALS */}
       <CreateContractModal
         key={`contract-${today}`}
-        isOpen={isContractModalOpen}
+        isOpen={isContractModalOpen && canViewReports}
         onClose={() => setIsContractModalOpen(false)}
         property={currentProperty}
         rooms={propertyRooms}
@@ -5533,6 +5982,11 @@ export function App() {
         depositHeld={
           propertyRooms.find((r) => r.code === zaloModalInvoice?.roomCode)?.deposit || 0
         }
+        publicInvoiceUrl={
+          !isDemoMode && zaloModalInvoice?.publicToken
+            ? `${PUBLIC_WEB_URL}?hd=${zaloModalInvoice.publicToken}`
+            : undefined
+        }
         onMarkSentZalo={(invId) =>
           setInvoices((prev) =>
             prev.map((i) => (i.id === invId ? { ...i, sentZalo: true } : i))
@@ -5543,10 +5997,93 @@ export function App() {
       <CollectPaymentModal
         key={`collect-${today}`}
         isOpen={!!collectModalInvoice}
-        onClose={() => setCollectModalInvoice(null)}
+        onClose={() => {
+          setCollectModalInvoice(null);
+          setConfirmingReport(null);
+        }}
         targetInvoice={collectModalInvoice}
         unpaidRoomInvoices={collectUnpaidRoomInvoices}
-        onConfirmCollect={handleConfirmCollectFIFO}
+        initialAmount={confirmingReport?.amount}
+        onConfirmCollect={(payload) => {
+          const res = handleConfirmCollectFIFO(payload);
+          if (confirmingReport && res.length > 0) {
+            setReportStatus(confirmingReport.id, 'confirmed');
+            setConfirmingReport(null);
+          }
+          return res;
+        }}
+      />
+
+      <InvoiceEditModal
+        invoice={editInvoice}
+        onClose={() => setEditInvoice(null)}
+        onSave={(updated) => {
+          const old = allInvoices.find((i) => i.id === updated.id);
+          setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+          // Hóa đơn mới nhất của phòng: chỉ số đồng hồ của phòng đi theo số vừa sửa
+          if (old) {
+            setRooms((prev) =>
+              prev.map((r) =>
+                r.propertyId === updated.propertyId && r.code === updated.roomCode
+                  ? {
+                      ...r,
+                      elecIndex: r.elecIndex === old.elecNew ? updated.elecNew : r.elecIndex,
+                      waterIndex: r.waterIndex === old.waterNew ? updated.waterNew : r.waterIndex,
+                    }
+                  : r
+              )
+            );
+          }
+          setEditInvoice(null);
+          showToast(
+            updated.sentZalo
+              ? `Đã lưu hóa đơn ${updated.code}`
+              : `Đã lưu hóa đơn ${updated.code}: tổng mới ${formatVND(updated.totalAmount)}, nhớ gửi lại phiếu cho khách`
+          );
+        }}
+        onCancelInvoice={(inv) => {
+          setInvoices((prev) => prev.filter((i) => i.id !== inv.id));
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.propertyId === inv.propertyId && r.code === inv.roomCode
+                ? {
+                    ...r,
+                    elecIndex: r.elecIndex === inv.elecNew ? inv.elecOld : r.elecIndex,
+                    waterIndex: r.waterIndex === inv.waterNew ? inv.waterOld : r.waterIndex,
+                  }
+                : r
+            )
+          );
+          setEditInvoice(null);
+          showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
+      />
+
+      <ElectricityRestructureModal
+        isOpen={isElecToolOpen && canViewReports}
+        onClose={() => setIsElecToolOpen(false)}
+        property={currentProperty}
+        rooms={propertyRooms}
+        invoices={invoices}
+        contracts={contracts}
+        rateCap={ELECTRICITY_RATE_CAP}
+        effectiveDate={`01/${nextMonth.slice(5)}/${nextMonth.slice(0, 4)}`}
+        onApply={(newRate, inc) => {
+          const pid = currentProperty.id;
+          setProperties((prev) => prev.map((x) => (x.id === pid ? { ...x, electricityRate: newRate } : x)));
+          setRooms((prev) =>
+            prev.map((r) => (r.propertyId === pid && inc[r.code] ? { ...r, price: r.price + inc[r.code] } : r))
+          );
+          setContracts((prev) =>
+            prev.map((c) =>
+              c.propertyId === pid && c.status === 'active' && inc[c.roomCode]
+                ? { ...c, rentAmount: c.rentAmount + inc[c.roomCode] }
+                : c
+            )
+          );
+          setIsElecToolOpen(false);
+          showToast(`Đã áp dụng giá điện ${formatVND(newRate)}/kWh và tiền phòng mới từ kỳ sau`);
+        }}
       />
 
       <TempResidenceModal
@@ -5557,7 +6094,7 @@ export function App() {
       />
 
       <RoomPricingModal
-        isOpen={isRoomPricingOpen}
+        isOpen={isRoomPricingOpen && canViewReports}
         onClose={() => setIsRoomPricingOpen(false)}
         property={currentProperty}
         rooms={propertyRooms}

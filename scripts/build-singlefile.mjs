@@ -22,7 +22,8 @@ export function bundleDistIntoAppsScriptHtml() {
   const assetsDir = path.join(DIST_DIR, 'assets');
   const files = fs.readdirSync(assetsDir);
   const cssFile = files.find((f) => f.endsWith('.css'));
-  const jsFile = files.find((f) => f.endsWith('.js'));
+  // Chỉ lấy bundle chính; phần tải động (thư viện xlsx) không chạy được trong 1 file Apps Script
+  const jsFile = files.find((f) => f.startsWith('index-') && f.endsWith('.js'));
 
   const cssContent = cssFile ? fs.readFileSync(path.join(assetsDir, cssFile), 'utf8') : '';
   let jsContent = jsFile ? fs.readFileSync(path.join(assetsDir, jsFile), 'utf8') : '';

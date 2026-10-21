@@ -139,6 +139,8 @@ export interface Invoice {
   sentZalo: boolean;
   isOverdue: boolean;
   meterPhoto?: string;
+  /** Mã ngẫu nhiên cho link hóa đơn người thuê (chỉ tài khoản Cloud). */
+  publicToken?: string;
 }
 
 export interface CashTransaction {

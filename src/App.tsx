@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   BarChart3,
@@ -89,6 +89,16 @@ import {
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
 import { supabase } from './utils/supabase';
+import {
+  cloudCacheKey,
+  decideStartState,
+  emptySnapshot,
+  readCloudCache,
+  writeCloudCache,
+  type AppSnapshot,
+  type CloudOwnerContext,
+  type CloudStatus,
+} from './utils/cloudSync';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
 const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
@@ -320,6 +330,8 @@ export function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
   const [cloudLastSavedAt, setCloudLastSavedAt] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus>('idle');
+  const [cloudCtx, setCloudCtx] = useState<CloudOwnerContext | null>(null);
   const [staffList, setStaffList] = useState<
     Array<{
       id: string;
@@ -344,62 +356,185 @@ export function App() {
     setTimeout(() => setToastMessage(null), 3200);
   };
 
-  // Tải dữ liệu đám mây từ bảng user_app_state của chủ trọ
-  const loadCloudStateForUser = async (userId: string, userEmail: string) => {
-    setCloudLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_app_state')
-        .select('state, updated_at')
-        .eq('owner_id', userId)
-        .maybeSingle();
+  // ===== ĐỒNG BỘ SỔ ĐÁM MÂY (user_app_state) =====
+  // Mỗi lần lưu chỉ ghi đè khi bản trên mây chưa bị thiết bị khác sửa (khóa theo updated_at).
+  // Bản sao trên máy (localStorage) giữ thay đổi chưa lên mây khi mất mạng hoặc đóng tab.
+  const cloudVersionRef = useRef<string | null>(null);
+  const cloudReadyRef = useRef(false);
+  const cloudSnapshotRef = useRef<AppSnapshot | null>(null);
+  const cloudPushingRef = useRef(false);
+  const cloudPendingRef = useRef(false);
+  const cloudCtxRef = useRef<CloudOwnerContext | null>(null);
+  cloudCtxRef.current = cloudCtx;
 
-      if (error) {
-        showToast('Không tải được dữ liệu đám mây: ' + error.message);
+  const applySnapshot = (s: AppSnapshot) => {
+    setProperties(s.properties);
+    setRooms(s.rooms);
+    setTenants(s.tenants);
+    setVehicles(s.vehicles);
+    setContracts(s.contracts);
+    setInvoices(s.invoices);
+    setTransactions(s.transactions);
+    if (!s.properties.some((p) => p.id === selectedPropertyId)) {
+      setSelectedPropertyId(s.properties[0]?.id || '');
+    }
+  };
+
+  const pushCloudNow = async (userId: string) => {
+    if (cloudPushingRef.current) {
+      cloudPendingRef.current = true;
+      return;
+    }
+    cloudPushingRef.current = true;
+    try {
+      do {
+        cloudPendingRef.current = false;
+        const ctx = cloudCtxRef.current;
+        const snapshot = cloudSnapshotRef.current;
+        if (!ctx || !snapshot || ctx.role === 'viewer') return;
+        setCloudStatus('saving');
+        const newVersion = new Date().toISOString();
+        const row = { state: snapshot, schema_version: SHEETS_SYNC_SCHEMA, updated_at: newVersion };
+        const res = cloudVersionRef.current
+          ? await supabase
+              .from('user_app_state')
+              .update(row)
+              .eq('owner_id', ctx.ownerId)
+              .eq('updated_at', cloudVersionRef.current)
+              .select('updated_at')
+          : await supabase
+              .from('user_app_state')
+              .insert({ owner_id: ctx.ownerId, ...row })
+              .select('updated_at');
+        if (res.error) {
+          // 23505: thiết bị khác vừa tạo sổ trước -> coi như xung đột
+          setCloudStatus(
+            res.error.code === '23505' ? 'conflict' : navigator.onLine ? 'error' : 'offline'
+          );
+          return;
+        }
+        if (!res.data || res.data.length === 0) {
+          setCloudStatus('conflict');
+          return;
+        }
+        cloudVersionRef.current = res.data[0].updated_at as string;
+        writeCloudCache(cloudCacheKey(ctx.ownerId, userId), {
+          state: snapshot,
+          baseVersion: cloudVersionRef.current,
+          dirty: snapshot !== cloudSnapshotRef.current,
+        });
+        setCloudStatus('saved');
+        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
+      } while (cloudPendingRef.current);
+    } finally {
+      cloudPushingRef.current = false;
+    }
+  };
+
+  // Tìm sổ được làm việc: sổ của chính mình, hoặc sổ chủ trọ đã cấp quyền tài khoản phụ
+  const resolveCloudOwner = async (userId: string) => {
+    const own = await supabase
+      .from('user_app_state')
+      .select('state, updated_at')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    if (own.error || own.data) {
+      return { ctx: { ownerId: userId, role: 'owner', propertyIds: null } as CloudOwnerContext, res: own };
+    }
+    const { data: links } = await supabase
+      .from('property_staff')
+      .select('owner_id, property_id, role')
+      .neq('owner_id', userId);
+    if (!links || links.length === 0) {
+      return { ctx: { ownerId: userId, role: 'owner', propertyIds: null } as CloudOwnerContext, res: own };
+    }
+    const ownerId = links[0].owner_id as string;
+    const mine = links.filter((l) => l.owner_id === ownerId);
+    const ctx: CloudOwnerContext = {
+      ownerId,
+      role: mine.some((l) => l.role === 'staff') ? 'staff' : 'viewer',
+      propertyIds: mine.map((l) => l.property_id as string),
+    };
+    const res = await supabase
+      .from('user_app_state')
+      .select('state, updated_at')
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    return { ctx, res };
+  };
+
+  // Tải sổ đám mây khi đăng nhập / quay lại từ Bản Demo
+  const loadCloudStateForUser = async (userId: string, userEmail: string) => {
+    cloudReadyRef.current = false;
+    setCloudLoading(true);
+    setCloudStatus('loading');
+    try {
+      const { ctx, res } = await resolveCloudOwner(userId);
+      if (ctx.role !== 'owner' && !res.error && !res.data) {
+        showToast('Chủ trọ chưa có sổ đám mây hoặc chưa cấp quyền cho tài khoản này.');
+        setCloudStatus('error');
+        setIsDemoMode(true);
         return;
       }
+      const key = cloudCacheKey(ctx.ownerId, userId);
+      const local = readCloudCache(key);
+      const decision = decideStartState({
+        local,
+        remote: res.data
+          ? { state: res.data.state, updatedAt: res.data.updated_at as string }
+          : null,
+        remoteFailed: !!res.error,
+      });
+      setCloudCtx(ctx);
+      cloudCtxRef.current = ctx;
 
-      if (data && data.state && typeof data.state === 'object') {
-        const st = data.state as Record<string, unknown>;
-        if (Array.isArray(st.properties)) setProperties(st.properties as Property[]);
-        if (Array.isArray(st.rooms)) setRooms(st.rooms as Room[]);
-        if (Array.isArray(st.tenants)) setTenants(st.tenants as Tenant[]);
-        if (Array.isArray(st.vehicles)) setVehicles(st.vehicles as Vehicle[]);
-        if (Array.isArray(st.contracts)) setContracts(st.contracts as Contract[]);
-        if (Array.isArray(st.invoices)) setInvoices(st.invoices as Invoice[]);
-        if (Array.isArray(st.transactions)) setTransactions(st.transactions as CashTransaction[]);
-        setCloudLastSavedAt(
-          data.updated_at ? new Date(data.updated_at).toLocaleTimeString('vi-VN') : 'Vừa xong'
-        );
-        showToast(`Đã tải sổ quản lý đám mây của ${userEmail}`);
-      } else {
-        // Tài khoản mới chưa có dữ liệu trên mây -> lưu dữ liệu khởi tạo lên mây
-        await supabase.from('user_app_state').upsert({
-          owner_id: userId,
-          schema_version: SHEETS_SYNC_SCHEMA,
-          state: {
-            properties,
-            rooms,
-            tenants: allTenants,
-            vehicles: allVehicles,
-            contracts: allContracts,
-            invoices: allInvoices,
-            transactions: allTransactions,
-          },
-          updated_at: new Date().toISOString(),
-        });
-        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
-        showToast(`Đã khởi tạo sổ đám mây riêng cho ${userEmail}!`);
+      if (decision.use === 'offline-none') {
+        showToast('Không kết nối được máy chủ và máy này chưa có bản sao. Đang dùng Bản Demo.');
+        setCloudStatus('offline');
+        setIsDemoMode(true);
+        return;
       }
+      if (decision.use === 'offline-local') {
+        cloudVersionRef.current = local?.baseVersion ?? null;
+        cloudSnapshotRef.current = decision.state;
+        applySnapshot(decision.state);
+        setCloudStatus('offline');
+        showToast('Mất kết nối: đang dùng bản sao trên máy, sẽ tự đồng bộ khi có mạng.');
+      } else if (decision.use === 'remote') {
+        if (decision.backupLocal && local) {
+          writeCloudCache(`${key}-backup-${Date.now()}`, local);
+          showToast('Sổ đã được sửa trên thiết bị khác. Đã tải bản mới nhất, bản trên máy được sao lưu.');
+        } else {
+          showToast(`Đã tải sổ đám mây của ${userEmail}`);
+        }
+        cloudVersionRef.current = res.data!.updated_at as string;
+        cloudSnapshotRef.current = decision.state;
+        writeCloudCache(key, { state: decision.state, baseVersion: cloudVersionRef.current, dirty: false });
+        applySnapshot(decision.state);
+        setCloudStatus('saved');
+        setCloudLastSavedAt(new Date(cloudVersionRef.current).toLocaleTimeString('vi-VN'));
+      } else {
+        const state = decision.use === 'local' ? decision.state : emptySnapshot(userEmail);
+        cloudVersionRef.current = decision.use === 'local' ? local?.baseVersion ?? null : null;
+        cloudSnapshotRef.current = state;
+        applySnapshot(state);
+        showToast(
+          decision.use === 'local'
+            ? 'Đang đẩy các thay đổi chưa lưu trên máy này lên mây...'
+            : `Đã tạo sổ đám mây trống cho ${userEmail}. Gửi file Excel hoặc ảnh sổ để được nhập hộ.`
+        );
+        cloudReadyRef.current = true;
+        await pushCloudNow(userId);
+      }
+      cloudReadyRef.current = true;
 
-      // Tải danh sách nhân viên/quản lý được phân quyền
-      const { data: staffs } = await supabase
-        .from('property_staff')
-        .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
-        .eq('owner_id', userId)
-        .order('created_at', { ascending: false });
-      if (staffs) {
-        setStaffList(staffs);
+      if (ctx.role === 'owner') {
+        const { data: staffs } = await supabase
+          .from('property_staff')
+          .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+          .eq('owner_id', userId)
+          .order('created_at', { ascending: false });
+        if (staffs) setStaffList(staffs);
       }
     } finally {
       setCloudLoading(false);
@@ -454,6 +589,7 @@ export function App() {
         setTransactions(SEED_TRANSACTIONS);
       }
     }
+    cloudReadyRef.current = false;
     setIsDemoMode(true);
     showToast('Đang ở Chế độ Bản Demo (12 phòng mẫu để giới thiệu khách hàng)');
   };
@@ -462,6 +598,8 @@ export function App() {
     await supabase.auth.signOut();
     setAuthUser(null);
     setStaffList([]);
+    setCloudCtx(null);
+    setCloudStatus('idle');
     handleSwitchToDemoMode();
     showToast('Đã đăng xuất và quay về Bản Demo.');
   };
@@ -511,9 +649,9 @@ export function App() {
     }
   };
 
-  // Lưu tự động: Nếu ở Bản Demo -> lưu LocalStorage; Nếu ở Tài khoản thật -> đồng bộ Supabase Cloud
+  // Lưu tự động: Bản Demo -> localStorage; Tài khoản thật -> bản sao trên máy ngay, đẩy lên mây sau 800ms
   useEffect(() => {
-    const snapshot = {
+    const snapshot: AppSnapshot = {
       properties,
       rooms,
       tenants: allTenants,
@@ -527,21 +665,23 @@ export function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
       return;
     }
+    if (!cloudReadyRef.current || !cloudCtx) return;
 
-    if (cloudLoading) return;
+    const prev = cloudSnapshotRef.current;
+    const unchanged =
+      prev &&
+      (Object.keys(snapshot) as (keyof AppSnapshot)[]).every((k) => prev[k] === snapshot[k]);
+    if (unchanged) return;
 
-    const timer = setTimeout(async () => {
-      const { error } = await supabase.from('user_app_state').upsert({
-        owner_id: authUser.id,
-        schema_version: SHEETS_SYNC_SCHEMA,
-        state: snapshot,
-        updated_at: new Date().toISOString(),
-      });
-      if (!error) {
-        setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
-      }
-    }, 600);
-
+    cloudSnapshotRef.current = snapshot;
+    const readOnly = cloudCtx.role === 'viewer';
+    writeCloudCache(cloudCacheKey(cloudCtx.ownerId, authUser.id), {
+      state: snapshot,
+      baseVersion: cloudVersionRef.current,
+      dirty: !readOnly,
+    });
+    if (readOnly) return;
+    const timer = setTimeout(() => pushCloudNow(authUser.id), 800);
     return () => clearTimeout(timer);
   }, [
     properties,
@@ -553,8 +693,22 @@ export function App() {
     allTransactions,
     isDemoMode,
     authUser,
-    cloudLoading,
+    cloudCtx,
   ]);
+
+  // Mất mạng / lỗi máy chủ: thử lại khi có mạng và mỗi 30 giây
+  useEffect(() => {
+    if (isDemoMode || !authUser || (cloudStatus !== 'error' && cloudStatus !== 'offline')) return;
+    const retry = () => {
+      if (cloudReadyRef.current) pushCloudNow(authUser.id);
+    };
+    window.addEventListener('online', retry);
+    const iv = setInterval(retry, 30000);
+    return () => {
+      window.removeEventListener('online', retry);
+      clearInterval(iv);
+    };
+  }, [isDemoMode, authUser, cloudStatus]);
 
   // Hỗ trợ phím Escape đóng hộp thoại đang mở
   useEffect(() => {
@@ -573,9 +727,27 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Tài khoản phụ: không xem báo cáo/lợi nhuận/quỹ, chỉ thấy cơ sở được cấp quyền
+  const canViewReports = isDemoMode || !cloudCtx || cloudCtx.role === 'owner';
+  const visibleProperties = useMemo(
+    () =>
+      !isDemoMode && cloudCtx?.propertyIds
+        ? properties.filter((p) => cloudCtx.propertyIds!.includes(p.id))
+        : properties,
+    [properties, isDemoMode, cloudCtx]
+  );
+  const renderNoPermission = () => (
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-600">
+      Tài khoản phụ không xem được mục này. Chủ trọ có thể xem báo cáo, lợi nhuận và quỹ.
+    </div>
+  );
+
   const currentProperty = useMemo(
-    () => properties.find((p) => p.id === selectedPropertyId) || properties[0],
-    [properties, selectedPropertyId]
+    () =>
+      visibleProperties.find((p) => p.id === selectedPropertyId) ||
+      visibleProperties[0] ||
+      properties[0],
+    [properties, visibleProperties, selectedPropertyId]
   );
 
   // Lọc toàn bộ dữ liệu theo cơ sở nhà trọ đang chọn trên thanh đầu trang (Bug 1)
@@ -1625,6 +1797,7 @@ export function App() {
           </div>
 
           {/* Card 3: Lợi nhuận tháng này */}
+          {canViewReports && (
           <div
             onClick={() => setActiveTab('reports')}
             className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:border-blue-300 cursor-pointer transition flex flex-col justify-between space-y-3"
@@ -1671,6 +1844,8 @@ export function App() {
               <div className="h-full rounded-full bg-indigo-600 w-4/5" />
             </div>
           </div>
+
+          )}
 
           {/* Card 4: Tổng công nợ cần thu */}
           <div
@@ -4835,6 +5010,7 @@ export function App() {
           </div>
 
           {/* Phân quyền tài khoản phụ */}
+          {canViewReports && (
           <div className="space-y-3 pt-2 border-t border-slate-100 text-xs">
             <div className="font-bold text-slate-800">
               Cấp quyền Tài khoản phụ cho Quản lý / Người nhà tại cơ sở: {currentProperty.name}
@@ -4895,6 +5071,7 @@ export function App() {
               </p>
             )}
           </div>
+          )}
         </div>
       </div>
     );
@@ -5218,7 +5395,29 @@ export function App() {
               <span>
                 <strong>Sổ Quản lý Đám mây (Supabase RLS):</strong> Đang đăng nhập tài khoản{' '}
                 <strong>{authUser?.email}</strong>
-                {cloudLastSavedAt ? ` · Đã lưu tự động lúc ${cloudLastSavedAt}` : ''}
+                {cloudCtx && cloudCtx.role !== 'owner'
+                  ? cloudCtx.role === 'staff'
+                    ? ' · Tài khoản phụ (ghi số, thu tiền)'
+                    : ' · Chỉ xem'
+                  : ''}
+                {' · '}
+                <span data-testid="cloud-status" className={cloudStatus === 'error' || cloudStatus === 'conflict' ? 'text-rose-700 font-bold' : cloudStatus === 'offline' ? 'text-amber-700 font-bold' : ''}>
+                  {cloudStatus === 'loading' && 'Đang tải sổ...'}
+                  {cloudStatus === 'saving' && 'Đang lưu...'}
+                  {cloudStatus === 'saved' && `Đã lưu lên mây lúc ${cloudLastSavedAt ?? ''}`}
+                  {cloudStatus === 'offline' && 'Mất mạng: thay đổi đang giữ trên máy, sẽ tự đồng bộ'}
+                  {cloudStatus === 'error' && 'Lưu lên mây lỗi, đang thử lại (dữ liệu vẫn giữ trên máy)'}
+                  {cloudStatus === 'conflict' && 'Sổ vừa được sửa ở thiết bị khác'}
+                </span>
+                {cloudStatus === 'conflict' && authUser && (
+                  <button
+                    type="button"
+                    onClick={() => loadCloudStateForUser(authUser.id, authUser.email)}
+                    className="ml-2 px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[11px]"
+                  >
+                    Tải bản mới nhất
+                  </button>
+                )}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -5246,11 +5445,11 @@ export function App() {
             {/* Property Selector */}
             <select
               aria-label="Chọn cơ sở nhà trọ"
-              value={selectedPropertyId}
+              value={currentProperty.id}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
               className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
             >
-              {properties.map((p) => (
+              {visibleProperties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -5446,8 +5645,9 @@ export function App() {
             {activeTab === 'tenants' && renderTenants()}
             {activeTab === 'contracts' && renderContracts()}
             {activeTab === 'invoices' && renderInvoices()}
-            {activeTab.startsWith('finance-') && renderFinance()}
-            {activeTab === 'reports' && renderReports()}
+            {activeTab.startsWith('finance-') &&
+              (activeTab === 'finance-funds' && !canViewReports ? renderNoPermission() : renderFinance())}
+            {activeTab === 'reports' && (canViewReports ? renderReports() : renderNoPermission())}
             {activeTab === 'settings' && renderSettings()}
           </div>
 

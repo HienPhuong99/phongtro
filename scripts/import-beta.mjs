@@ -282,7 +282,7 @@ function loadEnv() {
   return env;
 }
 
-async function pushToSupabase(snapshot, { email, replace }) {
+export async function pushToSupabase(snapshot, { email, replace }) {
   const env = loadEnv();
   const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const key = env.SUPABASE_SERVICE_ROLE_KEY;

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as XLSX from 'xlsx';
-import { TEMPLATE, buildSnapshot, mergeIntoState } from './import-beta.mjs';
+import http from 'node:http';
+import { TEMPLATE, buildSnapshot, mergeIntoState, pushToSupabase } from './import-beta.mjs';
 
 const workbook = (patch = {}) => {
   const wb = XLSX.utils.book_new();
@@ -74,4 +75,45 @@ test('mergeIntoState: thay sổ trống lúc đăng ký, chặn ghi đè cơ s�
   const again = mergeIntoState(merged, snapshot, { replace: true });
   assert.equal(again.rooms.length, 2);
   assert.equal(mergeIntoState(null, snapshot), snapshot);
+});
+
+test('import-beta: đẩy lên Supabase tìm đúng tài khoản, gộp với sổ cũ, upsert theo owner_id', async () => {
+  const calls = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      calls.push({ method: req.method, url: req.url, auth: req.headers.authorization, prefer: req.headers.prefer, body });
+      res.setHeader('Content-Type', 'application/json');
+      if (req.url.startsWith('/auth/v1/admin/users')) {
+        return res.end(JSON.stringify({ users: [{ id: 'u-other', email: 'x@tro.vn' }, { id: 'u-1', email: 'Chu@Tro.vn' }] }));
+      }
+      if (req.method === 'GET') {
+        return res.end(JSON.stringify([{ state: { properties: [{ id: 'old', name: 'Nhà cũ' }], rooms: [], invoices: [], transactions: [] } }]));
+      }
+      res.statusCode = 201;
+      res.end();
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  process.env.SUPABASE_URL = `http://127.0.0.1:${server.address().port}`;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+  const { snapshot } = buildSnapshot(workbook(), { propertyId: 'prop-1', today: '21/10/2026' });
+  try {
+    await pushToSupabase(snapshot, { email: 'chu@tro.vn', replace: false });
+    await assert.rejects(pushToSupabase(snapshot, { email: 'khong-co@tro.vn' }), /Chưa có tài khoản/);
+  } finally {
+    server.close();
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  }
+  assert.equal(calls[0].auth, 'Bearer test-key');
+  assert.equal(calls[1].url, '/rest/v1/user_app_state?owner_id=eq.u-1&select=state');
+  const post = calls[2];
+  assert.equal(post.method, 'POST');
+  assert.match(post.prefer, /resolution=merge-duplicates/);
+  const row = JSON.parse(post.body);
+  assert.equal(row.owner_id, 'u-1');
+  assert.deepEqual(row.state.properties.map((p) => p.name), ['Nhà cũ', 'Nhà trọ An Phú']);
+  assert.equal(row.state.rooms.length, snapshot.rooms.length);
 });

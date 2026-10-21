@@ -89,7 +89,7 @@ import {
 import { AuthModal } from './components/AuthModal';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
-import { buildCalendarEvents, buildMonthlyChart } from './utils/insights';
+import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './utils/insights';
 import { downloadSnapshotXlsx } from './utils/exportData';
 import { supabase } from './utils/supabase';
 import {
@@ -1840,6 +1840,47 @@ export function App() {
                   </div>
                 );
               })}
+          </div>
+        )}
+
+        {/* P1 #5: Tổng quan tất cả khu (chỉ hiện khi có từ 2 khu) */}
+        {visibleProperties.length > 1 && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs text-xs" data-testid="all-properties">
+            <div className="font-bold text-slate-800 mb-2">Tất cả khu · kỳ {periodLabel}</div>
+            <div className="overflow-x-auto">
+              <table className="w-full tabular-nums">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-100">
+                    <th className="py-1.5 pr-3 font-medium">Khu</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Đang thuê</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Phòng trống</th>
+                    {canViewReports && <th className="py-1.5 px-2 font-medium text-right">Đã thu kỳ này</th>}
+                    <th className="py-1.5 pl-2 font-medium text-right">Còn nợ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {summarizeProperties({
+                    properties: visibleProperties,
+                    rooms,
+                    invoices: allInvoices,
+                    transactions: allTransactions,
+                    curMonth,
+                  }).map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedPropertyId(row.id)}
+                      className={`cursor-pointer hover:bg-slate-50 ${row.id === currentProperty.id ? 'font-bold text-blue-700' : ''}`}
+                    >
+                      <td className="py-1.5 pr-3">{row.name}</td>
+                      <td className="py-1.5 px-2 text-right">{row.occupied}/{row.rooms}</td>
+                      <td className={`py-1.5 px-2 text-right ${row.vacant > 0 ? 'text-emerald-600' : ''}`}>{row.vacant}</td>
+                      {canViewReports && <td className="py-1.5 px-2 text-right">{formatVND(row.collected)}</td>}
+                      <td className={`py-1.5 pl-2 text-right ${row.debt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatVND(row.debt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

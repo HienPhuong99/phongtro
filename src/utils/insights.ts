@@ -1,4 +1,4 @@
-import type { CalendarEventItem, CashTransaction, Contract, Invoice, Room } from '../types.ts';
+import type { CalendarEventItem, CashTransaction, Contract, Invoice, Property, Room } from '../types.ts';
 import { daysBetweenVN, parseDateVN, shiftMonth } from './format.ts';
 
 const monthLabel = (ym: string) => `T${Number(ym.slice(5))}/${ym.slice(0, 4)}`;
@@ -102,4 +102,32 @@ export function buildCalendarEvents(params: {
 
   const key = (e: CalendarEventItem) => parseDateVN(e.date)?.getTime() ?? 0;
   return events.sort((a, b) => key(a) - key(b));
+}
+
+/** P1 #5: một dòng tóm tắt cho mỗi khu (đã thu kỳ này / còn nợ tới kỳ hiện tại / phòng trống). */
+export function summarizeProperties(params: {
+  properties: Property[];
+  rooms: Room[];
+  invoices: Invoice[];
+  transactions: CashTransaction[];
+  curMonth: string;
+}) {
+  const { properties, rooms, invoices, transactions, curMonth } = params;
+  return properties.map((p) => {
+    const pr = rooms.filter((r) => r.propertyId === p.id);
+    const occupied = pr.filter((r) => r.status === 'occupied').length;
+    return {
+      id: p.id,
+      name: p.name,
+      rooms: pr.length,
+      occupied,
+      vacant: pr.filter((r) => r.status === 'vacant').length,
+      collected: transactions
+        .filter((t) => t.propertyId === p.id && t.type === 'income' && (t.isoDate || '').startsWith(curMonth))
+        .reduce((s, t) => s + t.amount, 0),
+      debt: invoices
+        .filter((i) => i.propertyId === p.id && i.status !== 'draft' && i.billingMonth <= curMonth)
+        .reduce((s, i) => s + Math.max(0, i.totalAmount - i.paidAmount), 0),
+    };
+  });
 }

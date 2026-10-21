@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCalendarEvents, buildMonthlyChart } from './insights.ts';
+import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './insights.ts';
 import type { CashTransaction, Contract, Invoice, Room } from '../types.ts';
 
 test('buildMonthlyChart: 5 kỳ gần nhất, qua năm, kỳ không có giao dịch = 0', () => {
@@ -37,4 +37,29 @@ test('buildCalendarEvents: ghi số, hạn thu gom theo ngày, hợp đồng s�
   assert.match(ev[1].subtitle, /2\.000\.000/);
   assert.equal(ev[3].title, 'Hết hạn hợp đồng HD-1 (Phòng P101)');
   assert.match(ev[3].subtitle, /Còn 35 ngày/);
+});
+
+test('summarizeProperties: mỗi khu đếm phòng, đã thu trong kỳ, còn nợ (bỏ nháp)', () => {
+  const rows = summarizeProperties({
+    properties: [{ id: 'a', name: 'Khu A' }, { id: 'b', name: 'Khu B' }] as never,
+    rooms: [
+      { propertyId: 'a', status: 'occupied' },
+      { propertyId: 'a', status: 'vacant' },
+      { propertyId: 'b', status: 'maintenance' },
+    ] as Room[],
+    invoices: [
+      { propertyId: 'a', status: 'unpaid', billingMonth: '2026-10', totalAmount: 3000000, paidAmount: 500000 },
+      { propertyId: 'a', status: 'unpaid', billingMonth: '2026-11', totalAmount: 5, paidAmount: 0 },
+      { propertyId: 'a', status: 'draft', totalAmount: 9, paidAmount: 0 },
+      { propertyId: 'b', status: 'paid', totalAmount: 1, paidAmount: 1 },
+    ] as Invoice[],
+    transactions: [
+      { propertyId: 'a', type: 'income', isoDate: '2026-10-03', amount: 500000 },
+      { propertyId: 'a', type: 'income', isoDate: '2026-09-30', amount: 7 },
+      { propertyId: 'a', type: 'expense', isoDate: '2026-10-03', amount: 8 },
+    ] as CashTransaction[],
+    curMonth: '2026-10',
+  });
+  assert.deepEqual(rows[0], { id: 'a', name: 'Khu A', rooms: 2, occupied: 1, vacant: 1, collected: 500000, debt: 2500000 });
+  assert.deepEqual(rows[1], { id: 'b', name: 'Khu B', rooms: 1, occupied: 0, vacant: 0, collected: 0, debt: 0 });
 });

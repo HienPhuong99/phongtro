@@ -61,7 +61,16 @@ import {
   SEED_MONTHLY_CHART,
   SEED_CALENDAR_EVENTS,
 } from './data/seedData';
-import { formatVND, formatNumberInput, removeAccents, vnToIsoDate } from './utils/format';
+import {
+  formatVND,
+  formatNumberInput,
+  removeAccents,
+  vnToIsoDate,
+  parseDateVN,
+  setDemoClock,
+  todayVN,
+  shiftMonth,
+} from './utils/format';
 import {
   computeDaysRemaining,
   extractBillingMonth,
@@ -273,7 +282,9 @@ export function App() {
   const [tenantSubTab, setTenantSubTab] = useState<'tenants' | 'vehicles'>('tenants');
   const [tenantSearch, setTenantSearch] = useState<string>('');
   const [contractFilter, setContractFilter] = useState<string>('active');
-  const [invoiceMonth, setInvoiceMonth] = useState<string>('2026-11');
+  const [invoiceMonth, setInvoiceMonth] = useState<string>(() =>
+    shiftMonth(extractBillingMonth(todayVN()), 1)
+  );
   const [invoiceSubTab, setInvoiceSubTab] = useState<'by_room' | 'all'>('by_room');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [hoveredChartIdx, setHoveredChartIdx] = useState<number | null>(null);
@@ -296,6 +307,16 @@ export function App() {
   // Supabase Auth & Cloud / Demo Mode state
   const [authUser, setAuthUser] = useState<{ id: string; email: string } | null>(null);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+
+  // "Hôm nay" và các kỳ: Demo cố định 11/10/2026, tài khoản Cloud theo ngày thật
+  setDemoClock(isDemoMode);
+  const today = todayVN();
+  const curMonth = extractBillingMonth(today);
+  const nextMonth = shiftMonth(curMonth, 1);
+  const periodLabel = today.slice(3); // 'MM/YYYY'
+  useEffect(() => {
+    setInvoiceMonth(nextMonth);
+  }, [nextMonth]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [cloudLoading, setCloudLoading] = useState<boolean>(false);
   const [cloudLastSavedAt, setCloudLastSavedAt] = useState<string | null>(null);
@@ -611,18 +632,18 @@ export function App() {
     [vacantRooms]
   );
 
-  // Thu hôm nay (ngày 11/10/2026)
+  // Thu hôm nay
   const collectedToday = useMemo(
     () =>
       transactions
-        .filter((t) => t.date === '11/10/2026' && t.type === 'income')
+        .filter((t) => t.date === today && t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0),
-    [transactions]
+    [transactions, today]
   );
 
-  // Lợi nhuận tháng này (tháng 10/2026)
+  // Lợi nhuận tháng này
   const currentMonthProfit = useMemo(() => {
-    const octTx = transactions.filter((t) => t.date.endsWith('/10/2026'));
+    const octTx = transactions.filter((t) => t.date.endsWith('/' + periodLabel));
     const inc = octTx
       .filter((t) => t.type === 'income')
       .reduce((s, t) => s + t.amount, 0);
@@ -630,15 +651,15 @@ export function App() {
       .filter((t) => t.type === 'expense')
       .reduce((s, t) => s + t.amount, 0);
     return inc - exp;
-  }, [transactions]);
+  }, [transactions, periodLabel]);
 
-  // Hóa đơn quá hạn (kỳ 2026-09 chưa thu đủ)
+  // Hóa đơn quá hạn (các kỳ trước kỳ hiện tại chưa thu đủ)
   const overdueInvoices = useMemo(
     () =>
       invoices.filter(
-        (i) => i.billingMonth === '2026-09' && i.totalAmount - i.paidAmount > 0
+        (i) => i.billingMonth < curMonth && i.totalAmount - i.paidAmount > 0
       ),
-    [invoices]
+    [invoices, curMonth]
   );
   const overdueTotalAmount = useMemo(
     () =>
@@ -649,16 +670,16 @@ export function App() {
     [overdueInvoices]
   );
 
-  // Hóa đơn tới hạn trong 5 ngày (kỳ 2026-10 đã lập hóa đơn, chưa thu đủ)
+  // Hóa đơn tới hạn (kỳ hiện tại đã lập hóa đơn, chưa thu đủ)
   const dueSoonInvoices = useMemo(
     () =>
       invoices.filter(
         (i) =>
-          i.billingMonth === '2026-10' &&
+          i.billingMonth === curMonth &&
           i.status !== 'draft' &&
           i.totalAmount - i.paidAmount > 0
       ),
-    [invoices]
+    [invoices, curMonth]
   );
   const dueSoonTotalAmount = useMemo(
     () =>
@@ -675,13 +696,13 @@ export function App() {
     [invoices]
   );
 
-  // Hóa đơn chưa gửi Zalo (trong kỳ 2026-10)
+  // Hóa đơn chưa gửi Zalo (trong kỳ hiện tại)
   const unsentInvoices = useMemo(
     () =>
       invoices.filter(
-        (i) => i.billingMonth === '2026-10' && i.status !== 'draft' && !i.sentZalo
+        (i) => i.billingMonth === curMonth && i.status !== 'draft' && !i.sentZalo
       ),
-    [invoices]
+    [invoices, curMonth]
   );
 
   // Khoản cọc chờ hoàn trả lại khách (P202 - Huỳnh Thị Hà - 909.334 đ)
@@ -891,7 +912,7 @@ export function App() {
           id: `tx-dep-${Date.now()}`,
           propertyId: currentProperty.id,
           date: payload.signDate,
-          isoDate: vnToIsoDate(payload.signDate) || '2026-10-11',
+          isoDate: vnToIsoDate(payload.signDate) || vnToIsoDate(today),
           type: 'income',
           category: 'Thu tiền cọc',
           roomCode: payload.roomCode,
@@ -952,7 +973,7 @@ export function App() {
   }): FifoAllocatedItem[] => {
     const roomInvoices = invoices.filter((i) => i.roomCode === payload.roomCode);
     const { allocatedItems, updatedMap } = allocatePaymentFIFO(roomInvoices, payload.amount);
-    const txIsoDate = vnToIsoDate(payload.paymentDate) || '2026-10-11';
+    const txIsoDate = vnToIsoDate(payload.paymentDate) || vnToIsoDate(today);
 
     const newTxList: CashTransaction[] = allocatedItems.map((item) => ({
       id: `tx-${item.invoiceCode}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1006,8 +1027,8 @@ export function App() {
         {
           id: `tx-refund-${Date.now()}`,
           propertyId: currentProperty.id,
-          date: '11/10/2026',
-          isoDate: '2026-10-11',
+          date: today,
+          isoDate: vnToIsoDate(today),
           type: 'expense',
           category: 'Hoàn tiền cọc',
           roomCode: contract.roomCode,
@@ -1144,7 +1165,7 @@ export function App() {
       );
     }
 
-    // Đồng bộ Hóa đơn chưa thu / nháp kỳ 2026-10 và 2026-11 nếu được chọn
+    // Đồng bộ Hóa đơn chưa thu / nháp từ kỳ hiện tại trở đi nếu được chọn
     if (payload.syncUnpaidInvoices) {
       setInvoices((prev) =>
         prev.map((inv) => {
@@ -1153,7 +1174,7 @@ export function App() {
           if (
             !up ||
             inv.status === 'paid' ||
-            (inv.billingMonth !== '2026-10' && inv.billingMonth !== '2026-11')
+            inv.billingMonth < curMonth
           ) {
             return inv;
           }
@@ -1256,11 +1277,11 @@ export function App() {
   // 1. TỔNG QUAN (DASHBOARD TRỰC QUAN + BIỂU ĐỒ)
   const renderOverview = () => {
     const octoberReceivableTotal = invoices
-      .filter((i) => i.billingMonth === '2026-10' && i.status !== 'draft')
+      .filter((i) => i.billingMonth === curMonth && i.status !== 'draft')
       .reduce((sum, i) => sum + i.totalAmount, 0);
 
     const octoberPaidTotal = invoices
-      .filter((i) => i.billingMonth === '2026-10' && i.status !== 'draft')
+      .filter((i) => i.billingMonth === curMonth && i.status !== 'draft')
       .reduce((sum, i) => sum + i.paidAmount, 0);
 
     const collectionRatePct =
@@ -1270,9 +1291,15 @@ export function App() {
 
     const safeRoomDenom = Math.max(1, propertyRooms.length);
 
-    // Dữ liệu cơ cấu khoản thu kỳ 10/2026 (Tiền phòng, Điện, Nước, Dịch vụ & Xe)
+    const weekday = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'][
+      (parseDateVN(today) ?? new Date()).getDay()
+    ];
+    const hour = new Date().getHours();
+    const greeting = hour < 11 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+
+    // Dữ liệu cơ cấu khoản thu kỳ hiện tại (Tiền phòng, Điện, Nước, Dịch vụ & Xe)
     const octInvoicesActive = invoices.filter(
-      (i) => i.billingMonth === '2026-10' && i.status !== 'draft'
+      (i) => i.billingMonth === curMonth && i.status !== 'draft'
     );
     const octRentSum = octInvoicesActive.reduce((s, i) => s + i.rentAmount, 0);
     const octElecSum = octInvoicesActive.reduce((s, i) => s + i.elecAmount, 0);
@@ -1366,7 +1393,7 @@ export function App() {
         subtitle: 'Phòng đã ghi chỉ số sẽ tính ra tiền ngay.',
         actionLabel: 'Lập hóa đơn',
         onClick: () => {
-          setInvoiceMonth('2026-10');
+          setInvoiceMonth(curMonth);
           setActiveTab('invoices');
         },
       },
@@ -1379,7 +1406,7 @@ export function App() {
         subtitle: 'Sao chép tin nhắn kèm mã QR rồi gửi qua Zalo.',
         actionLabel: 'Gửi',
         onClick: () => {
-          setInvoiceMonth('2026-11');
+          setInvoiceMonth(nextMonth);
           setActiveTab('invoices');
         },
       },
@@ -1409,7 +1436,7 @@ export function App() {
         subtitle: 'Nhắc trước để khách kịp chuẩn bị, đỡ phải đòi khi đã quá hạn.',
         actionLabel: 'Thu nợ',
         onClick: () => {
-          setInvoiceMonth('2026-10');
+          setInvoiceMonth(curMonth);
           setActiveTab('invoices');
         },
       },
@@ -1457,7 +1484,7 @@ export function App() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chào buổi tối · Chủ nhật, ngày 11/10/2026 · Theo dõi dòng tiền, công nợ FIFO và hiệu suất phòng trực quan
+              {greeting} · {weekday}, ngày {today} · Theo dõi dòng tiền, công nợ FIFO và hiệu suất phòng trực quan
             </p>
           </div>
 
@@ -1610,7 +1637,7 @@ export function App() {
                 <span className="font-semibold text-slate-700">Lợi nhuận tháng này</span>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
-                Kỳ 10/2026
+                Kỳ {periodLabel}
               </span>
             </div>
             <div className="flex items-end justify-between">
@@ -1893,7 +1920,7 @@ export function App() {
             <div className="pt-4 mt-2 border-t border-slate-100 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-800">
-                  Cơ cấu khoản thu hóa đơn kỳ 10/2026
+                  Cơ cấu khoản thu hóa đơn kỳ {periodLabel}
                 </span>
                 <span className="text-slate-500 font-semibold tabular-nums">
                   Tổng lập HĐ: {formatVND(octoberReceivableTotal)}
@@ -2170,7 +2197,7 @@ export function App() {
 
               <div className="space-y-2.5 text-xs tabular-nums">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Phải thu kỳ 10/2026</span>
+                  <span className="text-slate-500">Phải thu kỳ {periodLabel}</span>
                   <span className="font-bold text-slate-900">
                     {formatVND(octoberReceivableTotal)}
                   </span>
@@ -2521,7 +2548,7 @@ export function App() {
                               setMeterInitialRoom(room.code);
                               setIsMeterModalOpen(true);
                             } else {
-                              setInvoiceMonth('2026-11');
+                              setInvoiceMonth(nextMonth);
                               setActiveTab('invoices');
                             }
                           }}
@@ -3228,9 +3255,9 @@ export function App() {
 
     const availableMonths = Array.from(
       new Set([
-        '2026-09',
-        '2026-10',
-        '2026-11',
+        shiftMonth(curMonth, -1),
+        curMonth,
+        nextMonth,
         ...invoices.map((i) => i.billingMonth),
         invoiceMonth,
       ])
@@ -3882,8 +3909,8 @@ export function App() {
                     {
                       id: `tx-manual-${Date.now()}`,
                       propertyId: currentProperty.id,
-                      date: '11/10/2026',
-                      isoDate: '2026-10-11',
+                      date: today,
+                      isoDate: vnToIsoDate(today),
                       type: 'expense',
                       category: 'Bảo trì/Sửa chữa',
                       description: desc,
@@ -5478,6 +5505,7 @@ export function App() {
 
       {/* MODALS */}
       <CreateContractModal
+        key={`contract-${today}`}
         isOpen={isContractModalOpen}
         onClose={() => setIsContractModalOpen(false)}
         property={currentProperty}
@@ -5513,6 +5541,7 @@ export function App() {
       />
 
       <CollectPaymentModal
+        key={`collect-${today}`}
         isOpen={!!collectModalInvoice}
         onClose={() => setCollectModalInvoice(null)}
         targetInvoice={collectModalInvoice}

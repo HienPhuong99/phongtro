@@ -5,6 +5,10 @@ import {
   vnToIsoDate,
   isoToVnDate,
   daysBetweenVN,
+  setDemoClock,
+  todayVN,
+  shiftMonth,
+  formatDateVN,
 } from './format.ts';
 import {
   calculateFirstPeriodProRata,
@@ -289,3 +293,15 @@ test('calculateDepositRefund: quyết toán hoàn cọc, khấu trừ hư hỏng
   assert.equal(over.extraDue, 650000);
 });
 
+
+test("todayVN & shiftMonth: Demo cố định 11/10/2026, Cloud theo ngày thật, kỳ qua năm", () => {
+  setDemoClock(true);
+  assert.equal(todayVN(), "11/10/2026");
+  assert.equal(extractBillingMonth("không phải ngày"), "2026-10");
+  setDemoClock(false);
+  assert.equal(todayVN(), formatDateVN(new Date()));
+  setDemoClock(true);
+  assert.equal(shiftMonth("2026-12", 1), "2027-01");
+  assert.equal(shiftMonth("2027-01", -1), "2026-12");
+  assert.equal(shiftMonth("2026-10", 0), "2026-10");
+});

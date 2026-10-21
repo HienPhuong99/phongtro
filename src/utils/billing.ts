@@ -1,14 +1,14 @@
 import type { FifoAllocatedItem, Invoice, RoomPriceUpdateItem } from '../types.ts';
-import { APP_TODAY, parseDateVN } from './format.ts';
+import { parseDateVN, todayVN } from './format.ts';
 
 /**
- * Tính số ngày còn lại của hợp đồng tính từ `todayStr` (mặc định APP_TODAY = '11/10/2026').
- * Nếu `endDateStr` không hợp lệ thì trả về 365; nếu đã quá hạn thì trả về 0.
+ * Tính số ngày còn lại của hợp đồng tính từ `todayStr` (mặc định `todayVN()`).
+ * Nếu ngày không hợp lệ thì trả về 365; nếu đã quá hạn thì trả về 0.
  */
-export function computeDaysRemaining(endDateStr: string, todayStr: string = APP_TODAY): number {
+export function computeDaysRemaining(endDateStr: string, todayStr: string = todayVN()): number {
   const end = parseDateVN(endDateStr);
-  const today = parseDateVN(todayStr) || new Date(2026, 9, 11);
-  if (!end) return 365;
+  const today = parseDateVN(todayStr);
+  if (!end || !today) return 365;
   const diffMs = end.getTime() - today.getTime();
   return Math.max(0, Math.round(diffMs / 86400000));
 }
@@ -16,9 +16,9 @@ export function computeDaysRemaining(endDateStr: string, todayStr: string = APP_
 /**
  * Rút trích kỳ hóa đơn 'YYYY-MM' từ chuỗi ngày 'DD/MM/YYYY' hoặc 'YYYY-MM-DD'.
  */
-export function extractBillingMonth(dateStr: string, fallbackMonth = '2026-10'): string {
-  const d = parseDateVN(dateStr);
-  if (!d) return fallbackMonth;
+export function extractBillingMonth(dateStr: string, fallbackMonth?: string): string {
+  const d = parseDateVN(dateStr) ?? (fallbackMonth ? null : parseDateVN(todayVN()));
+  if (!d) return fallbackMonth ?? '';
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   return `${y}-${m}`;

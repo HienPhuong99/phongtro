@@ -33,6 +33,7 @@ import {
   parseDateVN,
   vnToIsoDate,
   isoToVnDate,
+  todayVN,
 } from '../utils/format';
 import {
   calculateFirstPeriodProRata,
@@ -93,9 +94,11 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
   const [tenantName, setTenantName] = useState<string>('');
   const [tenantPhone, setTenantPhone] = useState<string>('');
   const [tenantCccd, setTenantCccd] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('11/10/2026');
-  const [endDate, setEndDate] = useState<string>('11/10/2027');
-  const [signDate, setSignDate] = useState<string>('11/10/2026');
+  const [startDate, setStartDate] = useState<string>(todayVN);
+  const [endDate, setEndDate] = useState<string>(() =>
+    todayVN().replace(/\d{4}$/, (y) => String(Number(y) + 1))
+  );
+  const [signDate, setSignDate] = useState<string>(todayVN);
   const [paymentCycle, setPaymentCycle] = useState<string>('Hàng tháng');
   const [billingCycle, setBillingCycle] = useState<'calendar_month' | 'move_in_date'>(
     'calendar_month'
@@ -1433,7 +1436,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   );
 
   const [amount, setAmount] = useState<number>(totalRoomDebt);
-  const [paymentDate, setPaymentDate] = useState<string>('11/10/2026');
+  const [paymentDate, setPaymentDate] = useState<string>(todayVN);
   const [method, setMethod] = useState<'Chuyển khoản' | 'Tiền mặt'>('Chuyển khoản');
   const [note, setNote] = useState<string>('');
   const [billImage, setBillImage] = useState<string>('');
@@ -2490,7 +2493,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
               />
               <span>
                 Cập nhật lại tiền phòng & tổng tiền trên các{' '}
-                <strong>Hóa đơn chưa thu / nháp (kỳ 2026-10 & 2026-11)</strong>
+                <strong>Hóa đơn chưa thu / nháp (từ kỳ hiện tại trở đi)</strong>
               </span>
             </label>
           </div>

@@ -118,6 +118,8 @@ export const DEFAULT_APPS_SCRIPT_URL =
 const PUBLIC_WEB_URL = 'https://hienphuong99.github.io/phongtro/';
 const MOBILE_WEB_URL = `${PUBLIC_WEB_URL}?mode=mobile`;
 // Thanh cuộn ngang trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
+// Tài khoản phụ (người nhà / quản lý) chỉ ghi số điện nước, lập hóa đơn và thu tiền
+const STAFF_TABS: NavTab[] = ['overview', 'calendar', 'rooms', 'tenants', 'invoices', 'finance-cashbook', 'finance-debts'];
 const MOBILE_NAV: { id: NavTab; label: string }[] = [
   { id: 'overview', label: 'Tổng quan' },
   { id: 'calendar', label: 'Lịch' },
@@ -829,7 +831,7 @@ export function App() {
   );
   const renderNoPermission = () => (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-600">
-      Tài khoản phụ không xem được mục này. Chủ trọ có thể xem báo cáo, lợi nhuận và quỹ.
+      Tài khoản phụ chỉ ghi số điện nước, lập hóa đơn và thu tiền. Mục này do chủ trọ quản lý.
     </div>
   );
 
@@ -5881,16 +5883,21 @@ export function App() {
           )}
 
           <div className={isMobilePreview ? 'p-4 flex-1 overflow-y-auto space-y-5' : ''}>
-            {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'calendar' && renderCalendar()}
-            {activeTab === 'rooms' && renderRooms()}
-            {activeTab === 'tenants' && renderTenants()}
-            {activeTab === 'contracts' && renderContracts()}
-            {activeTab === 'invoices' && renderInvoices()}
-            {activeTab.startsWith('finance-') &&
-              (activeTab === 'finance-funds' && !canViewReports ? renderNoPermission() : renderFinance())}
-            {activeTab === 'reports' && (canViewReports ? renderReports() : renderNoPermission())}
-            {activeTab === 'settings' && renderSettings()}
+            {!canViewReports && !STAFF_TABS.includes(activeTab) ? (
+              renderNoPermission()
+            ) : (
+              <>
+                {activeTab === 'overview' && renderOverview()}
+                {activeTab === 'calendar' && renderCalendar()}
+                {activeTab === 'rooms' && renderRooms()}
+                {activeTab === 'tenants' && renderTenants()}
+                {activeTab === 'contracts' && renderContracts()}
+                {activeTab === 'invoices' && renderInvoices()}
+                {activeTab.startsWith('finance-') && renderFinance()}
+                {activeTab === 'reports' && renderReports()}
+                {activeTab === 'settings' && renderSettings()}
+              </>
+            )}
           </div>
 
           {/* Persistent Bottom Navigation Bar inside Mobile Frame */}
@@ -5948,7 +5955,7 @@ export function App() {
       {/* MODALS */}
       <CreateContractModal
         key={`contract-${today}`}
-        isOpen={isContractModalOpen}
+        isOpen={isContractModalOpen && canViewReports}
         onClose={() => setIsContractModalOpen(false)}
         property={currentProperty}
         rooms={propertyRooms}
@@ -6053,7 +6060,7 @@ export function App() {
       />
 
       <ElectricityRestructureModal
-        isOpen={isElecToolOpen}
+        isOpen={isElecToolOpen && canViewReports}
         onClose={() => setIsElecToolOpen(false)}
         property={currentProperty}
         rooms={propertyRooms}
@@ -6087,7 +6094,7 @@ export function App() {
       />
 
       <RoomPricingModal
-        isOpen={isRoomPricingOpen}
+        isOpen={isRoomPricingOpen && canViewReports}
         onClose={() => setIsRoomPricingOpen(false)}
         property={currentProperty}
         rooms={propertyRooms}

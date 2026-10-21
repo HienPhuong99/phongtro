@@ -37,6 +37,8 @@ import {
   LogOut,
   ShieldCheck,
   UserPlus,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   NavTab,
@@ -104,6 +106,7 @@ import {
 } from './utils/cloudSync';
 
 const STORAGE_KEY = 'quanlyphongtro_state_v1';
+const THEME_KEY = 'qlpt-theme';
 const SHEETS_URL_KEY = 'quanlyphongtro_sheets_url';
 const SHEETS_TOKEN_KEY = 'quanlyphongtro_sheets_token';
 // Phải khớp SYNC_SCHEMA trong apps-script/Code.gs
@@ -330,6 +333,24 @@ export function App() {
   // Supabase Auth & Cloud / Demo Mode state
   const [authUser, setAuthUser] = useState<{ id: string; email: string } | null>(null);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+
+  // Giao diện ban ngày / ban đêm, nhớ trên trình duyệt này
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // Trình duyệt chặn lưu trữ: vẫn đổi được trong phiên này
+    }
+  }, [theme]);
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   // "Hôm nay" và các kỳ: Demo cố định 11/10/2026, tài khoản Cloud theo ngày thật
   setDemoClock(isDemoMode);
@@ -4976,6 +4997,35 @@ export function App() {
           </p>
         </div>
 
+        {/* Giao diện ngày / đêm */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              {theme === 'dark' ? <Moon className="w-[18px] h-[18px]" /> : <Sun className="w-[18px] h-[18px]" />}
+            </span>
+            <div>
+              <div id="theme-switch-label" className="text-sm font-bold text-slate-900">Chế độ ban đêm</div>
+              <div className="text-xs text-slate-500">Nền tối, dịu mắt khi dùng buổi tối</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={theme === 'dark'}
+            aria-labelledby="theme-switch-label"
+            onClick={toggleTheme}
+            className={`relative w-[51px] h-[31px] rounded-full shrink-0 transition-colors ${
+              theme === 'dark' ? 'bg-emerald-500' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`absolute top-[2px] w-[27px] h-[27px] rounded-full bg-white shadow-md transition-all ${
+                theme === 'dark' ? 'left-[22px]' : 'left-[2px]'
+              }`}
+            />
+          </button>
+        </div>
+
         {/* Đơn giá & Ngân hàng */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
           <h2 className="text-sm font-bold text-slate-900">
@@ -5357,39 +5407,39 @@ export function App() {
     {
       id: 'overview',
       label: 'Tổng quan',
-      icon: <BarChart3 className="w-4 h-4" />,
+      icon: <BarChart3 className="w-[22px] h-[22px]" />,
       isActive: activeTab === 'overview',
     },
     {
       id: 'rooms',
       label: 'Phòng',
-      icon: <LayoutGrid className="w-4 h-4" />,
+      icon: <LayoutGrid className="w-[22px] h-[22px]" />,
       isActive: activeTab === 'rooms',
     },
     {
       id: 'invoices',
       label: 'Hóa đơn',
-      icon: <Receipt className="w-4 h-4" />,
+      icon: <Receipt className="w-[22px] h-[22px]" />,
       isActive: activeTab === 'invoices',
     },
     {
       id: 'finance-debts',
       label: 'Công nợ',
-      icon: <Wallet className="w-4 h-4" />,
+      icon: <Wallet className="w-[22px] h-[22px]" />,
       isActive: activeTab.startsWith('finance-'),
     },
     {
       id: 'reports',
       label: 'Báo cáo',
-      icon: <TrendingUp className="w-4 h-4" />,
+      icon: <TrendingUp className="w-[22px] h-[22px]" />,
       isActive: activeTab === 'reports',
     },
   ];
 
   return (
-    <div className="min-h-dvh flex bg-[#F8FAFC] text-slate-900">
+    <div className="min-h-dvh flex text-slate-900">
       {/* LEFT SIDEBAR */}
-      <aside className="w-60 bg-white border-r border-slate-200/80 shrink-0 hidden md:flex flex-col justify-between">
+      <aside className="w-60 lg-glass rounded-[28px] m-3 mr-0 shrink-0 hidden md:flex flex-col justify-between sticky top-3 self-start h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="p-4 space-y-6">
           {/* Brand Logo */}
           <div className="flex items-center justify-between px-2">
@@ -5684,7 +5734,7 @@ export function App() {
           </div>
         )}
         {/* TOPBAR */}
-        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+        <header className="lg-glass rounded-[28px] mx-3 mt-3 md:mx-4 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-3 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">
             {/* Property Selector */}
             <select
@@ -5738,6 +5788,16 @@ export function App() {
 
           {/* Topbar Action Buttons (Mobile & Expo Go + Google Sheets) */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Chuyển sang ban ngày' : 'Chuyển sang ban đêm'}
+              title={theme === 'dark' ? 'Ban ngày' : 'Ban đêm'}
+              className="hidden md:inline-flex w-10 h-10 rounded-full items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              data-testid="theme-toggle"
+            >
+              {theme === 'dark' ? <Sun className="w-[18px] h-[18px] text-amber-400" /> : <Moon className="w-[18px] h-[18px]" />}
+            </button>
             <a
               href={DEFAULT_GOOGLE_SHEETS_URL}
               target="_blank"
@@ -5812,7 +5872,7 @@ export function App() {
           className={`w-full mx-auto transition-all ${
             isMobilePreview
               ? 'max-w-[420px] h-[760px] my-3 bg-[#F8FAFC] rounded-[44px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col shrink-0'
-              : 'p-4 lg:p-8 max-w-7xl flex-1'
+              : 'p-4 pb-32 md:pb-8 lg:p-8 max-w-7xl flex-1'
           }`}
         >
           {isMobilePreview && (
@@ -5900,55 +5960,53 @@ export function App() {
             )}
           </div>
 
-          {/* Persistent Bottom Navigation Bar inside Mobile Frame */}
+          {/* Thanh tab nổi trong Khung Mobile */}
           {isMobilePreview && (
-            <div className="bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-2 pt-2 pb-3 sticky bottom-0 z-20">
-              <div className="grid grid-cols-5 gap-1">
-                {mobileBottomNavItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setActiveTab(item.id)}
-                    className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
-                      item.isActive
-                        ? 'text-blue-600 font-extrabold bg-blue-50/70'
-                        : 'text-slate-500 hover:text-slate-800 font-medium'
-                    }`}
-                  >
-                    {item.icon}
-                    <span className="text-[10px] mt-1">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="w-28 h-1 rounded-full bg-slate-300 mx-auto mt-2" />
-            </div>
-          )}
-        </main>
-
-        {/* Fixed Bottom Navigation Bar on Real Mobile Viewports (< 768px) */}
-        {!isMobilePreview && (
-          <nav
-            aria-label="Điều hướng di động"
-            className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 pt-1.5 pb-safe"
-          >
-            <div className="grid grid-cols-5 gap-1">
+            <nav
+              aria-label="Điều hướng di động"
+              className="sticky bottom-4 mx-4 mb-4 z-20 lg-clear rounded-full h-[62px] p-[5px] flex items-center gap-1"
+            >
               {mobileBottomNavItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition ${
-                    item.isActive
-                      ? 'text-blue-600 font-extrabold bg-blue-50/70'
-                      : 'text-slate-500 font-medium'
+                  aria-label={item.label}
+                  aria-current={item.isActive ? 'page' : undefined}
+                  className={`lg-tab h-full rounded-full flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all duration-200 ${
+                    item.isActive ? 'lg-tab-on flex-[1.9] px-3' : 'flex-1'
                   }`}
                 >
                   {item.icon}
-                  <span className="text-[10px] mt-0.5">{item.label}</span>
+                  {item.isActive && <span className="truncate">{item.label}</span>}
                 </button>
               ))}
-            </div>
-          </nav>
+            </nav>
+          )}
+        </main>
+
+        {/* Thanh tab nổi trên điện thoại thật (< 768px) */}
+        {!isMobilePreview && (
+            <nav
+              aria-label="Điều hướng di động"
+              className="md:hidden fixed left-4 right-4 bottom-[max(16px,env(safe-area-inset-bottom))] z-40 lg-clear rounded-full h-[62px] p-[5px] flex items-center gap-1"
+            >
+              {mobileBottomNavItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  aria-label={item.label}
+                  aria-current={item.isActive ? 'page' : undefined}
+                  className={`lg-tab h-full rounded-full flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all duration-200 ${
+                    item.isActive ? 'lg-tab-on flex-[1.9] px-3' : 'flex-1'
+                  }`}
+                >
+                  {item.icon}
+                  {item.isActive && <span className="truncate">{item.label}</span>}
+                </button>
+              ))}
+            </nav>
         )}
       </div>
 

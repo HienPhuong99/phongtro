@@ -83,3 +83,230 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* ==========================================================================
+   LIQUID GLASS (kiểu iOS 26–27) + CHẾ ĐỘ NGÀY / ĐÊM
+   Kính chỉ dùng cho lớp điều khiển (menu, thanh trên, thanh tab); nội dung giữ nền đặc để dễ đọc.
+   Chế độ đêm: class "dark" trên <html>, ánh xạ lại các màu Tailwind có sẵn thay vì sửa từng màn.
+   ========================================================================== */
+:root {
+  --page: #EEF2F8;
+  --card: #FFFFFF;
+  --card-2: #F4F6FA;
+  --card-3: #EBEEF4;
+  --line: rgba(60, 60, 67, 0.12);
+  --fg-1: #0B0B0F;
+  --fg-2: #3C3C43;
+  --fg-3: #5B5B63;
+  --fg-4: #6E6E76;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-rim: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 10px 34px rgba(20, 30, 60, 0.12);
+  --clear-bg: rgba(255, 255, 255, 0.16);
+  --clear-rim: rgba(255, 255, 255, 0.6);
+  --clear-fg: #111114;
+  --clear-fg-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  --pill-on: rgba(0, 88, 190, 0.62);
+}
+html.dark {
+  color-scheme: dark;
+  --page: #050608;
+  --card: #1C1C1E;
+  --card-2: #232326;
+  --card-3: #2C2C2E;
+  --line: rgba(255, 255, 255, 0.1);
+  --fg-1: #F5F5F7;
+  --fg-2: #E5E5EA;
+  --fg-3: #C7C7CC;
+  --fg-4: #A1A1A6;
+  --glass-bg: rgba(30, 30, 34, 0.55);
+  --glass-rim: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --clear-bg: rgba(40, 40, 46, 0.22);
+  --clear-rim: rgba(255, 255, 255, 0.28);
+  --clear-fg: #FFFFFF;
+  --clear-fg-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  --pill-on: rgba(10, 100, 210, 0.6);
+}
+
+body {
+  background-color: var(--page);
+  color: var(--fg-1);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+/* Nền có mảng màu nhẹ để kính có thứ phía sau mà khúc xạ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40vw 40vw at 0% 0%, rgba(80, 140, 255, 0.28), transparent 70%),
+    radial-gradient(36vw 36vw at 100% 20%, rgba(60, 210, 190, 0.22), transparent 70%),
+    radial-gradient(40vw 40vw at 45% 100%, rgba(255, 170, 120, 0.22), transparent 70%);
+}
+html.dark body::before {
+  background:
+    radial-gradient(40vw 40vw at 0% 0%, rgba(40, 90, 255, 0.22), transparent 70%),
+    radial-gradient(36vw 36vw at 100% 20%, rgba(0, 180, 170, 0.16), transparent 70%),
+    radial-gradient(40vw 40vw at 45% 100%, rgba(170, 70, 255, 0.16), transparent 70%);
+}
+
+/* Kính mờ: menu trái, thanh trên cùng */
+.lg-glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid var(--glass-rim);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-rim);
+}
+
+/* Kính trong (thanh tab): thấy rõ nội dung phía sau, viền phản sáng như ảnh mẫu */
+.lg-clear {
+  background: var(--clear-bg);
+  -webkit-backdrop-filter: blur(5px) saturate(170%) brightness(1.06);
+  backdrop-filter: blur(5px) saturate(170%) brightness(1.06);
+  border: 1px solid var(--clear-rim);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.3),
+    inset 0 0 14px rgba(255, 255, 255, 0.12),
+    0 12px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.12);
+}
+html.dark .lg-clear {
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 14px rgba(255, 255, 255, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.lg-tab {
+  color: var(--clear-fg);
+  text-shadow: var(--clear-fg-shadow);
+}
+.lg-tab svg {
+  filter: drop-shadow(var(--clear-fg-shadow));
+}
+.lg-tab-on {
+  background: var(--pill-on);
+  color: #fff;
+  text-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 60, 140, 0.25);
+}
+.lg-tab-on svg {
+  filter: none;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-glass { background: var(--card); }
+  .lg-clear { background: var(--card); }
+}
+
+/* ---------- Chế độ đêm: ánh xạ màu Tailwind có sẵn ---------- */
+html.dark .bg-white,
+html.dark .bg-white\/95 { background-color: var(--card); }
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/40,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-\[\#F8FAFC\] { background-color: var(--card-2); }
+html.dark .bg-slate-100,
+html.dark .bg-slate-100\/70 { background-color: var(--card-3); }
+html.dark .bg-slate-200,
+html.dark .bg-slate-200\/70 { background-color: #3A3A3C; }
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-50\/80:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-slate-200:hover,
+html.dark .hover\:bg-slate-200\/70:hover { background-color: #3A3A3C; }
+
+html.dark .text-slate-900,
+html.dark .text-slate-800 { color: var(--fg-1); }
+html.dark .text-slate-700 { color: var(--fg-2); }
+html.dark .text-slate-600 { color: var(--fg-3); }
+html.dark .text-slate-500,
+html.dark .text-slate-400 { color: var(--fg-4); }
+html.dark .hover\:text-slate-800:hover,
+html.dark .hover\:text-slate-900:hover { color: var(--fg-1); }
+
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-300,
+html.dark .divide-slate-100 > * + * { border-color: var(--line); }
+
+html.dark .bg-blue-50,
+html.dark .bg-blue-50\/40,
+html.dark .bg-blue-50\/50,
+html.dark .bg-blue-50\/70,
+html.dark .bg-blue-100,
+html.dark .hover\:bg-blue-50:hover,
+html.dark .hover\:bg-blue-100:hover { background-color: rgba(10, 132, 255, 0.16); }
+html.dark .text-blue-600,
+html.dark .text-blue-700,
+html.dark .text-blue-800 { color: #5AA9FF; }
+html.dark .border-blue-200,
+html.dark .border-blue-200\/60,
+html.dark .border-blue-300 { border-color: rgba(10, 132, 255, 0.35); }
+
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-50\/50,
+html.dark .bg-emerald-100,
+html.dark .hover\:bg-emerald-50:hover,
+html.dark .hover\:bg-emerald-100:hover { background-color: rgba(48, 209, 88, 0.14); }
+html.dark .text-emerald-600,
+html.dark .text-emerald-700,
+html.dark .text-emerald-800 { color: #4CD97B; }
+html.dark .border-emerald-200,
+html.dark .border-emerald-300 { border-color: rgba(48, 209, 88, 0.3); }
+
+html.dark .bg-rose-50,
+html.dark .bg-rose-50\/40,
+html.dark .bg-rose-100,
+html.dark .hover\:bg-rose-50:hover { background-color: rgba(255, 69, 58, 0.14); }
+html.dark .text-rose-500,
+html.dark .text-rose-600,
+html.dark .text-rose-700 { color: #FF7A7A; }
+html.dark .border-rose-200,
+html.dark .border-rose-300 { border-color: rgba(255, 69, 58, 0.32); }
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-100,
+html.dark .hover\:bg-amber-100:hover,
+html.dark .hover\:bg-amber-200:hover { background-color: rgba(255, 159, 10, 0.14); }
+html.dark .text-amber-600,
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-amber-900 { color: #FFB547; }
+html.dark .border-amber-100,
+html.dark .border-amber-200,
+html.dark .border-amber-300,
+html.dark .border-amber-400 { border-color: rgba(255, 159, 10, 0.32); }
+
+html.dark .bg-teal-50,
+html.dark .bg-teal-100,
+html.dark .bg-indigo-50,
+html.dark .bg-purple-50 { background-color: rgba(100, 210, 255, 0.12); }
+html.dark .text-teal-700,
+html.dark .text-teal-800,
+html.dark .text-teal-900,
+html.dark .text-indigo-600,
+html.dark .text-indigo-700,
+html.dark .text-purple-600,
+html.dark .text-purple-700 { color: #7FD4FF; }
+html.dark .border-teal-200 { border-color: rgba(100, 210, 255, 0.3); }
+
+html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+html.dark select,
+html.dark textarea {
+  background-color: var(--card-3);
+  color: var(--fg-1);
+  border-color: var(--line);
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #8E8E93; }
+html.dark ::-webkit-scrollbar-thumb { background: #3A3A3C; }

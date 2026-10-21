@@ -39,6 +39,9 @@ import {
   UserPlus,
   Sun,
   Moon,
+  Signal,
+  Wifi,
+  BatteryFull,
 } from 'lucide-react';
 import {
   NavTab,
@@ -337,7 +340,9 @@ export function App() {
   // Giao diện ban ngày / ban đêm, nhớ trên trình duyệt này
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
-      return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } catch {
       return 'light';
     }
@@ -5877,32 +5882,29 @@ export function App() {
         >
           {isMobilePreview && (
             <>
-              {/* iOS Status Bar + Dynamic Island */}
-              <div className="bg-slate-900 text-white px-6 pt-2.5 pb-3 flex items-center justify-between text-[11px] font-bold select-none">
-                <span className="tabular-nums">09:41</span>
-                <div className="w-24 h-4 rounded-full bg-black border border-slate-800 flex items-center justify-end px-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
-                  <span>5G</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-extrabold">
-                    100%
-                  </span>
-                </div>
+              {/* Thanh trạng thái iOS + Dynamic Island, trong suốt theo nền */}
+              <div className="px-7 pt-2.5 pb-1 grid grid-cols-3 items-center text-[13px] font-semibold text-slate-900 select-none">
+                <span className="tabular-nums">9:41</span>
+                <span className="justify-self-center w-[92px] h-[26px] rounded-full bg-black" />
+                <span className="justify-self-end flex items-center gap-1">
+                  <Signal className="w-4 h-4" />
+                  <Wifi className="w-4 h-4" />
+                  <BatteryFull className="w-5 h-5" />
+                </span>
               </div>
 
               {/* Mobile App Header Banner */}
-              <div className="bg-slate-900 text-white px-4 pb-3.5 pt-1 flex items-center justify-between border-b border-slate-800">
+              <div className="lg-glass mx-3 mt-1 mb-2 rounded-[22px] px-4 py-2.5 flex items-center justify-between text-slate-900">
                 <div className="flex items-center gap-2.5">
                   <BrandLogoIcon className="w-8 h-8 shrink-0" />
                   <div>
                     <div className="text-xs font-extrabold tracking-tight flex items-center gap-1.5">
                       <span>Quản lý phòng trọ</span>
-                      <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-bold">
                         PWA
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-slate-500">
                       {currentProperty.name} · {propertyRooms.length} phòng
                     </div>
                   </div>

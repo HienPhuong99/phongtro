@@ -21,8 +21,8 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
 ## 4. Giao diện iOS 27 (Liquid Glass) — đã làm phần khung, còn lại
 - Đã có: menu trái + thanh trên bằng kính, thanh tab nổi trong suốt kiểu ảnh mẫu (tab đang chọn là viên thuốc xanh có chữ),
   chế độ ngày/đêm (nút trên thanh web, công tắc trong Cài đặt, lưu `localStorage` `qlpt-theme`). CSS ở cuối `src/index.css`.
-- Còn lại: rà từng màn ở chế độ đêm (ảnh minh họa, biểu đồ SVG màu cứng, hộp thoại trong `Modals.tsx`), trang người thuê
-  `PublicInvoicePage.tsx` chưa theo theme, thanh trạng thái giả trong "Khung Mobile", ảnh chụp `docs/screenshots/` đã chụp lại theo giao diện mới.
+- Đã rà chế độ đêm mọi màn và hộp thoại (màu nền nhạt có độ trong suốt, đường kẻ SVG màu cứng), trang người thuê theo chế độ ngày/đêm của máy,
+  thanh trạng thái giả trong "Khung Mobile" làm lại kiểu iOS, ảnh `docs/screenshots/` chụp lại. Lần đầu mở app cũng theo chế độ của máy.
 - Bản demo thiết kế: https://claude.ai/artifact/VkYL7tLbEe67oMKaibLVHo
 
 ## 5. Chờ bên ngoài

@@ -23,8 +23,6 @@ interface MobileNavDrawerProps {
   subtitle: string;
 }
 
-// Vùng mép trái (px) nhận thao tác vuốt để mở menu
-const EDGE_SWIPE_WIDTH = 20;
 // Vận tốc (px/ms) đủ để coi là "hất" mở/đóng ngay
 const FLING_VELOCITY = 0.4;
 
@@ -40,9 +38,9 @@ interface DragState {
 }
 
 /**
- * Menu điều hướng trượt từ cạnh trái cho giao diện điện thoại.
- * Mở bằng nút ☰, chạm tay nắm hoặc vuốt từ mép trái; đóng bằng vuốt sang trái,
- * chạm nền mờ, nút ✕ hoặc phím Escape.
+ * Menu "Thêm" trượt từ cạnh trái cho giao diện điện thoại.
+ * Mở bằng tab "Thêm" ở thanh dưới. Không mở bằng vuốt mép trái: Safari iPhone và Android dùng cử chỉ đó để quay lại.
+ * Đóng bằng vuốt sang trái, chạm nền mờ, nút ✕, phím Escape hoặc nút Back.
  */
 export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   items,
@@ -205,23 +203,6 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
   return (
     <>
-      {/* Vùng vuốt mép trái + tay nắm gợi ý */}
-      {!isOpen && (
-        <div
-          {...dragHandlers}
-          className={`${position} left-0 top-0 bottom-0 z-40 flex items-center touch-pan-y select-none`}
-          style={{ width: EDGE_SWIPE_WIDTH }}
-          aria-hidden="true"
-          data-testid="mobile-nav-edge"
-        >
-          <span
-            onClick={() => onOpenChange(true)}
-            className="h-14 w-2.5 rounded-r-lg cursor-pointer bg-blue-600/15 flex items-center justify-center">
-            <span className="h-6 w-[3px] rounded-full bg-blue-600/60" />
-          </span>
-        </div>
-      )}
-
       {/* Không dùng inset-0: kiểm thử E2E coi phần tử .fixed.inset-0 là modal đang mở */}
       <div
         ref={backdropRef}
@@ -298,7 +279,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         </nav>
 
         <div className="px-6 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-          Mẹo: vuốt sang trái để đóng menu
+          Vuốt sang trái hoặc bấm Back để đóng
         </div>
       </aside>
     </>

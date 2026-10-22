@@ -75,9 +75,9 @@ export const MoveOutModal: React.FC<{
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <DoorOpen className="w-4 h-4 text-rose-600" />
-            <h3 className="text-sm font-bold text-slate-900">
+            <h2 className="text-sm font-bold text-slate-900">
               Trả phòng {contract.roomCode} · {contract.tenantName} · {contract.code}
-            </h3>
+            </h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Đóng" className="p-1 rounded-lg hover:bg-slate-100">
             <X className="w-4 h-4" />

@@ -53,7 +53,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   title,
   subtitle,
 }) => {
-  const drawerRef = useRef<HTMLElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
@@ -214,7 +214,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         aria-hidden="true"
       />
 
-      <aside
+      <div
         ref={drawerRef}
         {...dragHandlers}
         role="dialog"
@@ -281,7 +281,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         <div className="px-6 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
           Vuốt sang trái hoặc bấm Back để đóng
         </div>
-      </aside>
+      </div>
     </>
   );
 };

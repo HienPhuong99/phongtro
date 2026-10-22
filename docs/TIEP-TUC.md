@@ -1,4 +1,4 @@
-# Việc còn dở (cập nhật 21/10/2026)
+# Việc còn dở (cập nhật 22/10/2026)
 
 Đọc file này đầu đoạn chat mới. Mọi thứ khác đã merge vào `main`, đã deploy GitHub Pages và Apps Script `@18`.
 Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KINH-DOANH.md).
@@ -17,7 +17,15 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
   - Mất mạng: báo "Lưu lên mây lỗi, đang thử lại", dữ liệu giữ trên máy; có mạng lại tự lưu lên.
   - Lập hợp đồng, gửi hóa đơn Zalo tạo link `?hd=`; người thuê mở link (không lộ tên, SĐT), bấm "Tôi đã chuyển"; chủ trọ thấy lời báo, bấm Xác nhận, hóa đơn gạch đã thu, trang người thuê hiện "Chủ trọ đã xác nhận".
 - Lỗi tìm ra và đã sửa: sổ mới không có nút thêm phòng/khu; mã QR luôn dùng Vietcombank; hợp đồng đầu tiên ghi phòng P202 không tồn tại.
-- Dữ liệu thử còn trong tài khoản đó: hợp đồng HD-00001 phòng P202 (tạo trước khi sửa lỗi), có thể bỏ qua hoặc xoá tay.
+- Hợp đồng thử lỗi HD-00001 (phòng P202) đã thanh lý bằng nút Trả phòng mới và đánh dấu đã hoàn cọc.
+
+
+## 2b. Trả phòng / thanh lý hợp đồng — XONG (22/10/2026)
+- Nút "Trả phòng" trên mỗi hợp đồng đang thuê (tab Hợp đồng). Chốt ngày, số điện nước, tiền phòng những ngày cuối (gợi ý theo ngày ở), khoản trừ thêm.
+- Cọc trừ nợ cũ trước (FIFO), rồi hóa đơn quyết toán, rồi khoản trừ thêm; còn lại vào Tài chính → Cọc phải trả. Không ghi thêm khoản thu (cọc đã ghi thu lúc nhận).
+- Hóa đơn nháp và hóa đơn chưa thu của các tháng sau ngày trả phòng bị bỏ. Phòng về Trống, khách sang Đã dọn đi.
+- Logic ở `planMoveOut` (`src/utils/billing.ts`), test ở `src/utils/moveout.test.ts`. Mã hợp đồng/khách/hóa đơn giờ lấy số lớn nhất + 1 (`nextCode`).
+- Đã chạy trên tài khoản thật: thanh lý HD-00001, hoàn cọc 1.563.548 đ, ghi chi "Hoàn tiền cọc".
 
 ## 3. Script nhập liệu hộ đẩy lên mây
 - `npm run import:beta -- file.xlsx --email chu@tro.vn` cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local` (chủ dự án tự dán, không commit, không đặt tên `VITE_`).

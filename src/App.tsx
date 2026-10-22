@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import {
   BarChart3,
@@ -43,6 +43,7 @@ import {
   Wifi,
   BatteryFull,
   Menu,
+  ChevronLeft,
 } from 'lucide-react';
 import {
   NavTab,
@@ -202,7 +203,21 @@ export function App() {
   });
 
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('prop-binh-an');
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [activeTab, setActiveTabState] = useState<NavTab>('overview');
+  // Mỗi lần đổi màn ghi vào lịch sử trình duyệt: nút Back Android / vuốt quay lại trên iPhone
+  // đưa về màn trước thay vì thoát app. qlptDepth = số bước có thể quay lại trong app.
+  const activeTabRef = useRef<NavTab>('overview');
+  const [navDepth, setNavDepth] = useState(0);
+  const setActiveTab = useCallback((tab: NavTab) => {
+    if (activeTabRef.current === tab) return;
+    const depth = ((window.history.state?.qlptDepth as number) ?? 0) + 1;
+    // Chọn mục trong menu: thay bước 'mở menu' để Back về màn trước, không mở lại menu
+    if (window.history.state?.qlptMenu) window.history.replaceState({ qlptTab: tab, qlptDepth: depth }, '');
+    else window.history.pushState({ qlptTab: tab, qlptDepth: depth }, '');
+    activeTabRef.current = tab;
+    setNavDepth(depth);
+    setActiveTabState(tab);
+  }, []);
   const [financeExpanded, setFinanceExpanded] = useState<boolean>(true);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(
@@ -213,6 +228,36 @@ export function App() {
   );
   const [isPhoneQrOpen, setIsPhoneQrOpen] = useState<boolean>(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
+  // Mở menu cũng là một bước trong lịch sử, để nút Back đóng menu trước
+  const openMobileNav = useCallback(() => {
+    window.history.pushState({ ...window.history.state, qlptMenu: true }, '');
+    setIsMobileNavOpen(true);
+  }, []);
+  const setMobileNavOpen = useCallback(
+    (open: boolean) => {
+      if (open) return openMobileNav();
+      if (window.history.state?.qlptMenu) window.history.back();
+      else setIsMobileNavOpen(false);
+    },
+    [openMobileNav]
+  );
+  useEffect(() => {
+    window.history.replaceState(
+      { ...window.history.state, qlptTab: activeTabRef.current, qlptDepth: window.history.state?.qlptDepth ?? 0 },
+      ''
+    );
+    const onPop = (e: PopStateEvent) => {
+      setIsMobileNavOpen(Boolean(e.state?.qlptMenu));
+      const tab = e.state?.qlptTab as NavTab | undefined;
+      if (tab) {
+        activeTabRef.current = tab;
+        setActiveTabState(tab);
+      }
+      setNavDepth((e.state?.qlptDepth as number) ?? 0);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const [pwaQrDataUrl, setPwaQrDataUrl] = useState<string>('');
 
   useEffect(() => {
@@ -5522,8 +5567,12 @@ export function App() {
       .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
   }, [collectModalInvoice, invoices]);
 
+  const MOBILE_ROOT_TABS: NavTab[] = ['overview', 'rooms', 'invoices'];
+  const isSecondaryTab = !MOBILE_ROOT_TABS.includes(activeTab) && !activeTab.startsWith('finance-');
+  const goBack = () => (navDepth > 0 ? window.history.back() : setActiveTab('overview'));
+
   const mobileBottomNavItems: Array<{
-    id: NavTab;
+    id: NavTab | 'more';
     label: string;
     icon: React.ReactNode;
     isActive: boolean;
@@ -5548,15 +5597,15 @@ export function App() {
     },
     {
       id: 'finance-debts',
-      label: 'Công nợ',
+      label: 'Tài chính',
       icon: <Wallet className="w-[22px] h-[22px]" />,
       isActive: activeTab.startsWith('finance-'),
     },
     {
-      id: 'reports',
-      label: 'Báo cáo',
-      icon: <TrendingUp className="w-[22px] h-[22px]" />,
-      isActive: activeTab === 'reports',
+      id: 'more',
+      label: 'Thêm',
+      icon: <Menu className="w-[22px] h-[22px]" />,
+      isActive: isSecondaryTab,
     },
   ];
 
@@ -5860,15 +5909,18 @@ export function App() {
         {/* TOPBAR */}
         <header className="lg-glass rounded-[28px] mx-3 mt-3 md:mx-4 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-3 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(true)}
-              aria-label="Mở menu"
-              aria-expanded={isMobileNavOpen}
-              className="md:hidden w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-800 flex items-center justify-center shrink-0"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+            {isSecondaryTab && (
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label="Quay lại"
+                data-testid="mobile-back"
+                className="md:hidden h-9 rounded-xl flex items-center justify-center shrink-0 gap-0.5 px-2 text-blue-600 font-semibold text-sm"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Quay lại</span>
+              </button>
+            )}
             {/* Property Selector */}
             <select
               aria-label="Chọn cơ sở nhà trọ"
@@ -6001,15 +6053,18 @@ export function App() {
               {/* Mobile App Header Banner */}
               <div className="lg-glass mx-3 mt-1 mb-2 rounded-[22px] px-4 py-2.5 flex items-center justify-between text-slate-900">
                 <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileNavOpen(true)}
-                    aria-label="Mở menu"
-                    aria-expanded={isMobileNavOpen}
-                    className="w-8 h-8 -ml-1 rounded-xl border border-slate-200 bg-white text-slate-800 flex items-center justify-center shrink-0"
-                  >
-                    <Menu className="w-5 h-5" />
-                  </button>
+                  {isSecondaryTab && (
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      aria-label="Quay lại"
+                      data-testid="mobile-back"
+                      className="h-8 -ml-1 rounded-xl flex items-center justify-center shrink-0 gap-0.5 px-2 text-blue-600 font-semibold text-sm"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                      <span>Quay lại</span>
+                    </button>
+                  )}
                   <BrandLogoIcon className="w-8 h-8 shrink-0" />
                   <div>
                     <div className="text-xs font-extrabold tracking-tight flex items-center gap-1.5">
@@ -6063,7 +6118,7 @@ export function App() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => (item.id === 'more' ? openMobileNav() : setActiveTab(item.id))}
                   aria-label={item.label}
                   aria-current={item.isActive ? 'page' : undefined}
                   className={`lg-tab h-full rounded-full flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all duration-200 ${
@@ -6084,7 +6139,7 @@ export function App() {
               isItemActive={(id) => (id === 'finance-debts' ? activeTab.startsWith('finance-') : activeTab === id)}
               onSelect={setActiveTab}
               isOpen={isMobileNavOpen}
-              onOpenChange={setIsMobileNavOpen}
+              onOpenChange={setMobileNavOpen}
               brand={<BrandLogoIcon className="w-9 h-9 shrink-0" />}
               title="Quản lý phòng trọ"
               subtitle={`${currentProperty.name} · ${propertyRooms.length} phòng`}
@@ -6102,7 +6157,7 @@ export function App() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => (item.id === 'more' ? openMobileNav() : setActiveTab(item.id))}
                   aria-label={item.label}
                   aria-current={item.isActive ? 'page' : undefined}
                   className={`lg-tab h-full rounded-full flex items-center justify-center gap-1.5 text-[13px] font-semibold transition-all duration-200 ${
@@ -6122,7 +6177,7 @@ export function App() {
             isItemActive={(id) => (id === 'finance-debts' ? activeTab.startsWith('finance-') : activeTab === id)}
             onSelect={setActiveTab}
             isOpen={isMobileNavOpen}
-            onOpenChange={setIsMobileNavOpen}
+            onOpenChange={setMobileNavOpen}
             brand={<BrandLogoIcon className="w-9 h-9 shrink-0" />}
             title="Quản lý phòng trọ"
             subtitle={`${currentProperty.name} · ${propertyRooms.length} phòng`}

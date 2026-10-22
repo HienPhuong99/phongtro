@@ -83,6 +83,7 @@ import {
   allocatePaymentFIFO,
   applyRoomPricingToInvoice,
   calculateDepositRefund,
+  nextCode,
 } from './utils/billing';
 import {
   CreateContractModal,
@@ -96,6 +97,7 @@ import { AuthModal } from './components/AuthModal';
 import { MobileNavDrawer, MobileNavItem } from './components/MobileNavDrawer';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { RoomAddModal } from './components/RoomAddModal';
+import { MoveOutModal } from './components/MoveOutModal';
 import { VIETQR_BANKS } from './utils/rooms';
 import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
 import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './utils/insights';
@@ -328,6 +330,7 @@ export function App() {
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [isElecToolOpen, setIsElecToolOpen] = useState(false);
   const [isRoomAddOpen, setIsRoomAddOpen] = useState(false);
+  const [moveOutContract, setMoveOutContract] = useState<Contract | null>(null);
   // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
   const [paymentReports, setPaymentReports] = useState<
     Array<{ id: string; invoice_code: string; room_code: string; property_id: string; amount: number; payer_note: string | null; created_at: string }>
@@ -1101,9 +1104,9 @@ export function App() {
       showToast(`Không có phòng ${payload.roomCode || '(chưa chọn)'} trong ${currentProperty.name}`);
       return;
     }
-    const newContractCode = `HD-${String(allContracts.length + 1).padStart(5, '0')}`;
+    const newContractCode = nextCode('HD-', allContracts.map((c) => c.code));
     const newTenantId = `t-${Date.now()}`;
-    const newTenantCode = `KH-${String(allTenants.length + 1).padStart(5, '0')}`;
+    const newTenantCode = nextCode('KH-', allTenants.map((t) => t.code));
     const realDaysRemaining = computeDaysRemaining(payload.endDate);
 
     const newContract: Contract = {
@@ -1173,7 +1176,7 @@ export function App() {
 
     // Tự động lập hóa đơn kỳ đầu tiên chia theo số ngày ở thật (Bug 6)
     const firstBillingMonth = extractBillingMonth(payload.startDate);
-    const newInvoiceCode = `HD-IV-${String(allInvoices.length + 100).padStart(5, '0')}`;
+    const newInvoiceCode = nextCode('HD-IV-', allInvoices.map((i) => i.code), 100);
     const roomElec = targetRoom?.elecIndex ?? 0;
     const roomWater = targetRoom?.waterIndex ?? 0;
     const roomTrash = targetRoom?.trashFee ?? currentProperty.trashFee;
@@ -3660,6 +3663,15 @@ export function App() {
                   </td>
                   <td className="py-3.5 px-4 text-right text-slate-600">
                     {formatVND(c.depositAmount)}
+                    {c.status === 'active' && canViewReports && (
+                      <button
+                        type="button"
+                        onClick={() => setMoveOutContract(c)}
+                        className="block ml-auto mt-1 px-2 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-semibold"
+                      >
+                        Trả phòng
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -6222,6 +6234,42 @@ export function App() {
           );
           setEditInvoice(null);
           showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
+      />
+
+      <MoveOutModal
+        contract={canViewReports ? moveOutContract : null}
+        room={rooms.find((r) => r.propertyId === moveOutContract?.propertyId && r.code === moveOutContract?.roomCode)}
+        roomInvoices={allInvoices.filter(
+          (i) => i.propertyId === moveOutContract?.propertyId && i.roomCode === moveOutContract?.roomCode
+        )}
+        property={currentProperty}
+        finalInvoiceCode={nextCode('HD-IV-', allInvoices.map((i) => i.code), 100)}
+        onClose={() => setMoveOutContract(null)}
+        onConfirm={(plan) => {
+          const c = plan.contract;
+          setContracts((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+          setRooms((prev) => prev.map((x) => (x.id === plan.room.id ? plan.room : x)));
+          setTenants((prev) =>
+            prev.map((t) =>
+              t.propertyId === c.propertyId && t.contractCode === c.code ? { ...t, status: 'moved_out' } : t
+            )
+          );
+          setInvoices((prev) => {
+            const kept = prev
+              .filter((i) => !plan.removeInvoiceIds.includes(i.id))
+              .map((i) => {
+                const up = plan.invoiceUpdates[i.id];
+                return up ? { ...i, paidAmount: i.paidAmount + up.addPaid, status: up.newStatus } : i;
+              });
+            return plan.finalInvoice ? [plan.finalInvoice, ...kept] : kept;
+          });
+          setMoveOutContract(null);
+          showToast(
+            `Đã trả phòng ${c.roomCode}. Hoàn cọc ${formatVND(plan.refund)}${
+              plan.extraDue > 0 ? `, khách còn thiếu ${formatVND(plan.extraDue)}` : ''
+            }`
+          );
         }}
       />
 

@@ -10,9 +10,14 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
   - `supabase/tests/rls-live.sql` (dán vào SQL Editor, chạy cả file): A/B tách nhau, staff đọc + ghi, viewer chỉ đọc, hóa đơn công khai không lộ tên/SĐT, lời báo chỉ chủ trọ thấy, xoá tài khoản chỉ xoá A. Đạt thì báo lỗi cố ý `ALL RLS CHECKS PASSED` để mọi thứ rollback.
   - `https://hienphuong99.github.io/phongtro/?hd=<mã sai>` hiện "Không tìm thấy hóa đơn".
 
-## 2. Thử với tài khoản Supabase thật
-- Khóa phiên bản đã kiểm tra trên DB thật (`rls-live.sql`: bản cũ không ghi đè được bản mới, không tạo 2 sổ cho 1 chủ). Bản sao offline và xung đột trên giao diện mới có unit test, chưa chạy qua đăng nhập thật.
-- Không tự tạo tài khoản: nhờ chủ dự án đăng ký 1 tài khoản (hoặc dùng tài khoản sẵn có) rồi thử: tạo sổ trống, sửa, mất mạng, mở 2 tab cùng sửa (phải báo xung đột), mở link hóa đơn người thuê, bấm "Tôi đã chuyển", chủ trọ xác nhận.
+## 2. Thử với tài khoản Supabase thật — XONG (22/10/2026)
+- Chạy trên web thật với tài khoản thử của chủ dự án (tự đăng nhập trên Chrome):
+  - Sổ trống được tạo và lưu lên mây; thêm phòng lưu lên máy chủ, chỉ thấy sổ của chính mình.
+  - 2 tab cùng sửa: tab sau báo "Sổ vừa được sửa ở thiết bị khác", máy chủ giữ bản trước, "Tải bản mới nhất" tải lại và sao lưu bản trên máy.
+  - Mất mạng: báo "Lưu lên mây lỗi, đang thử lại", dữ liệu giữ trên máy; có mạng lại tự lưu lên.
+  - Lập hợp đồng, gửi hóa đơn Zalo tạo link `?hd=`; người thuê mở link (không lộ tên, SĐT), bấm "Tôi đã chuyển"; chủ trọ thấy lời báo, bấm Xác nhận, hóa đơn gạch đã thu, trang người thuê hiện "Chủ trọ đã xác nhận".
+- Lỗi tìm ra và đã sửa: sổ mới không có nút thêm phòng/khu; mã QR luôn dùng Vietcombank; hợp đồng đầu tiên ghi phòng P202 không tồn tại.
+- Dữ liệu thử còn trong tài khoản đó: hợp đồng HD-00001 phòng P202 (tạo trước khi sửa lỗi), có thể bỏ qua hoặc xoá tay.
 
 ## 3. Script nhập liệu hộ đẩy lên mây
 - `npm run import:beta -- file.xlsx --email chu@tro.vn` cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local` (chủ dự án tự dán, không commit, không đặt tên `VITE_`).

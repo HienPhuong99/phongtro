@@ -27,9 +27,14 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
 - Logic ở `planMoveOut` (`src/utils/billing.ts`), test ở `src/utils/moveout.test.ts`. Mã hợp đồng/khách/hóa đơn giờ lấy số lớn nhất + 1 (`nextCode`).
 - Đã chạy trên tài khoản thật: thanh lý HD-00001, hoàn cọc 1.563.548 đ, ghi chi "Hoàn tiền cọc".
 
-## 3. Script nhập liệu hộ đẩy lên mây
-- `npm run import:beta -- file.xlsx --email chu@tro.vn` cần `SUPABASE_SERVICE_ROLE_KEY` trong `.env.local` (chủ dự án tự dán, không commit, không đặt tên `VITE_`).
-- `--template`, `--dry-run` đã chạy được. Phần đẩy lên mây có test với máy chủ giả (`scripts/import-beta.test.mjs`); chỉ còn chạy thật khi có khóa.
+## 3. Script nhập liệu hộ đẩy lên mây — XONG (22/10/2026)
+- `.env.local` chỉ cần `SUPABASE_SERVICE_ROLE_KEY` (chủ dự án tự dán, không commit, không đặt tên `VITE_`); địa chỉ project mặc định giống web.
+- Đã chạy thật: `npm run import:beta -- mau.xlsx --email hphuong123123a@gmail.com --property-id prop-an-phu` thêm khu "Nhà trọ An Phú" (2 phòng, 1 hợp đồng, 3 khách, 1 xe, nợ cũ 450.000 đ), khu cũ giữ nguyên.
+- Khu đã có phòng thì script báo lỗi, không ghi đè; muốn ghi đè thêm `--replace`, muốn thêm khu mới dùng `--property-id` khác.
+
+## 3b. Điều hướng điện thoại — XONG (22/10/2026)
+- Thanh dưới: Tổng quan · Phòng · Hóa đơn · Tài chính · Thêm (mở menu các mục còn lại). Màn mở từ Thêm có nút "Quay lại".
+- Mỗi lần đổi màn ghi lịch sử trình duyệt: nút Back Android / vuốt quay lại iPhone về màn trước hoặc đóng menu. Bỏ vùng vuốt mép trái (trùng cử chỉ quay lại).
 
 ## 4. Giao diện iOS 27 (Liquid Glass) — đã làm phần khung, còn lại
 - Đã có: menu trái + thanh trên bằng kính, thanh tab nổi trong suốt kiểu ảnh mẫu (tab đang chọn là viên thuốc xanh có chữ),
@@ -39,5 +44,5 @@ Tình trạng đầy đủ: mục 5.0 của [KE-HOACH-KINH-DOANH.md](KE-HOACH-KI
 - Bản demo thiết kế: https://claude.ai/artifact/VkYL7tLbEe67oMKaibLVHo
 
 ## 5. Chờ bên ngoài
-- P1 #7 SePay OAuth: chờ SePay duyệt `client_id`.
+- P1 #7 SePay OAuth: để sau (chủ dự án quyết định), chờ SePay duyệt `client_id`.
 - Việc của chủ dự án trong mục 14 kế hoạch: đổi `SYNC_TOKEN`, hỏi kế toán thuế, chọn tên thương hiệu.

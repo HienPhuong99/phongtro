@@ -284,9 +284,10 @@ function loadEnv() {
 
 export async function pushToSupabase(snapshot, { email, replace }) {
   const env = loadEnv();
-  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  // Cùng project với web (src/utils/supabase.ts); .env.local chỉ cần khóa
+  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL || 'https://ymdnvpdgdpdjnqnraklg.supabase.co';
   const key = env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Thiếu SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY trong .env.local');
+  if (!url || !key) throw new Error('Thiếu SUPABASE_SERVICE_ROLE_KEY trong .env.local');
   const headers = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 
   let user = null;

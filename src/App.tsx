@@ -42,6 +42,7 @@ import {
   Signal,
   Wifi,
   BatteryFull,
+  Menu,
 } from 'lucide-react';
 import {
   NavTab,
@@ -92,6 +93,7 @@ import {
   RoomPricingModal,
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
+import { MobileNavDrawer, MobileNavItem } from './components/MobileNavDrawer';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { RoomAddModal } from './components/RoomAddModal';
 import { VIETQR_BANKS } from './utils/rooms';
@@ -125,19 +127,19 @@ export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycby47GcffVwe7MW4saPvL5chdA2sdswe5VzKIFIuPSfuG1RGS1Tw9wMU09UX-H8gV9ea/exec';
 const PUBLIC_WEB_URL = 'https://hienphuong99.github.io/phongtro/';
 const MOBILE_WEB_URL = `${PUBLIC_WEB_URL}?mode=mobile`;
-// Thanh cuộn ngang trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
+// Menu trượt bên hông trên điện thoại / Khung Mobile: đủ 9 mục như menu trái trên máy tính
 // Tài khoản phụ (người nhà / quản lý) chỉ ghi số điện nước, lập hóa đơn và thu tiền
 const STAFF_TABS: NavTab[] = ['overview', 'calendar', 'rooms', 'tenants', 'invoices', 'finance-cashbook', 'finance-debts'];
-const MOBILE_NAV: { id: NavTab; label: string }[] = [
-  { id: 'overview', label: 'Tổng quan' },
-  { id: 'calendar', label: 'Lịch' },
-  { id: 'rooms', label: 'Phòng' },
-  { id: 'tenants', label: 'Khách thuê' },
-  { id: 'contracts', label: 'Hợp đồng' },
-  { id: 'invoices', label: 'Hóa đơn' },
-  { id: 'finance-debts', label: 'Tài chính' },
-  { id: 'reports', label: 'Báo cáo' },
-  { id: 'settings', label: 'Cài đặt' },
+const MOBILE_NAV: MobileNavItem[] = [
+  { id: 'overview', label: 'Tổng quan', group: 'Vận hành', icon: BarChart3 },
+  { id: 'calendar', label: 'Lịch', group: 'Vận hành', icon: Calendar },
+  { id: 'rooms', label: 'Phòng', group: 'Vận hành', icon: LayoutGrid },
+  { id: 'tenants', label: 'Khách thuê', group: 'Vận hành', icon: Users },
+  { id: 'contracts', label: 'Hợp đồng', group: 'Giấy tờ & thu tiền', icon: FileText },
+  { id: 'invoices', label: 'Hóa đơn', group: 'Giấy tờ & thu tiền', icon: Receipt },
+  { id: 'finance-debts', label: 'Tài chính', group: 'Giấy tờ & thu tiền', icon: Wallet },
+  { id: 'reports', label: 'Báo cáo', group: 'Khác', icon: TrendingUp },
+  { id: 'settings', label: 'Cài đặt', group: 'Khác', icon: Settings },
 ];
 export const DEFAULT_GOOGLE_SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/19mgIN7Xki9-FR9zb6cMwy9WMB78Gy4I1BJna7qvNB5g/edit';
@@ -208,6 +210,7 @@ export function App() {
       new URLSearchParams(window.location.search).get('mode') === 'mobile'
   );
   const [isPhoneQrOpen, setIsPhoneQrOpen] = useState<boolean>(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
   const [pwaQrDataUrl, setPwaQrDataUrl] = useState<string>('');
 
   useEffect(() => {
@@ -5841,6 +5844,15 @@ export function App() {
         {/* TOPBAR */}
         <header className="lg-glass rounded-[28px] mx-3 mt-3 md:mx-4 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-3 z-30">
           <div className="flex items-center gap-3 flex-1 min-w-[260px]">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Mở menu"
+              aria-expanded={isMobileNavOpen}
+              className="md:hidden w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-800 flex items-center justify-center shrink-0"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             {/* Property Selector */}
             <select
               aria-label="Chọn cơ sở nhà trọ"
@@ -5947,36 +5959,13 @@ export function App() {
             </button>
           </div>
 
-          {/* Mobile secondary sub-tabs pill bar (đầy đủ 9 phân hệ như menu trái trên máy tính) */}
-          <div className="flex md:hidden items-center gap-1 overflow-x-auto w-full pt-1">
-            {MOBILE_NAV.map((m) => {
-              const isPillActive =
-                m.id === 'finance-debts'
-                  ? activeTab.startsWith('finance-')
-                  : activeTab === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setActiveTab(m.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${
-                    isPillActive
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
         </header>
 
         {/* PAGE CONTENT */}
         <main
           className={`w-full mx-auto transition-all ${
             isMobilePreview
-              ? 'max-w-[420px] h-[760px] my-3 bg-[#F8FAFC] rounded-[44px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col shrink-0'
+              ? 'relative max-w-[420px] h-[760px] my-3 bg-[#F8FAFC] rounded-[44px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col shrink-0'
               : 'p-4 pb-32 md:pb-8 lg:p-8 max-w-7xl flex-1'
           }`}
         >
@@ -5996,6 +5985,15 @@ export function App() {
               {/* Mobile App Header Banner */}
               <div className="lg-glass mx-3 mt-1 mb-2 rounded-[22px] px-4 py-2.5 flex items-center justify-between text-slate-900">
                 <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavOpen(true)}
+                    aria-label="Mở menu"
+                    aria-expanded={isMobileNavOpen}
+                    className="w-8 h-8 -ml-1 rounded-xl border border-slate-200 bg-white text-slate-800 flex items-center justify-center shrink-0"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
                   <BrandLogoIcon className="w-8 h-8 shrink-0" />
                   <div>
                     <div className="text-xs font-extrabold tracking-tight flex items-center gap-1.5">
@@ -6018,29 +6016,6 @@ export function App() {
                 </button>
               </div>
 
-              {/* Thanh cuộn ngang 9 phân hệ ngay trong Khung Mobile */}
-              <div className="bg-white border-b border-slate-200/80 px-3 py-2 flex items-center gap-1 overflow-x-auto shrink-0">
-                {MOBILE_NAV.map((m) => {
-                  const isPillActive =
-                    m.id === 'finance-debts'
-                      ? activeTab.startsWith('finance-')
-                      : activeTab === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setActiveTab(m.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition ${
-                        isPillActive
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
             </>
           )}
 
@@ -6085,6 +6060,20 @@ export function App() {
               ))}
             </nav>
           )}
+
+          {isMobilePreview && (
+            <MobileNavDrawer
+              variant="frame"
+              items={MOBILE_NAV}
+              isItemActive={(id) => (id === 'finance-debts' ? activeTab.startsWith('finance-') : activeTab === id)}
+              onSelect={setActiveTab}
+              isOpen={isMobileNavOpen}
+              onOpenChange={setIsMobileNavOpen}
+              brand={<BrandLogoIcon className="w-9 h-9 shrink-0" />}
+              title="Quản lý phòng trọ"
+              subtitle={`${currentProperty.name} · ${propertyRooms.length} phòng`}
+            />
+          )}
         </main>
 
         {/* Thanh tab nổi trên điện thoại thật (< 768px) */}
@@ -6109,6 +6098,19 @@ export function App() {
                 </button>
               ))}
             </nav>
+        )}
+        {!isMobilePreview && (
+          <MobileNavDrawer
+            variant="screen"
+            items={MOBILE_NAV}
+            isItemActive={(id) => (id === 'finance-debts' ? activeTab.startsWith('finance-') : activeTab === id)}
+            onSelect={setActiveTab}
+            isOpen={isMobileNavOpen}
+            onOpenChange={setIsMobileNavOpen}
+            brand={<BrandLogoIcon className="w-9 h-9 shrink-0" />}
+            title="Quản lý phòng trọ"
+            subtitle={`${currentProperty.name} · ${propertyRooms.length} phòng`}
+          />
         )}
       </div>
 

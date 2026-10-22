@@ -84,13 +84,9 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
   }, [rooms]);
 
   const defaultRoom =
-    rooms.find((r) => r.code === initialRoomCode) ||
-    vacantOrAvailableRooms.find((r) => r.code === 'P202') ||
-    vacantOrAvailableRooms[0];
+    rooms.find((r) => r.code === initialRoomCode) || vacantOrAvailableRooms[0];
 
-  const [selectedRoomCode, setSelectedRoomCode] = useState<string>(
-    defaultRoom?.code || 'P202'
-  );
+  const [selectedRoomCode, setSelectedRoomCode] = useState<string>(defaultRoom?.code || '');
   const [tenantName, setTenantName] = useState<string>('');
   const [tenantPhone, setTenantPhone] = useState<string>('');
   const [tenantCccd, setTenantCccd] = useState<string>('');

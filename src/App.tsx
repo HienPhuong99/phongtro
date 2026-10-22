@@ -93,6 +93,8 @@ import {
 } from './components/Modals';
 import { AuthModal } from './components/AuthModal';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
+import { RoomAddModal } from './components/RoomAddModal';
+import { VIETQR_BANKS } from './utils/rooms';
 import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
 import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './utils/insights';
 import { downloadSnapshotXlsx } from './utils/exportData';
@@ -322,6 +324,7 @@ export function App() {
   const [collectModalInvoice, setCollectModalInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [isElecToolOpen, setIsElecToolOpen] = useState(false);
+  const [isRoomAddOpen, setIsRoomAddOpen] = useState(false);
   // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
   const [paymentReports, setPaymentReports] = useState<
     Array<{ id: string; invoice_code: string; room_code: string; property_id: string; amount: number; payer_note: string | null; created_at: string }>
@@ -2719,7 +2722,7 @@ export function App() {
       return r.status === roomStatusFilter;
     });
 
-    const floors = [1, 2, 3];
+    const floors = [...new Set(propertyRooms.map((r) => r.floor))].sort((a, b) => a - b);
 
     return (
       <div className="space-y-6 ui-enter">
@@ -2732,8 +2735,20 @@ export function App() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canViewReports && (
+              <button
+                type="button"
+                onClick={() => setIsRoomAddOpen(true)}
+                data-testid="add-room"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Thêm phòng
+              </button>
+            )}
             <button
               type="button"
+              disabled={propertyRooms.length === 0}
               onClick={() => openRoomPricingModal(propertyRooms[0]?.code || 'P101', 'bulk')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition"
             >
@@ -2743,10 +2758,11 @@ export function App() {
             <button
               type="button"
               onClick={() => {
-                setContractInitialRoom('P202');
+                setContractInitialRoom(vacantRooms[0]?.code || '');
                 setIsContractModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
+              disabled={vacantRooms.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition disabled:opacity-40"
             >
               <Plus className="w-4 h-4" />
               Tạo hợp đồng cho phòng trống
@@ -2907,6 +2923,22 @@ export function App() {
               </span>
             </div>
 
+            {propertyRooms.length === 0 && (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-3">
+                <p className="text-sm font-semibold text-slate-900">{currentProperty.name} chưa có phòng nào</p>
+                <p className="text-xs text-slate-500">Thêm phòng trước, sau đó lập hợp đồng và ghi điện nước.</p>
+                {canViewReports && (
+                  <button
+                    type="button"
+                    onClick={() => setIsRoomAddOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Thêm phòng đầu tiên
+                  </button>
+                )}
+              </div>
+            )}
             {floors.map((floor) => {
               const floorRooms = filteredRooms.filter((r) => r.floor === floor);
               if (floorRooms.length === 0) return null;
@@ -5033,10 +5065,56 @@ export function App() {
 
         {/* Đơn giá & Ngân hàng */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-bold text-slate-900">
-            1. Đơn giá điện nước & Tài khoản nhận tiền VietQR ({currentProperty.name})
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold text-slate-900">
+              1. Khu trọ, đơn giá điện nước & Tài khoản nhận tiền VietQR ({currentProperty.name})
+            </h2>
+            {canViewReports && (
+              <button
+                type="button"
+                onClick={() => {
+                  const id = `prop-${Date.now().toString(36)}`;
+                  setProperties((prev) => [
+                    ...prev,
+                    { ...currentProperty, id, name: `Khu mới ${prev.length + 1}`, address: '' },
+                  ]);
+                  setSelectedPropertyId(id);
+                  showToast('Đã thêm khu mới. Đổi tên và địa chỉ ngay bên dưới.');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Thêm khu
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">Tên khu trọ</label>
+              <input
+                type="text"
+                value={currentProperty.name}
+                onChange={(e) =>
+                  setProperties((prev) =>
+                    prev.map((p) => (p.id === currentProperty.id ? { ...p, name: e.target.value } : p))
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">Địa chỉ</label>
+              <input
+                type="text"
+                value={currentProperty.address}
+                onChange={(e) =>
+                  setProperties((prev) =>
+                    prev.map((p) => (p.id === currentProperty.id ? { ...p, address: e.target.value } : p))
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              />
+            </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">
                 Giá điện (đ/kWh)
@@ -5097,16 +5175,38 @@ export function App() {
               <label className="block font-medium text-slate-600 mb-1">
                 Ngân hàng nhận chuyển khoản
               </label>
-              <input
-                type="text"
-                value={currentProperty.bankName}
-                onChange={(e) =>
+              <select
+                value={currentProperty.bankBin}
+                onChange={(e) => {
+                  const bank = VIETQR_BANKS.find((x) => x.bin === e.target.value);
                   setProperties((prev) =>
                     prev.map((p) =>
                       p.id === currentProperty.id
-                        ? { ...p, bankName: e.target.value }
+                        ? { ...p, bankBin: e.target.value, bankName: bank?.name || p.bankName }
                         : p
                     )
+                  );
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
+              >
+                {!VIETQR_BANKS.some((x) => x.bin === currentProperty.bankBin) && (
+                  <option value={currentProperty.bankBin}>{currentProperty.bankName}</option>
+                )}
+                {VIETQR_BANKS.map((x) => (
+                  <option key={x.bin} value={x.bin}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium text-slate-600 mb-1">Tên chủ tài khoản (không dấu)</label>
+              <input
+                type="text"
+                value={currentProperty.bankOwner}
+                onChange={(e) =>
+                  setProperties((prev) =>
+                    prev.map((p) => (p.id === currentProperty.id ? { ...p, bankOwner: e.target.value.toUpperCase() } : p))
                   )
                 }
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900 font-semibold"
@@ -6116,6 +6216,17 @@ export function App() {
           );
           setEditInvoice(null);
           showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
+      />
+
+      <RoomAddModal
+        isOpen={isRoomAddOpen && canViewReports}
+        property={currentProperty}
+        rooms={rooms}
+        onClose={() => setIsRoomAddOpen(false)}
+        onAdd={(room) => {
+          setRooms((prev) => [...prev, room]);
+          showToast(`Đã thêm phòng ${room.code}`);
         }}
       />
 

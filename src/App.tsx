@@ -99,6 +99,7 @@ import { MobileNavDrawer, MobileNavItem } from './components/MobileNavDrawer';
 import { InvoiceEditModal } from './components/InvoiceEditModal';
 import { RoomAddModal } from './components/RoomAddModal';
 import { MoveOutModal } from './components/MoveOutModal';
+import { ExpenseModal } from './components/ExpenseModal';
 import { VIETQR_BANKS } from './utils/rooms';
 import { ElectricityRestructureModal } from './components/ElectricityRestructureModal';
 import { buildCalendarEvents, buildMonthlyChart, summarizeProperties } from './utils/insights';
@@ -375,6 +376,7 @@ export function App() {
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [isElecToolOpen, setIsElecToolOpen] = useState(false);
   const [isRoomAddOpen, setIsRoomAddOpen] = useState(false);
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [moveOutContract, setMoveOutContract] = useState<Contract | null>(null);
   // Lời báo "Tôi đã chuyển" của người thuê, chờ chủ trọ đối chiếu số dư rồi xác nhận
   const [paymentReports, setPaymentReports] = useState<
@@ -3327,8 +3329,41 @@ export function App() {
               </div>
             </div>
 
+            {/* Điện thoại: mỗi khách một thẻ, bấm số để gọi */}
+            <ul className="md:hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm divide-y divide-slate-100 text-xs">
+              {filteredTenants.map((t) => {
+                const stats = roomFinancialStats[t.roomCode] || { paid: 0, debt: 0 };
+                const isRep = t.role === 'representative';
+                return (
+                  <li key={t.id} className="p-3.5 flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <div className="font-bold text-slate-900 text-sm truncate">{t.name}</div>
+                      <div className="text-[11px] text-slate-500">
+                        Phòng {t.roomCode} · {isRep ? 'Đại diện' : 'Ở cùng'} · {t.contractCode}
+                      </div>
+                      <a href={`tel:${t.phone}`} className="block text-blue-600 font-semibold">
+                        {t.phone}
+                      </a>
+                    </div>
+                    <div className="text-right shrink-0 space-y-1.5">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded-lg text-[11px] font-semibold ${
+                          t.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {t.status === 'active' ? 'Đang thuê' : 'Đã chuyển đi'}
+                      </span>
+                      {isRep && stats.debt > 0 && (
+                        <div className="font-bold text-rose-600 whitespace-nowrap">Nợ {formatVND(stats.debt)}</div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
             {/* Bảng Danh sách khách thuê */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+            <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -4423,7 +4458,38 @@ export function App() {
                   ✓ Đã hoàn trả toàn bộ tiền cọc cho các hợp đồng đã thanh lý.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <ul className="md:hidden divide-y divide-slate-100 text-xs">
+                  {pendingRefundContracts.map((c) => (
+                    <li key={c.id} className="py-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-baseline gap-2 min-w-0">
+                          <span className="font-extrabold text-slate-900 text-sm">{c.roomCode}</span>
+                          <span className="text-slate-700 truncate">{c.tenantName}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Trả phòng {c.moveOutDate} · cọc {formatVND(c.depositAmount)}, trừ {formatVND(c.depositDeducted || 0)}
+                        </div>
+                        {c.refundBankAccount && (
+                          <div className="text-[11px] text-slate-500">
+                            {c.refundBankAccount} {c.refundBankName}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0 space-y-1.5">
+                        <div className="font-extrabold text-slate-900 whitespace-nowrap">{formatVND(getContractRefundAmount(c))}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkDepositRefunded(c)}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                        >
+                          Đã chuyển trả
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="overflow-x-auto hidden md:block">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -4478,6 +4544,7 @@ export function App() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
 
@@ -4491,7 +4558,25 @@ export function App() {
                   Khách còn thuê. Chưa phải trả, nhưng đây là tiền của họ.
                 </p>
               </div>
-              <div className="overflow-x-auto">
+              <ul className="md:hidden divide-y divide-slate-100 text-xs">
+                {contracts
+                  .filter((c) => c.status === 'active')
+                  .map((c) => (
+                    <li key={c.id} className="py-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-baseline gap-2 min-w-0">
+                          <span className="font-extrabold text-slate-900 text-sm">{c.roomCode}</span>
+                          <span className="text-slate-700 truncate">{c.tenantName}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {c.startDate} → {c.endDate}
+                        </div>
+                      </div>
+                      <div className="shrink-0 font-bold text-slate-900 whitespace-nowrap">{formatVND(c.depositAmount)}</div>
+                    </li>
+                  ))}
+              </ul>
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -4536,39 +4621,38 @@ export function App() {
               </h2>
               <button
                 type="button"
-                onClick={() => {
-                  const desc = prompt(
-                    'Nhập nội dung khoản chi mới (VD: Thay bóng đèn hành lang):',
-                    'Sửa khóa cửa phòng P102'
-                  );
-                  if (!desc) return;
-                  const amtStr = prompt('Nhập số tiền (đ):', '250000');
-                  const amt = parseInt((amtStr || '0').replace(/\D/g, ''), 10) || 0;
-                  if (amt <= 0) return;
-                  setTransactions((prev) => [
-                    {
-                      id: `tx-manual-${Date.now()}`,
-                      propertyId: currentProperty.id,
-                      date: today,
-                      isoDate: vnToIsoDate(today),
-                      type: 'expense',
-                      category: 'Bảo trì/Sửa chữa',
-                      description: desc,
-                      amount: amt,
-                      method: 'Tiền mặt',
-                    },
-                    ...prev,
-                  ]);
-                  showToast(`Đã ghi phiếu chi ${formatVND(amt)} vào sổ thu chi!`);
-                }}
+                onClick={() => setIsExpenseOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Ghi phiếu chi mới
+                Ghi khoản chi
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Điện thoại: mỗi bút toán một dòng */}
+            <ul className="md:hidden divide-y divide-slate-100 text-xs">
+              {transactions.map((tx) => (
+                <li key={tx.id} className="py-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="font-semibold text-slate-900">{tx.category}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {tx.date} · {tx.method}
+                      {tx.roomCode ? ` · Phòng ${tx.roomCode}` : ''}
+                    </div>
+                    <div className="text-[11px] text-slate-500 line-clamp-2">{tx.description}</div>
+                  </div>
+                  <div
+                    className={`shrink-0 font-bold whitespace-nowrap ${
+                      tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  >
+                    {formatVND(tx.type === 'income' ? tx.amount : -tx.amount, tx.type === 'income')}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="overflow-x-auto hidden md:block">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -6433,6 +6517,18 @@ export function App() {
           );
           setEditInvoice(null);
           showToast(`Đã huỷ hóa đơn ${inv.code}`);
+        }}
+      />
+
+      <ExpenseModal
+        isOpen={isExpenseOpen}
+        propertyId={currentProperty.id}
+        rooms={propertyRooms}
+        onClose={() => setIsExpenseOpen(false)}
+        onSave={(tx) => {
+          setTransactions((prev) => [tx, ...prev]);
+          setIsExpenseOpen(false);
+          showToast(`Đã ghi khoản chi ${formatVND(tx.amount)} vào sổ thu chi`);
         }}
       />
 

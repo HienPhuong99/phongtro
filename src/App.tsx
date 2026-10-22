@@ -1094,6 +1094,10 @@ export function App() {
     firstPeriodRent: number;
     firstPeriodLabel: string;
   }) => {
+    if (!propertyRooms.some((r) => r.code === payload.roomCode)) {
+      showToast(`Không có phòng ${payload.roomCode || '(chưa chọn)'} trong ${currentProperty.name}`);
+      return;
+    }
     const newContractCode = `HD-${String(allContracts.length + 1).padStart(5, '0')}`;
     const newTenantId = `t-${Date.now()}`;
     const newTenantCode = `KH-${String(allTenants.length + 1).padStart(5, '0')}`;
@@ -1800,7 +1804,7 @@ export function App() {
             <button
               type="button"
               onClick={() => {
-                setMeterInitialRoom('P101');
+                setMeterInitialRoom(occupiedRooms[0]?.code);
                 setIsMeterModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 text-xs font-semibold shadow-2xs transition"
@@ -1819,7 +1823,7 @@ export function App() {
             <button
               type="button"
               onClick={() => {
-                setContractInitialRoom('P202');
+                setContractInitialRoom(vacantRooms[0]?.code);
                 setIsContractModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
@@ -3482,7 +3486,7 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              setContractInitialRoom('P202');
+              setContractInitialRoom(vacantRooms[0]?.code);
               setIsContractModalOpen(true);
             }}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
@@ -3792,7 +3796,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setMeterInitialRoom('P101');
+                  setMeterInitialRoom(occupiedRooms[0]?.code);
                   setIsMeterModalOpen(true);
                 }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition"
@@ -6114,7 +6118,7 @@ export function App() {
 
       {/* MODALS */}
       <CreateContractModal
-        key={`contract-${today}`}
+        key={`contract-${today}-${isContractModalOpen ? `${currentProperty.id}-${contractInitialRoom}` : 'closed'}`}
         isOpen={isContractModalOpen && canViewReports}
         onClose={() => setIsContractModalOpen(false)}
         property={currentProperty}

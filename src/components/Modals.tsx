@@ -220,7 +220,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
               Phòng *
             </label>
-            <select
+            <select aria-label="Phòng"
               value={selectedRoomCode}
               onChange={(e) => handleRoomChange(e.target.value)}
               className="w-full sm:w-1/2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
@@ -240,7 +240,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Khách thuê đại diện *
               </label>
-              <input
+              <input aria-label="Khách thuê đại diện"
                 type="text"
                 list="tenant-suggestions"
                 required
@@ -260,7 +260,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Số điện thoại *
               </label>
-              <input
+              <input aria-label="Số điện thoại"
                 type="tel"
                 required
                 pattern="0\d{9}"
@@ -274,7 +274,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Số CCCD/CMND
               </label>
-              <input
+              <input aria-label="Số CCCD/CMND"
                 type="text"
                 inputMode="numeric"
                 pattern="\d{12}"
@@ -292,7 +292,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Ngày bắt đầu *
               </label>
-              <input
+              <input aria-label="Ngày bắt đầu"
                 type="date"
                 required
                 value={vnToIsoDate(startDate)}
@@ -304,7 +304,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Ngày kết thúc *
               </label>
-              <input
+              <input aria-label="Ngày kết thúc"
                 type="date"
                 required
                 value={vnToIsoDate(endDate)}
@@ -325,7 +325,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Chu kỳ thanh toán
               </label>
-              <select
+              <select aria-label="Chu kỳ thanh toán"
                 value={paymentCycle}
                 onChange={(e) => setPaymentCycle(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none"
@@ -343,7 +343,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Ngày ký
               </label>
-              <input
+              <input aria-label="Ngày ký"
                 type="date"
                 required
                 value={vnToIsoDate(signDate)}
@@ -355,7 +355,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Giá thuê (đ)
               </label>
-              <input
+              <input aria-label="Giá thuê (đ)"
                 type="text"
                 value={formatNumberInput(rentAmount)}
                 onChange={(e) => {
@@ -373,7 +373,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Tiền cọc (đ)
               </label>
-              <input
+              <input aria-label="Tiền cọc (đ)"
                 type="text"
                 value={formatNumberInput(depositAmount)}
                 onChange={(e) => {
@@ -387,7 +387,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Chu kỳ tính tiền
               </label>
-              <select
+              <select aria-label="Chu kỳ tính tiền"
                 value={billingCycle}
                 onChange={(e) =>
                   setBillingCycle(e.target.value as 'calendar_month' | 'move_in_date')
@@ -775,6 +775,8 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
             </p>
           </div>
           <button
+            type="button"
+            aria-label="Đóng cửa sổ"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
@@ -816,6 +818,8 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
             </div>
             <input
               type="number"
+              inputMode="numeric"
+              aria-label="Chỉ số điện mới (kWh)"
               value={currentReading.elecNew}
               onChange={(e) =>
                 updateReading('elecNew', parseInt(e.target.value, 10) || 0)
@@ -853,6 +857,8 @@ export const MeterReadingModal: React.FC<MeterReadingModalProps> = ({
             </div>
             <input
               type="number"
+              inputMode="numeric"
+              aria-label="Chỉ số nước mới (m3)"
               value={currentReading.waterNew}
               onChange={(e) =>
                 updateReading('waterNew', parseInt(e.target.value, 10) || 0)
@@ -1099,6 +1105,7 @@ Hạn thanh toán: ${invoice.dueDate}`;
             </button>
             <button
               type="button"
+              aria-label="Đóng cửa sổ"
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
             >
@@ -1134,7 +1141,7 @@ Hạn thanh toán: ${invoice.dueDate}`;
         </div>
 
         {/* Invoice Content */}
-        <div className="p-6 overflow-y-auto bg-slate-100/70 flex-1">
+        <div className="p-6 overflow-y-auto bg-slate-100/70 flex-1" tabIndex={0} role="region" aria-label="Xem trước phiếu báo">
           {subTab === 'image' ? (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-xl mx-auto space-y-5">
               {/* Top Brand & Title */}
@@ -1492,6 +1499,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
                 setAllocatedResult(null);
                 onClose();
               }}
+              aria-label="Đóng cửa sổ"
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600"
             >
               <X className="w-5 h-5" />
@@ -1604,7 +1612,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Số tiền (đ)
               </label>
-              <input
+              <input aria-label="Số tiền (đ)"
                 type="text"
                 value={formatNumberInput(amount)}
                 onChange={(e) => {
@@ -1623,7 +1631,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Ngày thanh toán *
               </label>
-              <input
+              <input aria-label="Ngày thanh toán"
                 type="date"
                 required
                 value={vnToIsoDate(paymentDate)}
@@ -1639,7 +1647,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Hình thức
               </label>
-              <select
+              <select aria-label="Hình thức"
                 value={method}
                 onChange={(e) =>
                   setMethod(e.target.value as 'Chuyển khoản' | 'Tiền mặt')
@@ -1654,7 +1662,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Ghi chú
               </label>
-              <input
+              <input aria-label="Ghi chú"
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -1908,7 +1916,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
 
   // State cho bảng giá hàng loạt
   const [bulkScope, setBulkScope] = useState<
-    'all' | 'floor-1' | 'floor-2' | 'floor-3' | 'vacant'
+    'all' | 'vacant' | `floor-${number}`
   >('all');
   const [draftMap, setDraftMap] = useState<Record<string, RoomPriceUpdateItem>>({});
 
@@ -1978,9 +1986,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
       rooms.forEach((r) => {
         const inScope =
           bulkScope === 'all' ||
-          (bulkScope === 'floor-1' && r.floor === 1) ||
-          (bulkScope === 'floor-2' && r.floor === 2) ||
-          (bulkScope === 'floor-3' && r.floor === 3) ||
+          bulkScope === `floor-${r.floor}` ||
           (bulkScope === 'vacant' && r.status === 'vacant');
         if (!inScope) return;
         const curr = next[r.code] || {
@@ -2098,7 +2104,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Chọn phòng cần điều chỉnh giá *
                   </label>
-                  <select
+                  <select aria-label="Chọn phòng cần điều chỉnh giá"
                     value={selectedRoomCode}
                     onChange={(e) => {
                       const code = e.target.value;
@@ -2119,7 +2125,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Trạng thái phòng
                   </label>
-                  <select
+                  <select aria-label="Trạng thái phòng"
                     value={status}
                     onChange={(e) => setStatus(e.target.value as Room['status'])}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
@@ -2231,7 +2237,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-medium text-slate-600 mb-1">
                     Tiền đặt cọc chuẩn (đ)
                   </label>
-                  <input
+                  <input aria-label="Tiền đặt cọc chuẩn (đ)"
                     type="text"
                     value={formatNumberInput(deposit)}
                     onChange={(e) =>
@@ -2244,7 +2250,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-medium text-slate-600 mb-1">
                     Phí rác phòng (đ/tháng)
                   </label>
-                  <input
+                  <input aria-label="Phí rác phòng (đ/tháng)"
                     type="text"
                     value={formatNumberInput(trashFee)}
                     onChange={(e) =>
@@ -2257,7 +2263,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-medium text-slate-600 mb-1">
                     Phí Internet/Wifi (đ/tháng)
                   </label>
-                  <input
+                  <input aria-label="Phí Internet/Wifi (đ/tháng)"
                     type="text"
                     value={formatNumberInput(internetFee)}
                     onChange={(e) =>
@@ -2270,7 +2276,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                   <label className="block text-xs font-medium text-slate-600 mb-1">
                     Số lượng xe gửi
                   </label>
-                  <input
+                  <input aria-label="Số lượng xe gửi"
                     type="number"
                     min={0}
                     value={vehicleCount}
@@ -2285,7 +2291,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                 <label className="block text-xs font-medium text-slate-600 mb-1">
                   Ghi chú đặc điểm / lý do điều chỉnh giá phòng
                 </label>
-                <input
+                <input aria-label="Ghi chú đặc điểm / lý do điều chỉnh giá phòng"
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -2302,23 +2308,22 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold text-slate-700">Phạm vi áp dụng:</span>
                   <select
+                    aria-label="Phạm vi áp dụng"
                     value={bulkScope}
-                    onChange={(e) =>
-                      setBulkScope(
-                        e.target.value as
-                          | 'all'
-                          | 'floor-1'
-                          | 'floor-2'
-                          | 'floor-3'
-                          | 'vacant'
-                      )
-                    }
+                    onChange={(e) => setBulkScope(e.target.value as typeof bulkScope)}
                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800"
                   >
-                    <option value="all">Tất cả 12 phòng</option>
-                    <option value="floor-1">Chỉ Tầng 1 (P101 - P104)</option>
-                    <option value="floor-2">Chỉ Tầng 2 (P201 - P204)</option>
-                    <option value="floor-3">Chỉ Tầng 3 (P301 - P304)</option>
+                    <option value="all">Tất cả {rooms.length} phòng</option>
+                    {[...new Set(rooms.map((r) => r.floor))]
+                      .sort((a, b) => a - b)
+                      .map((f) => {
+                        const codes = rooms.filter((r) => r.floor === f).map((r) => r.code);
+                        return (
+                          <option key={f} value={`floor-${f}`}>
+                            Chỉ Tầng {f} ({codes.length > 1 ? `${codes[0]} - ${codes[codes.length - 1]}` : codes[0]})
+                          </option>
+                        );
+                      })}
                     <option value="vacant">Chỉ các phòng đang trống</option>
                   </select>
                 </div>
@@ -2433,6 +2438,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                                   [r.code]: { ...d, price: val },
                                 }));
                               }}
+                              aria-label={`Giá thuê mới phòng ${r.code}`}
                               className="w-28 rounded-lg border border-slate-300 px-2.5 py-1 text-right font-bold text-blue-700 focus:border-blue-600 focus:outline-none"
                             />
                           </td>
@@ -2448,6 +2454,7 @@ export const RoomPricingModal: React.FC<RoomPricingModalProps> = ({
                                   [r.code]: { ...d, deposit: val },
                                 }));
                               }}
+                              aria-label={`Tiền cọc mới phòng ${r.code}`}
                               className="w-28 rounded-lg border border-slate-200 px-2.5 py-1 text-right font-semibold text-slate-700 focus:border-blue-600 focus:outline-none"
                             />
                           </td>

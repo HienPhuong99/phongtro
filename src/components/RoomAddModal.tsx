@@ -56,15 +56,18 @@ export const RoomAddModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px] p-4 overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Thêm phòng"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px] p-4 overflow-y-auto"
+    >
       <form
-        role="dialog"
-        aria-label="Thêm phòng"
         onSubmit={submit}
         className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-900">Thêm phòng · {property.name}</h3>
+          <h2 className="text-sm font-bold text-slate-900">Thêm phòng · {property.name}</h2>
           <button type="button" onClick={onClose} aria-label="Đóng" className="p-1 rounded-lg hover:bg-slate-100">
             <X className="w-4 h-4" />
           </button>

@@ -1847,7 +1847,7 @@ export function App() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {greeting} · {weekday}, ngày {today} · Theo dõi dòng tiền, công nợ FIFO và hiệu suất phòng trực quan
+              {greeting} · {weekday}, ngày {today}
             </p>
           </div>
 
@@ -1939,8 +1939,8 @@ export function App() {
                   <tr className="text-left text-slate-400 border-b border-slate-100">
                     <th className="py-1.5 pr-3 font-medium">Khu</th>
                     <th className="py-1.5 px-2 font-medium text-right">Đang thuê</th>
-                    <th className="py-1.5 px-2 font-medium text-right">Phòng trống</th>
-                    {canViewReports && <th className="py-1.5 px-2 font-medium text-right">Đã thu kỳ này</th>}
+                    <th className="py-1.5 px-2 font-medium text-right hidden sm:table-cell">Phòng trống</th>
+                    {canViewReports && <th className="py-1.5 px-2 font-medium text-right hidden sm:table-cell">Đã thu kỳ này</th>}
                     <th className="py-1.5 pl-2 font-medium text-right">Còn nợ</th>
                   </tr>
                 </thead>
@@ -1959,9 +1959,9 @@ export function App() {
                     >
                       <td className="py-1.5 pr-3">{row.name}</td>
                       <td className="py-1.5 px-2 text-right">{row.occupied}/{row.rooms}</td>
-                      <td className={`py-1.5 px-2 text-right ${row.vacant > 0 ? 'text-emerald-600' : ''}`}>{row.vacant}</td>
-                      {canViewReports && <td className="py-1.5 px-2 text-right">{formatVND(row.collected)}</td>}
-                      <td className={`py-1.5 pl-2 text-right ${row.debt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatVND(row.debt)}</td>
+                      <td className={`py-1.5 px-2 text-right hidden sm:table-cell ${row.vacant > 0 ? 'text-emerald-600' : ''}`}>{row.vacant}</td>
+                      {canViewReports && <td className="py-1.5 px-2 text-right whitespace-nowrap hidden sm:table-cell">{formatVND(row.collected)}</td>}
+                      <td className={`py-1.5 pl-2 text-right whitespace-nowrap ${row.debt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatVND(row.debt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2896,7 +2896,7 @@ export function App() {
                 <span>{pill.label}</span>
                 <span
                   className={`text-[11px] tabular-nums ${
-                    roomStatusFilter === pill.id ? 'text-blue-100' : 'text-slate-400'
+                    roomStatusFilter === pill.id ? 'text-white' : 'text-slate-400'
                   }`}
                 >
                   {pill.count}
@@ -2908,7 +2908,7 @@ export function App() {
 
         {/* 3 KPI Cards */}
         <div
-          className={`grid grid-cols-1 ${
+          className={`kpi-grid grid grid-cols-1 ${
             isMobilePreview ? 'gap-3' : 'md:grid-cols-3 gap-4'
           }`}
         >
@@ -3340,7 +3340,7 @@ export function App() {
                     <th className="py-3.5 px-3 font-medium">SĐT</th>
                     <th className="py-3.5 px-3 font-medium text-right">Đã thu</th>
                     <th className="py-3.5 px-4 font-medium text-right">Công nợ</th>
-                    <th className="py-3.5 px-4"></th>
+                    <th className="py-3.5 px-4"><span className="sr-only">Thao tác</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -3446,7 +3446,7 @@ export function App() {
         ) : (
           /* Tab Danh sách xe */
           <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
                   <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
@@ -3601,7 +3601,7 @@ export function App() {
               <span>{pill.label}</span>
               <span
                 className={`text-[11px] ${
-                  contractFilter === pill.id ? 'text-blue-100' : 'text-slate-400'
+                  contractFilter === pill.id ? 'text-white' : 'text-slate-400'
                 }`}
               >
                 {pill.count}
@@ -3611,7 +3611,7 @@ export function App() {
         </div>
 
         {/* 3 KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="kpi-grid grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
               <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
@@ -3649,8 +3649,47 @@ export function App() {
           </div>
         </div>
 
+        {/* Điện thoại: mỗi hợp đồng một thẻ */}
+        <ul className="md:hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm divide-y divide-slate-100 text-xs">
+          {displayedContracts.map((c) => (
+            <li key={c.id} className="p-3.5 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="font-extrabold text-slate-900 text-sm">{c.roomCode}</span>
+                  <span className="text-slate-700 truncate">{c.tenantName}</span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  {c.code} · {c.startDate} → {c.endDate}
+                </div>
+                <div className="text-[11px]">
+                  {c.status === 'terminated' ? (
+                    <span className="text-slate-500">Đã thanh lý ({c.moveOutDate})</span>
+                  ) : (
+                    <span className={c.daysRemaining <= 60 ? 'text-amber-700 font-semibold' : 'text-slate-500'}>
+                      Còn {c.daysRemaining} ngày
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="text-right shrink-0 space-y-1">
+                <div className="font-bold text-slate-900 whitespace-nowrap">{formatVND(c.rentAmount)}</div>
+                <div className="text-[11px] text-slate-500 whitespace-nowrap">Cọc {formatVND(c.depositAmount)}</div>
+                {c.status === 'active' && canViewReports && (
+                  <button
+                    type="button"
+                    onClick={() => setMoveOutContract(c)}
+                    className="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-semibold"
+                  >
+                    Trả phòng
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+
         {/* Bảng Hợp đồng */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+        <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -3759,6 +3798,87 @@ export function App() {
       return ym;
     };
 
+    // Ô bấm dùng chung cho bảng (máy tính) và thẻ (điện thoại)
+    const meterButton = (inv: Invoice) => (
+      <button
+        type="button"
+        onClick={() => {
+          setMeterInitialRoom(inv.roomCode);
+          setIsMeterModalOpen(true);
+        }}
+        className="inline-flex px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px] transition"
+      >
+        {inv.elecUsage} kWh · {inv.waterUsage} m3
+      </button>
+    );
+    const codeCell = (inv: Invoice) => (
+      <>
+        {inv.status === 'draft' ? (
+          <button
+            type="button"
+            onClick={() =>
+              setInvoices((prev) =>
+                prev.map((x) =>
+                  x.id === inv.id ? { ...x, status: 'unpaid' } : x
+                )
+              )
+            }
+            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-[11px]"
+          >
+            Nháp — điền chỉ số
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setZaloModalInvoice(inv)}
+              className="font-bold text-blue-600 hover:underline"
+            >
+              {inv.code}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditInvoice(inv)}
+              aria-label={`Sửa hóa đơn ${inv.code}`}
+              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-100"
+            >
+              Sửa
+            </button>
+          </span>
+        )}
+      </>
+    );
+    const sendButton = (inv: Invoice) => (
+      <button
+        type="button"
+        onClick={() => setZaloModalInvoice(inv)}
+        className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+          inv.sentZalo
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+        }`}
+      >
+        {inv.sentZalo ? 'Đã gửi' : 'Gửi'}
+      </button>
+    );
+    const collectCell = (inv: Invoice, rem: number) => (
+      <>
+        {rem > 0 ? (
+          <button
+            type="button"
+            onClick={() => setCollectModalInvoice(inv)}
+            className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 text-xs font-semibold transition"
+          >
+            Thu
+          </button>
+        ) : (
+          <span className="text-[11px] font-semibold text-emerald-600">
+            ✓ Xong
+          </span>
+        )}
+      </>
+    );
+
     const stepMonth = (dir: -1 | 1) => {
       const idx = availableMonths.indexOf(invoiceMonth);
       const next = availableMonths[idx + dir];
@@ -3785,11 +3905,13 @@ export function App() {
               type="button"
               disabled={availableMonths.indexOf(invoiceMonth) <= 0}
               onClick={() => stepMonth(-1)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Tháng trước"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap"
             >
-              ← Tháng trước
+              ←<span className="hidden sm:inline"> Tháng trước</span>
             </button>
             <select
+              aria-label="Chọn kỳ hóa đơn"
               value={invoiceMonth}
               onChange={(e) => setInvoiceMonth(e.target.value)}
               className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none"
@@ -3806,9 +3928,10 @@ export function App() {
                 availableMonths.indexOf(invoiceMonth) >= availableMonths.length - 1
               }
               onClick={() => stepMonth(1)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Tháng sau"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap"
             >
-              Tháng sau →
+              <span className="hidden sm:inline">Tháng sau </span>→
             </button>
           </div>
         </div>
@@ -3915,7 +4038,7 @@ export function App() {
                 <span>{pill.label}</span>
                 <span
                   className={`text-[11px] ${
-                    invoiceFilter === pill.id ? 'text-blue-100' : 'text-slate-500'
+                    invoiceFilter === pill.id ? 'text-white' : 'text-slate-500'
                   }`}
                 >
                   {pill.count}
@@ -3924,8 +4047,50 @@ export function App() {
             ))}
           </div>
 
+          {/* Điện thoại: mỗi hóa đơn một thẻ, không cuộn ngang */}
+          <ul className="md:hidden divide-y divide-slate-100 text-xs" data-testid="invoice-cards">
+            {filteredInvoices.map((inv) => {
+              const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
+              return (
+                <li key={inv.id} className="py-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className="font-extrabold text-slate-900 text-sm">{inv.roomCode}</span>
+                      <span className="text-[11px] text-slate-500 truncate">{inv.tenantName}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">{inv.periodLabel}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {meterButton(inv)}
+                      {codeCell(inv)}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 space-y-1.5">
+                    <div
+                      className={`font-bold whitespace-nowrap ${
+                        rem > 0 ? 'text-rose-600' : inv.status === 'draft' ? 'text-slate-400' : 'text-emerald-600'
+                      }`}
+                    >
+                      {inv.status === 'draft' ? 'Chưa lập' : rem > 0 ? formatVND(rem) : 'Đã thu đủ'}
+                    </div>
+                    {inv.paidAmount > 0 && (
+                      <div className="text-[11px] text-slate-500 whitespace-nowrap">Tổng {formatVND(inv.totalAmount)}</div>
+                    )}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {sendButton(inv)}
+                      {collectCell(inv, rem)}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+            <li className="py-3 flex justify-between font-extrabold text-slate-900">
+              <span>Tổng {activeMonthInvoices.length} hóa đơn</span>
+              <span className="text-rose-600 whitespace-nowrap">Còn {formatVND(monthRemaining)}</span>
+            </li>
+          </ul>
+
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -3957,51 +4122,10 @@ export function App() {
                         {inv.periodLabel}
                       </td>
                       <td className="py-3.5 px-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMeterInitialRoom(inv.roomCode);
-                            setIsMeterModalOpen(true);
-                          }}
-                          className="inline-flex px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px] transition"
-                        >
-                          {inv.elecUsage} kWh · {inv.waterUsage} m3
-                        </button>
+                        {meterButton(inv)}
                       </td>
                       <td className="py-3.5 px-3">
-                        {inv.status === 'draft' ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setInvoices((prev) =>
-                                prev.map((x) =>
-                                  x.id === inv.id ? { ...x, status: 'unpaid' } : x
-                                )
-                              )
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-[11px]"
-                          >
-                            Nháp — điền chỉ số
-                          </button>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setZaloModalInvoice(inv)}
-                              className="font-bold text-blue-600 hover:underline"
-                            >
-                              {inv.code}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditInvoice(inv)}
-                              aria-label={`Sửa hóa đơn ${inv.code}`}
-                              className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-100"
-                            >
-                              Sửa
-                            </button>
-                          </span>
-                        )}
+                        {codeCell(inv)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-semibold text-slate-900">
                         {formatVND(inv.totalAmount)}
@@ -4025,32 +4149,10 @@ export function App() {
                           : 'Đã thu đủ'}
                       </td>
                       <td className="py-3.5 px-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setZaloModalInvoice(inv)}
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                            inv.sentZalo
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                          }`}
-                        >
-                          {inv.sentZalo ? 'Đã gửi' : 'Gửi'}
-                        </button>
+                        {sendButton(inv)}
                       </td>
                       <td className="py-3.5 px-2 text-center">
-                        {rem > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => setCollectModalInvoice(inv)}
-                            className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 text-xs font-semibold transition"
-                          >
-                            Thu
-                          </button>
-                        ) : (
-                          <span className="text-[11px] font-semibold text-emerald-600">
-                            ✓ Xong
-                          </span>
-                        )}
+                        {collectCell(inv, rem)}
                       </td>
                     </tr>
                   );
@@ -4142,7 +4244,7 @@ export function App() {
         {/* TAB: CÔNG NỢ */}
         {activeTab === 'finance-debts' && (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="kpi-grid grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
                   <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
@@ -4168,7 +4270,45 @@ export function App() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
+            {/* Điện thoại: mỗi khoản nợ một thẻ, bấm số điện thoại để gọi */}
+            <ul className="md:hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm divide-y divide-slate-100 text-xs">
+              {allUnpaidInvoices.map((inv) => {
+                const rem = Math.max(0, inv.totalAmount - inv.paidAmount);
+                return (
+                  <li key={inv.id} className="p-3.5 flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-baseline gap-2 min-w-0">
+                        <span className="font-extrabold text-slate-900 text-sm">{inv.roomCode}</span>
+                        <span className="text-slate-700 truncate">{inv.tenantName}</span>
+                      </div>
+                      <a href={`tel:${inv.tenantPhone}`} className="block text-blue-600 font-semibold">
+                        {inv.tenantPhone}
+                      </a>
+                      <div className="text-[11px] text-slate-500">
+                        {inv.code} · hạn {inv.dueDate}
+                        {inv.isOverdue && (
+                          <span className="ml-1.5 px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 text-[10px] font-bold">
+                            Quá hạn
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 space-y-1.5">
+                      <div className="font-bold text-rose-600 whitespace-nowrap">{formatVND(rem)}</div>
+                      <button
+                        type="button"
+                        onClick={() => setCollectModalInvoice(inv)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition"
+                      >
+                        Thu nợ
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -4228,7 +4368,7 @@ export function App() {
         {/* TAB: CỌC PHẢI TRẢ */}
         {activeTab === 'finance-deposits' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="kpi-grid grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1.5">
                   <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
@@ -4272,7 +4412,7 @@ export function App() {
             {/* Tới hạn trả lại */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Tới hạn trả lại</h3>
+                <h2 className="text-sm font-bold text-slate-900">Tới hạn trả lại</h2>
                 <p className="text-xs text-slate-500">
                   Khách đã dọn đi, tiền cọc còn nằm trong két của bạn.
                 </p>
@@ -4296,7 +4436,7 @@ export function App() {
                           Phải trả lại
                         </th>
                         <th className="py-3 px-3 font-medium">Tài khoản nhận</th>
-                        <th className="py-3 px-3 font-medium text-right"></th>
+                        <th className="py-3 px-3 font-medium text-right"><span className="sr-only">Thao tác</span></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -4344,9 +4484,9 @@ export function App() {
             {/* Đang giữ hộ khách */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h2 className="text-sm font-bold text-slate-900">
                   Đang giữ hộ khách
-                </h3>
+                </h2>
                 <p className="text-xs text-slate-500">
                   Khách còn thuê. Chưa phải trả, nhưng đây là tiền của họ.
                 </p>
@@ -4391,9 +4531,9 @@ export function App() {
         {activeTab === 'finance-cashbook' && (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h2 className="text-sm font-bold text-slate-900">
                 Nhật ký Sổ thu chi ({transactions.length} bút toán)
-              </h3>
+              </h2>
               <button
                 type="button"
                 onClick={() => {
@@ -4472,7 +4612,7 @@ export function App() {
 
         {/* TAB: QUỸ */}
         {activeTab === 'finance-funds' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="kpi-grid grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-2">
               <div className="text-xs text-slate-500">
                 Quỹ Ngân hàng ({currentProperty.bankName} ·{' '}
@@ -4916,7 +5056,7 @@ export function App() {
         {/* Theo cơ sở */}
         <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-3">
           <h3 className="text-sm font-bold text-slate-900">Theo cơ sở</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Báo cáo theo cơ sở">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-slate-400 border-b border-slate-100 text-left">
@@ -5155,7 +5295,7 @@ export function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
               <label className="block font-medium text-slate-600 mb-1">Tên khu trọ</label>
-              <input
+              <input aria-label="Tên khu trọ"
                 type="text"
                 value={currentProperty.name}
                 onChange={(e) =>
@@ -5168,7 +5308,7 @@ export function App() {
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">Địa chỉ</label>
-              <input
+              <input aria-label="Địa chỉ"
                 type="text"
                 value={currentProperty.address}
                 onChange={(e) =>
@@ -5183,7 +5323,7 @@ export function App() {
               <label className="block font-medium text-slate-600 mb-1">
                 Giá điện (đ/kWh)
               </label>
-              <input
+              <input aria-label="Giá điện (đ/kWh)"
                 type="number"
                 value={currentProperty.electricityRate}
                 onChange={(e) => {
@@ -5221,7 +5361,7 @@ export function App() {
               <label className="block font-medium text-slate-600 mb-1">
                 Giá nước (đ/m3)
               </label>
-              <input
+              <input aria-label="Giá nước (đ/m3)"
                 type="number"
                 value={currentProperty.waterRate}
                 onChange={(e) => {
@@ -5239,7 +5379,7 @@ export function App() {
               <label className="block font-medium text-slate-600 mb-1">
                 Ngân hàng nhận chuyển khoản
               </label>
-              <select
+              <select aria-label="Ngân hàng nhận chuyển khoản"
                 value={currentProperty.bankBin}
                 onChange={(e) => {
                   const bank = VIETQR_BANKS.find((x) => x.bin === e.target.value);
@@ -5265,7 +5405,7 @@ export function App() {
             </div>
             <div>
               <label className="block font-medium text-slate-600 mb-1">Tên chủ tài khoản (không dấu)</label>
-              <input
+              <input aria-label="Tên chủ tài khoản (không dấu)"
                 type="text"
                 value={currentProperty.bankOwner}
                 onChange={(e) =>
@@ -5280,7 +5420,7 @@ export function App() {
               <label className="block font-medium text-slate-600 mb-1">
                 Số tài khoản VietQR
               </label>
-              <input
+              <input aria-label="Số tài khoản VietQR"
                 type="text"
                 value={currentProperty.bankAccount}
                 onChange={(e) =>
@@ -5317,7 +5457,7 @@ export function App() {
             <label className="block font-medium text-slate-600">
               URL Google Apps Script Web App (`.../exec`)
             </label>
-            <input
+            <input aria-label="URL Google Apps Script Web App (`.../exec`)"
               type="text"
               value={sheetsWebAppUrl}
               onChange={(e) => {
@@ -5329,7 +5469,7 @@ export function App() {
             <label className="block font-medium text-slate-600 pt-1">
               Mã đồng bộ (SYNC_TOKEN)
             </label>
-            <input
+            <input aria-label="Mã đồng bộ (SYNC_TOKEN)"
               type="password"
               autoComplete="off"
               value={sheetsSyncToken}
@@ -5487,6 +5627,7 @@ export function App() {
                 className="flex-1 min-w-[220px] rounded-xl border border-slate-200 px-3.5 py-2 text-slate-900"
               />
               <select
+                aria-label="Quyền của tài khoản phụ"
                 value={newStaffRole}
                 onChange={(e) => setNewStaffRole(e.target.value as 'staff' | 'viewer')}
                 className="rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 bg-white"
@@ -5820,7 +5961,8 @@ export function App() {
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
         {isDemoMode ? (
           <div
-            role="note"
+            role="region"
+            aria-label="Thông báo bản demo"
             className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2"
           >
             <div>
@@ -5854,7 +5996,8 @@ export function App() {
           </div>
         ) : (
           <div
-            role="note"
+            role="region"
+            aria-label="Thông báo bản demo"
             className="bg-teal-50 border-b border-teal-200 px-4 lg:px-8 py-2 text-xs text-teal-900 flex flex-wrap items-center justify-between gap-2"
           >
             <div className="flex items-center gap-2">
@@ -5936,7 +6079,7 @@ export function App() {
             </select>
 
             {/* Global Search */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-md hidden sm:block">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -6015,13 +6158,14 @@ export function App() {
               }`}
             >
               <Cloud className="w-3.5 h-3.5" />
-              <span>{!isDemoMode && authUser ? 'Tài khoản Cloud' : 'Đăng nhập / Demo'}</span>
+              <span className="hidden sm:inline">{!isDemoMode && authUser ? 'Tài khoản Cloud' : 'Đăng nhập / Demo'}</span>
+              <span className="sr-only sm:hidden">{!isDemoMode && authUser ? 'Tài khoản Cloud' : 'Đăng nhập'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsPhoneQrOpen(true)}
-              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1.5"
+              className="hidden md:flex px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition items-center gap-1.5"
             >
               <span>📲 Mở trên điện thoại</span>
             </button>

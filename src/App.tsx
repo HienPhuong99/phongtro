@@ -6239,7 +6239,13 @@ export function App() {
 
       <MoveOutModal
         contract={canViewReports ? moveOutContract : null}
-        room={rooms.find((r) => r.propertyId === moveOutContract?.propertyId && r.code === moveOutContract?.roomCode)}
+        room={
+          rooms.find((r) => r.propertyId === moveOutContract?.propertyId && r.code === moveOutContract?.roomCode) ??
+          // Hợp đồng trỏ tới phòng đã không còn (dữ liệu lỗi cũ): vẫn cho thanh lý, phòng giả không ghi lại vào sổ
+          (moveOutContract
+            ? ({ id: '', propertyId: moveOutContract.propertyId, code: moveOutContract.roomCode, floor: 1, price: 0, deposit: 0, status: 'occupied', elecIndex: 0, waterIndex: 0, trashFee: 0, internetFee: 0, vehicleCount: 0 } as Room)
+            : undefined)
+        }
         roomInvoices={allInvoices.filter(
           (i) => i.propertyId === moveOutContract?.propertyId && i.roomCode === moveOutContract?.roomCode
         )}

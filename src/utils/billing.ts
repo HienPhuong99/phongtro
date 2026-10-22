@@ -1,4 +1,4 @@
-import type { FifoAllocatedItem, Invoice, Room, RoomPriceUpdateItem } from '../types.ts';
+import type { Contract, FifoAllocatedItem, Invoice, Room, RoomPriceUpdateItem } from '../types.ts';
 import { parseDateVN, todayVN } from './format.ts';
 
 /**
@@ -332,4 +332,169 @@ export function planElectricityRestructure(params: {
     /** Thu nhập tháng thay đổi (dương = nhiều hơn trước một chút do làm tròn). */
     incomeDelta: sum('newElec') + sum('rentIncrease') - sum('oldElec'),
   };
+}
+
+/** Tiền phòng gợi ý cho những ngày ở cuối: từ đầu tháng (hoặc ngày vào ở nếu muộn hơn) tới ngày trả phòng. */
+export function suggestFinalRent(params: {
+  rentAmount: number;
+  moveOutDate: string;
+  startDate: string;
+  monthAlreadyBilled: boolean;
+}): number {
+  const out = parseDateVN(params.moveOutDate);
+  if (!out || params.monthAlreadyBilled) return 0;
+  const start = parseDateVN(params.startDate);
+  const from =
+    start && start.getFullYear() === out.getFullYear() && start.getMonth() === out.getMonth() ? start.getDate() : 1;
+  const daysInMonth = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
+  const days = Math.max(0, out.getDate() - from + 1);
+  return Math.round((params.rentAmount * days) / daysInMonth);
+}
+
+export interface MoveOutInput {
+  moveOutDate: string; // DD/MM/YYYY
+  elecNew: number;
+  waterNew: number;
+  finalRent: number;
+  otherCharges: number;
+  refundBankAccount: string;
+  refundBankName: string;
+}
+
+/**
+ * 7. Trả phòng / thanh lý hợp đồng.
+ * Cọc trừ vào nợ theo FIFO (gồm hóa đơn quyết toán cuối), rồi tới khoản khác (hư hỏng, dọn dẹp);
+ * phần còn lại phải hoàn cho khách. Không ghi sổ thu: cọc đã ghi thu lúc nhận, phần hoàn ghi chi khi chuyển trả.
+ */
+export function planMoveOut(params: {
+  contract: Contract;
+  room: Room;
+  roomInvoices: Invoice[];
+  elecRate: number;
+  waterRate: number;
+  finalInvoiceCode: string;
+  input: MoveOutInput;
+}):
+  | { error: string }
+  | {
+      contract: Contract;
+      room: Room;
+      finalInvoice: Invoice | null;
+      invoiceUpdates: Record<string, { addPaid: number; newStatus: Invoice['status'] }>;
+      removeInvoiceIds: string[];
+      deducted: number;
+      refund: number;
+      extraDue: number;
+    } {
+  const { contract, room, roomInvoices, input } = params;
+  const out = parseDateVN(input.moveOutDate);
+  if (!out) return { error: 'Ngày trả phòng không hợp lệ.' };
+  const ymOut = `${out.getFullYear()}-${String(out.getMonth() + 1).padStart(2, '0')}`;
+  // Nháp và hóa đơn chưa thu đồng nào của các tháng sau ngày trả phòng: khách không ở nữa, bỏ đi.
+  const dropped = (i: Invoice) => i.paidAmount === 0 && (i.status === 'draft' || i.billingMonth > ymOut);
+  // Cọc chỉ trừ vào hóa đơn tới tháng trả phòng; hóa đơn tháng sau đã thu một phần thì để chủ trọ tự xử lý.
+  const billed = roomInvoices.filter((i) => i.status !== 'draft' && i.billingMonth <= ymOut);
+  const elecOld = Math.max(room.elecIndex, ...billed.map((i) => i.elecNew));
+  const waterOld = Math.max(room.waterIndex, ...billed.map((i) => i.waterNew));
+  if (input.elecNew < elecOld) return { error: `Số điện chốt phải từ ${elecOld} trở lên.` };
+  if (input.waterNew < waterOld) return { error: `Số nước chốt phải từ ${waterOld} trở lên.` };
+  if (input.finalRent < 0 || input.otherCharges < 0) return { error: 'Số tiền không được âm.' };
+
+  const elecUsage = input.elecNew - elecOld;
+  const waterUsage = input.waterNew - waterOld;
+  const finalTotal = input.finalRent + elecUsage * params.elecRate + waterUsage * params.waterRate;
+  const finalInvoice: Invoice | null =
+    finalTotal > 0
+      ? {
+          id: `inv-moveout-${contract.id}`,
+          code: params.finalInvoiceCode,
+          propertyId: contract.propertyId,
+          roomCode: contract.roomCode,
+          floor: room.floor,
+          tenantName: contract.tenantName,
+          tenantPhone: contract.tenantPhone,
+          contractCode: contract.code,
+          billingMonth: ymOut,
+          periodLabel: `Quyết toán trả phòng ${input.moveOutDate}`,
+          issueDate: input.moveOutDate,
+          dueDate: input.moveOutDate,
+          rentAmount: input.finalRent,
+          elecOld,
+          elecNew: input.elecNew,
+          elecUsage,
+          elecRate: params.elecRate,
+          elecAmount: elecUsage * params.elecRate,
+          waterOld,
+          waterNew: input.waterNew,
+          waterUsage,
+          waterRate: params.waterRate,
+          waterAmount: waterUsage * params.waterRate,
+          trashAmount: 0,
+          internetAmount: 0,
+          vehicleCount: 0,
+          vehicleAmount: 0,
+          totalAmount: finalTotal,
+          paidAmount: 0,
+          status: 'unpaid',
+          sentZalo: false,
+          isOverdue: false,
+        }
+      : null;
+
+  const removeInvoiceIds = roomInvoices.filter(dropped).map((i) => i.id);
+  const open = [...billed, ...(finalInvoice ? [finalInvoice] : [])];
+  const deposit = contract.depositMode === 'pending' ? 0 : Math.max(0, contract.depositAmount);
+  const fifo = allocatePaymentFIFO(open, deposit);
+  const allocated = deposit - fifo.remainingMoney;
+  const fromOther = Math.min(input.otherCharges, fifo.remainingMoney);
+  const deducted = allocated + fromOther;
+  const refund = deposit - deducted;
+  const invoiceDebtLeft = open.reduce((s, i) => s + i.totalAmount - i.paidAmount, 0) - allocated;
+  const extraDue = invoiceDebtLeft + (input.otherCharges - fromOther);
+  // Phần cọc trừ vào hóa đơn quyết toán ghi luôn vào hóa đơn mới, không để App phải tìm id chưa tồn tại.
+  const finalUp = finalInvoice ? fifo.updatedMap[finalInvoice.id] : undefined;
+  const invoiceUpdates = { ...fifo.updatedMap };
+  if (finalInvoice) delete invoiceUpdates[finalInvoice.id];
+  const finalInvoiceOut =
+    finalInvoice && finalUp
+      ? { ...finalInvoice, paidAmount: finalUp.addPaid, status: finalUp.newStatus }
+      : finalInvoice;
+
+  return {
+    contract: {
+      ...contract,
+      status: 'terminated',
+      moveOutDate: input.moveOutDate,
+      daysRemaining: 0,
+      depositDeducted: deducted,
+      depositRefundAmount: refund,
+      depositRefunded: refund === 0,
+      refundBankAccount: input.refundBankAccount.trim(),
+      refundBankName: input.refundBankName.trim(),
+    },
+    room: {
+      ...room,
+      status: 'vacant',
+      tenantId: undefined,
+      tenantName: undefined,
+      tenantPhone: undefined,
+      contractCode: undefined,
+      vehicleCount: 0,
+      elecIndex: input.elecNew,
+      waterIndex: input.waterNew,
+    },
+    finalInvoice: finalInvoiceOut,
+    invoiceUpdates,
+    removeInvoiceIds,
+    deducted,
+    refund,
+    extraDue,
+  };
+}
+
+/** Mã kế tiếp theo số lớn nhất đang có (đếm số lượng thì trùng mã khi đã xoá bớt hoặc nhập từ file). */
+export function nextCode(prefix: string, codes: string[], min = 1): string {
+  const re = new RegExp(`^${prefix}([0-9]+)$`);
+  const max = codes.reduce((m, c) => Math.max(m, Number(re.exec(c)?.[1] ?? 0)), min - 1);
+  return `${prefix}${String(max + 1).padStart(5, '0')}`;
 }

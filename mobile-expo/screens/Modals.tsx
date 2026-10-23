@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, Share, Switch, Text, TextInput, View } from 'react-native';
-import { ArrowLeft, ArrowRight, CheckCircle2, Droplets, MessageCircle, Share2, Zap } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, CheckCircle2, Droplets, MessageCircle, Plus, Share2, X, Zap } from 'lucide-react-native';
 import { PUBLIC_WEB_URL, useStore } from '../lib/store';
 import { AuthModal } from './Auth';
 import { AddRoomModal, EditInvoiceModal, ExpenseModal, MoveOutModal, TempResidenceModal } from './MoreModals';
@@ -33,7 +33,7 @@ export function ModalHost() {
       {m?.kind === 'collect' && <CollectModal key={`p-${m.invoice.id}`} invoice={m.invoice} report={m.report} onClose={close} />}
       {m?.kind === 'invoice' && <InvoiceModal key={`i-${m.invoice.id}`} invoice={m.invoice} onClose={close} />}
       {m?.kind === 'editInvoice' && <EditInvoiceModal key={`e-${m.invoice.id}`} invoice={m.invoice} onClose={close} />}
-      {m?.kind === 'pricing' && owner && <PricingModal key={`r-${m.roomCode}`} roomCode={m.roomCode} onClose={close} />}
+      {m?.kind === 'pricing' && owner && <PricingModal key={`r-${m.roomCode}`} roomCode={m.roomCode} bulk={m.bulk} onClose={close} />}
       {m?.kind === 'addRoom' && owner && <AddRoomModal onClose={close} />}
       {m?.kind === 'expense' && <ExpenseModal onClose={close} />}
       {m?.kind === 'moveOut' && owner && <MoveOutModal key={`o-${m.contract.id}`} contract={m.contract} onClose={close} />}
@@ -119,8 +119,14 @@ function ContractModal({ initialRoomCode, onClose }: { initialRoomCode?: string;
   const [deposit, setDeposit] = useState(defaultRoom?.deposit || 2500000);
   const [depositMode, setDepositMode] = useState<'received_today' | 'received_before' | 'pending'>('received_today');
   const [submitted, setSubmitted] = useState(false);
+  const [coSearch, setCoSearch] = useState('');
+  const [coTenants, setCoTenants] = useState<string[]>([]);
 
   const room = rooms.find((r) => r.code === roomCode) || defaultRoom;
+  const coQ = coSearch.trim().toLowerCase();
+  const coSuggest = s.tenants
+    .filter((t) => !coTenants.includes(`${t.name} · ${t.phone}`) && (!coQ || t.name.toLowerCase().includes(coQ) || t.phone.includes(coQ)))
+    .slice(0, 4);
   const start = parseDateVN(startDate);
   const end = parseDateVN(endDate);
   const dateOrderBad = !!start && !!end && end.getTime() <= start.getTime();
@@ -164,7 +170,7 @@ function ContractModal({ initialRoomCode, onClose }: { initialRoomCode?: string;
       rentAmount: rent,
       depositAmount: deposit,
       depositMode,
-      coTenantNames: [],
+      coTenantNames: coTenants,
       firstPeriodRent: proRata.firstAmount,
       firstPeriodLabel: proRata.periodText,
     });
@@ -265,6 +271,44 @@ function ContractModal({ initialRoomCode, onClose }: { initialRoomCode?: string;
           desc="Không ghi sổ quỹ — tiền vào két từ trước, ghi lại là sai doanh thu tháng này"
         />
         <Radio on={depositMode === 'pending'} onPress={() => setDepositMode('pending')} title="Chưa nhận" desc='Hợp đồng sẽ hiện cảnh báo "chưa thu cọc" cho tới khi bấm Đã nhận cọc' />
+      </View>
+      <View style={{ gap: 8 }}>
+        <Text style={{ fontSize: 12, fontWeight: '500', color: C.slate700 }}>Khách ở cùng (tuỳ chọn)</Text>
+        <View style={{ borderWidth: 1, borderColor: C.slate200, borderRadius: 12, padding: 12, gap: 8 }}>
+          {coTenants.length === 0 ? (
+            <Text style={[T.xs, { color: C.slate400 }]}>Chưa chọn ai</Text>
+          ) : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {coTenants.map((ct) => (
+                <Pressable
+                  key={ct}
+                  accessibilityLabel={`Bỏ ${ct}`}
+                  onPress={() => setCoTenants((p) => p.filter((x) => x !== ct))}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: C.blue50 }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: C.blue700 }}>{ct}</Text>
+                  <X size={12} color={C.blue600} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <TextInput
+            value={coSearch}
+            onChangeText={setCoSearch}
+            placeholder="Gõ tên để tìm rồi bấm chọn..."
+            placeholderTextColor={C.slate400}
+            style={[styles.input, { fontSize: 12, paddingVertical: 8 }]}
+          />
+          {coSuggest.map((t) => {
+            const label = `${t.name} · ${t.phone}`;
+            return (
+              <Pressable key={t.id} onPress={() => setCoTenants((p) => [...p, label])} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 8 }}>
+                <Plus size={14} color={C.slate400} />
+                <Text style={{ fontSize: 12, color: C.slate600 }}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
       {submitted && invalid ? <Text style={{ fontSize: 12, fontWeight: '600', color: C.rose600 }}>Kiểm tra lại các ô báo đỏ.</Text> : null}
     </Sheet>
@@ -636,9 +680,27 @@ Hạn thanh toán: ${inv.dueDate}`;
 // ============================================================================
 // 5. ĐIỀU CHỈNH GIÁ THUÊ TỪNG PHÒNG
 // ============================================================================
-function PricingModal({ roomCode, onClose }: { roomCode: string; onClose: () => void }) {
+function PricingModal({ roomCode, bulk, onClose }: { roomCode: string; bulk?: boolean; onClose: () => void }) {
   const s = useStore();
   const rooms = s.propertyRooms;
+  const [mode, setMode] = useState<'single' | 'bulk'>(bulk ? 'bulk' : 'single');
+  const [scope, setScope] = useState('all');
+  const [draft, setDraft] = useState<Record<string, { price: number; deposit: number }>>(() =>
+    Object.fromEntries(rooms.map((r) => [r.code, { price: r.price, deposit: r.deposit }]))
+  );
+  const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
+  const applyDelta = (amount: number, pct?: number) =>
+    setDraft((prev) => {
+      const next = { ...prev };
+      rooms.forEach((r) => {
+        if (scope !== 'all' && scope !== `floor-${r.floor}` && !(scope === 'vacant' && r.status === 'vacant')) return;
+        const cur = next[r.code];
+        const p = pct !== undefined ? Math.round((cur.price * (1 + pct / 100)) / 10000) * 10000 : Math.max(0, cur.price + amount);
+        // cọc đang bằng giá thuê thì đi theo giá mới, giống web
+        next[r.code] = { price: p, deposit: cur.deposit === cur.price ? p : cur.deposit };
+      });
+      return next;
+    });
   const [code, setCode] = useState(roomCode || rooms[0]?.code);
   const room = rooms.find((r) => r.code === code) || rooms[0];
   const [price, setPrice] = useState(room.price);
@@ -664,11 +726,17 @@ function PricingModal({ roomCode, onClose }: { roomCode: string; onClose: () => 
   const contract = s.contracts.find((c) => c.roomCode === code && c.status === 'active');
 
   const save = () => {
-    s.saveRoomPricing({
-      updates: [{ roomCode: code, price, deposit, trashFee: trash, internetFee: internet, vehicleCount: vehicles, status, notes: room.notes }],
-      syncActiveContracts: syncContracts,
-      syncUnpaidInvoices: syncInvoices,
-    });
+    const updates =
+      mode === 'single'
+        ? [{ roomCode: code, price, deposit, trashFee: trash, internetFee: internet, vehicleCount: vehicles, status, notes: room.notes }]
+        : rooms
+            .filter((r) => draft[r.code].price !== r.price || draft[r.code].deposit !== r.deposit)
+            .map((r) => ({ roomCode: r.code, ...draft[r.code], trashFee: r.trashFee, internetFee: r.internetFee, vehicleCount: r.vehicleCount, status: r.status, notes: r.notes }));
+    if (updates.length === 0) {
+      s.showToast('Chưa đổi giá phòng nào');
+      return;
+    }
+    s.saveRoomPricing({ updates, syncActiveContracts: syncContracts, syncUnpaidInvoices: syncInvoices });
     onClose();
   };
 
@@ -681,10 +749,66 @@ function PricingModal({ roomCode, onClose }: { roomCode: string; onClose: () => 
       footer={
         <>
           <Btn tone="outline" label="Huỷ" onPress={onClose} />
-          <Btn label="Lưu giá thuê mới" onPress={save} />
+          <Btn label={mode === 'single' ? `Lưu giá phòng ${code}` : 'Lưu bảng giá tất cả phòng'} onPress={save} />
         </>
       }
     >
+      <SubTabs
+        tabs={[
+          { id: 'single', label: 'Từng phòng' },
+          { id: 'bulk', label: 'Bảng giá tất cả phòng' },
+        ]}
+        value={mode}
+        onChange={setMode}
+      />
+      {mode === 'bulk' ? (
+        <>
+          <Select
+            label="Phạm vi áp dụng"
+            value={scope}
+            onChange={setScope}
+            options={[
+              { value: 'all', label: `Tất cả ${rooms.length} phòng` },
+              ...floors.map((f) => {
+                const codes = rooms.filter((r) => r.floor === f).map((r) => r.code);
+                return { value: `floor-${f}`, label: `Chỉ Tầng ${f} (${codes.length > 1 ? `${codes[0]} - ${codes[codes.length - 1]}` : codes[0]})` };
+              }),
+              { value: 'vacant', label: 'Chỉ các phòng đang trống' },
+            ]}
+          />
+          <Row style={{ gap: 8, flexWrap: 'wrap' }}>
+            {[-100000, -50000, 50000, 100000, 200000].map((d) => (
+              <Btn key={d} small tone="outline" label={`${d > 0 ? '+' : '-'}${Math.abs(d) / 1000}k`} onPress={() => applyDelta(d)} />
+            ))}
+            <Btn small tone="soft" label="+5%" onPress={() => applyDelta(0, 5)} />
+          </Row>
+          {rooms.map((r) => {
+            const d = draft[r.code];
+            const diff = d.price - r.price;
+            return (
+              <View key={r.id} style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.slate100 }}>
+                <Between>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: C.slate900 }}>
+                    {r.code} <Text style={[T.xxs, { fontWeight: '400' }]}>· Tầng {r.floor} · {r.status === 'occupied' ? r.tenantName : r.status === 'vacant' ? 'Còn trống' : 'Đang sửa'}</Text>
+                  </Text>
+                  <Text style={[T.num, { fontSize: 12, fontWeight: '700', color: diff > 0 ? C.emerald600 : diff < 0 ? C.rose600 : C.slate300 }]}>
+                    {diff === 0 ? '—' : `${diff > 0 ? '+' : ''}${formatVND(diff)}`}
+                  </Text>
+                </Between>
+                <Row style={{ gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <MoneyField label={`Giá mới (cũ ${formatVND(r.price)})`} value={d.price} onChange={(v) => setDraft((p) => ({ ...p, [r.code]: { ...p[r.code], price: v } }))} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <MoneyField label="Tiền cọc" value={d.deposit} onChange={(v) => setDraft((p) => ({ ...p, [r.code]: { ...p[r.code], deposit: v } }))} amber />
+                  </View>
+                </Row>
+              </View>
+            );
+          })}
+        </>
+      ) : (
+      <>
       <Select label="Phòng" value={code} onChange={setCode} options={rooms.map((r) => ({ value: r.code, label: `${r.code} · ${r.tenantName || (r.status === 'vacant' ? 'Trống' : 'Đang sửa')}` }))} />
       <MoneyField
         label="Giá thuê / tháng (đ)"
@@ -717,11 +841,13 @@ function PricingModal({ roomCode, onClose }: { roomCode: string; onClose: () => 
           { value: 'maintenance', label: 'Đang sửa chữa' },
         ]}
       />
+      </>
+      )}
       <Box>
         <Between>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: C.slate800 }}>Đồng bộ hợp đồng đang hiệu lực</Text>
-            <Text style={T.xxs}>{contract ? `${contract.code} · ${contract.tenantName}` : 'Phòng chưa có hợp đồng hiệu lực'}</Text>
+            <Text style={T.xxs}>{mode === 'bulk' ? 'Của các phòng được đổi giá' : contract ? `${contract.code} · ${contract.tenantName}` : 'Phòng chưa có hợp đồng hiệu lực'}</Text>
           </View>
           <Switch value={syncContracts} onValueChange={setSyncContracts} trackColor={{ true: C.blue600 }} />
         </Between>

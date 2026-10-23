@@ -184,7 +184,7 @@ export function Overview() {
         <Row style={{ gap: 8, flexWrap: 'wrap' }}>
           <Btn tone="outline" small icon={Droplets} label="Ghi điện nước" onPress={() => s.setModal({ kind: 'meter', roomCode: occupiedRooms[0]?.code })} />
           {s.canViewReports && propertyRooms.length > 0 && (
-            <Btn tone="outline" small icon={Pencil} label="Bảng giá phòng" onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0].code })} />
+            <Btn tone="outline" small icon={Pencil} label="Bảng giá phòng" onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0].code, bulk: true })} />
           )}
           {s.canViewReports && (
             <Btn small icon={Plus} label="Lập hợp đồng" onPress={() => s.setModal({ kind: 'contract', roomCode: vacantRooms[0]?.code })} />

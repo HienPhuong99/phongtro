@@ -4,3 +4,13 @@ export * from '../../src/data/seedData';
 export * from '../../src/utils/format';
 export * from '../../src/utils/billing';
 export * from '../../src/utils/insights';
+export * from '../../src/utils/rooms';
+export {
+  cloudCacheKey,
+  decideStartState,
+  emptySnapshot,
+  type AppSnapshot,
+  type CloudOwnerContext,
+  type CloudStatus,
+  type LocalCloudCache,
+} from '../../src/utils/cloudSync';

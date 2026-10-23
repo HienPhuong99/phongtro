@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler, Dimensions, Modal, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, BackHandler, Dimensions, Modal, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BarChart3,
@@ -9,7 +9,9 @@ import {
   FileText,
   LayoutGrid,
   LogIn,
+  LogOut,
   Menu,
+  ShieldCheck,
   Receipt,
   Settings as SettingsIcon,
   TrendingUp,
@@ -43,6 +45,8 @@ const NAV: { id: NavTab; label: string; group: string; icon: LucideIcon }[] = [
   { id: 'settings', label: 'Cài đặt', group: 'Khác', icon: SettingsIcon },
 ];
 const ROOT_TABS: NavTab[] = ['overview', 'rooms', 'invoices'];
+// Tài khoản phụ (người nhà / quản lý) chỉ ghi số điện nước, lập hóa đơn và thu tiền
+const STAFF_TABS: NavTab[] = ['overview', 'calendar', 'rooms', 'tenants', 'invoices', 'finance-cashbook', 'finance-debts'];
 
 export default function App() {
   return (
@@ -61,6 +65,8 @@ function Shell() {
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const tab = s.activeTab;
   const isSecondary = !ROOT_TABS.includes(tab) && !tab.startsWith('finance-');
+  const cloudOn = !s.isDemoMode && !!s.authUser;
+  const allowed = s.canViewReports || STAFF_TABS.includes(tab);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -95,20 +101,7 @@ function Shell() {
   return (
     <View style={{ flex: 1, backgroundColor: C.page }}>
       <StatusBar barStyle="dark-content" />
-      <View style={{ paddingTop: insets.top, backgroundColor: C.amber50, borderBottomWidth: 1, borderBottomColor: C.amber200 }}>
-        <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
-          <Text style={{ fontSize: 12, color: C.amber900 }}>
-            <Text style={{ fontWeight: '700' }}>Bản demo.</Text> Dữ liệu chỉ lưu trên điện thoại này. Không nhập họ tên, SĐT hay CCCD của khách thuê thật.
-          </Text>
-          <Pressable
-            onPress={() => Alert.alert('Đăng nhập Chủ trọ', 'Đăng nhập Sổ Đám mây trên app đang được làm. Hiện hãy dùng bản web để lưu lên mây.')}
-            style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: C.amber900 }}
-          >
-            <LogIn size={12} color={C.white} />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: C.white }}>Đăng nhập Chủ trọ (Lưu Đám mây)</Text>
-          </Pressable>
-        </View>
-      </View>
+      <ModeBanner topInset={insets.top} />
 
       <ScrollView
         ref={scrollRef}
@@ -136,23 +129,33 @@ function Shell() {
           </View>
           <Pressable
             accessibilityLabel="Đăng nhập / Demo"
-            onPress={() => Alert.alert('Đang ở Bản Demo', 'Dữ liệu mẫu 12 phòng để giới thiệu khách hàng, lưu trên điện thoại này.')}
-            style={{ width: 44, height: 42, borderRadius: 12, borderWidth: 1, borderColor: C.blue200, backgroundColor: C.blue50, alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => s.setModal({ kind: 'auth' })}
+            style={{
+              width: 44,
+              height: 42,
+              borderRadius: 12,
+              borderWidth: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...(cloudOn ? { borderColor: '#99F6E4', backgroundColor: '#F0FDFA' } : { borderColor: C.blue200, backgroundColor: C.blue50 }),
+            }}
           >
-            <Cloud size={18} color={C.blue700} />
+            <Cloud size={18} color={cloudOn ? '#115E59' : C.blue700} />
           </Pressable>
         </View>
 
         <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
-          {tab === 'overview' && <Overview />}
-          {tab === 'calendar' && <Calendar />}
-          {tab === 'rooms' && <Rooms />}
-          {tab === 'tenants' && <Tenants />}
-          {tab === 'contracts' && <Contracts />}
-          {tab === 'invoices' && <Invoices />}
-          {tab.startsWith('finance-') && <Finance />}
-          {tab === 'reports' && <Reports />}
-          {tab === 'settings' && <Settings />}
+          {!s.ready ? (
+            <ActivityIndicator color={C.blue600} style={{ marginTop: 40 }} />
+          ) : !allowed ? (
+            <View style={{ backgroundColor: C.white, borderRadius: 16, borderWidth: 1, borderColor: C.slate200, padding: 32 }}>
+              <Text style={{ fontSize: 14, color: C.slate600, textAlign: 'center' }}>
+                Tài khoản phụ chỉ ghi số điện nước, lập hóa đơn và thu tiền. Mục này do chủ trọ quản lý.
+              </Text>
+            </View>
+          ) : (
+            <Screen tab={tab} />
+          )}
         </View>
       </ScrollView>
 
@@ -189,6 +192,90 @@ function Shell() {
   );
 }
 
+function Screen({ tab }: { tab: NavTab }) {
+  if (tab === 'overview') return <Overview />;
+  if (tab === 'calendar') return <Calendar />;
+  if (tab === 'rooms') return <Rooms />;
+  if (tab === 'tenants') return <Tenants />;
+  if (tab === 'contracts') return <Contracts />;
+  if (tab === 'invoices') return <Invoices />;
+  if (tab === 'reports') return <Reports />;
+  if (tab === 'settings') return <Settings />;
+  return <Finance />;
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  idle: '',
+  loading: 'Đang tải sổ...',
+  saving: 'Đang lưu...',
+  offline: 'Mất mạng: thay đổi đang giữ trên máy, sẽ tự đồng bộ',
+  error: 'Lưu lên mây lỗi, đang thử lại (dữ liệu vẫn giữ trên máy)',
+  conflict: 'Sổ vừa được sửa ở thiết bị khác',
+};
+
+/** Dải thông báo đầu màn: Bản Demo (vàng) hoặc Sổ Đám mây (xanh ngọc) kèm trạng thái lưu */
+function ModeBanner({ topInset }: { topInset: number }) {
+  const s = useStore();
+  const pill = (label: string, onPress: () => void, style: object, color: string, Icon?: LucideIcon) => (
+    <Pressable onPress={onPress} style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }, style]}>
+      {Icon ? <Icon size={12} color={color} /> : null}
+      <Text style={{ fontSize: 11, fontWeight: '700', color }}>{label}</Text>
+    </Pressable>
+  );
+
+  if (s.isDemoMode) {
+    return (
+      <View style={{ paddingTop: topInset, backgroundColor: C.amber50, borderBottomWidth: 1, borderBottomColor: C.amber200 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
+          <Text style={{ fontSize: 12, color: C.amber900 }}>
+            <Text style={{ fontWeight: '700' }}>Bản demo.</Text> Dữ liệu chỉ lưu trên điện thoại này. Không nhập họ tên, SĐT hay CCCD của khách thuê thật.
+          </Text>
+          <View style={{ flexDirection: 'row' }}>
+            {s.authUser
+              ? pill(`Quay lại Sổ Đám mây (${s.authUser.email})`, () => s.enterCloud(s.authUser!), { backgroundColor: '#0F766E' }, C.white, Cloud)
+              : pill('Đăng nhập Chủ trọ (Lưu Đám mây)', () => s.setModal({ kind: 'auth' }), { backgroundColor: C.amber900 }, C.white, LogIn)}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const st = s.cloudStatus;
+  const statusColor = st === 'error' || st === 'conflict' ? C.rose700 : st === 'offline' ? C.amber700 : '#134E4A';
+  const role = s.cloudCtx && s.cloudCtx.role !== 'owner' ? (s.cloudCtx.role === 'staff' ? ' · Tài khoản phụ (ghi số, thu tiền)' : ' · Chỉ xem') : '';
+  return (
+    <View style={{ paddingTop: topInset, backgroundColor: '#F0FDFA', borderBottomWidth: 1, borderBottomColor: '#99F6E4' }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+          <ShieldCheck size={16} color="#0F766E" />
+          <Text style={{ fontSize: 12, color: '#134E4A', flex: 1 }}>
+            <Text style={{ fontWeight: '700' }}>Sổ Đám mây:</Text> {s.authUser?.email}
+            {role} ·{' '}
+            <Text style={{ color: statusColor, fontWeight: st === 'error' || st === 'conflict' || st === 'offline' ? '700' : '400' }}>
+              {st === 'saved' ? `Đã lưu lên mây lúc ${s.cloudLastSavedAt ?? ''}` : STATUS_TEXT[st]}
+            </Text>
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {st === 'conflict' && pill('Tải bản mới nhất', s.reloadCloud, { backgroundColor: C.rose600 }, C.white)}
+          {pill('🎭 Bật Chế độ Demo', () => s.switchToDemoMode(), { backgroundColor: C.amber100, borderWidth: 1, borderColor: C.amber300 }, C.amber900)}
+          {pill(
+            'Đăng xuất',
+            () =>
+              Alert.alert('Đăng xuất?', 'Dữ liệu đã lưu trên mây vẫn còn, đăng nhập lại là thấy.', [
+                { text: 'Huỷ', style: 'cancel' },
+                { text: 'Đăng xuất', style: 'destructive', onPress: s.signOutCloud },
+              ]),
+            { backgroundColor: C.white, borderWidth: 1, borderColor: C.rose200 },
+            C.rose600,
+            LogOut
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const s = useStore();
   const insets = useSafeAreaInsets();
@@ -203,7 +290,7 @@ function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     });
   }, [open]);
 
-  const groups = NAV.reduce<{ name: string; items: typeof NAV }[]>((acc, it) => {
+  const groups = NAV.filter((it) => s.canViewReports || STAFF_TABS.includes(it.id)).reduce<{ name: string; items: typeof NAV }[]>((acc, it) => {
     const last = acc[acc.length - 1];
     if (last && last.name === it.group) last.items.push(it);
     else acc.push({ name: it.group, items: [it] });

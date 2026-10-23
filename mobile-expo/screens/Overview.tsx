@@ -183,10 +183,45 @@ export function Overview() {
         </View>
         <Row style={{ gap: 8, flexWrap: 'wrap' }}>
           <Btn tone="outline" small icon={Droplets} label="Ghi điện nước" onPress={() => s.setModal({ kind: 'meter', roomCode: occupiedRooms[0]?.code })} />
-          <Btn tone="outline" small icon={Pencil} label="Bảng giá phòng" onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0]?.code || 'P101' })} />
-          <Btn small icon={Plus} label="Lập hợp đồng" onPress={() => s.setModal({ kind: 'contract', roomCode: vacantRooms[0]?.code })} />
+          {s.canViewReports && propertyRooms.length > 0 && (
+            <Btn tone="outline" small icon={Pencil} label="Bảng giá phòng" onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0].code })} />
+          )}
+          {s.canViewReports && (
+            <Btn small icon={Plus} label="Lập hợp đồng" onPress={() => s.setModal({ kind: 'contract', roomCode: vacantRooms[0]?.code })} />
+          )}
         </Row>
       </View>
+
+      {/* Phòng vừa báo "Tôi đã chuyển" (trang hóa đơn người thuê) */}
+      {s.paymentReports.length > 0 && (
+        <View style={{ backgroundColor: C.amber50, borderWidth: 1, borderColor: C.amber200, borderRadius: 16, padding: 16, gap: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: C.amber900 }}>
+            Phòng vừa báo đã chuyển tiền — đối chiếu biến động số dư của bạn rồi bấm Xác nhận
+          </Text>
+          {s.paymentReports.map((r) => {
+            const inv = invoices.find((i) => i.code === r.invoice_code);
+            return (
+              <View key={r.id} style={{ backgroundColor: C.white, borderRadius: 12, borderWidth: 1, borderColor: C.amber100, padding: 10, gap: 8 }}>
+                <Text style={{ fontSize: 12, color: C.slate700 }}>
+                  <Text style={{ fontWeight: '700' }}>{r.room_code}</Text> · {r.invoice_code} · <Text style={[T.num, { fontWeight: '700' }]}>{formatVND(r.amount)}</Text>
+                  {r.payer_note ? <Text style={{ color: C.slate500 }}> · {r.payer_note}</Text> : null}
+                  <Text style={{ color: C.slate400 }}> · {new Date(r.created_at).toLocaleString('vi-VN')}</Text>
+                </Text>
+                <Row style={{ gap: 6 }}>
+                  <Btn
+                    small
+                    label="Xác nhận"
+                    disabled={!inv}
+                    style={{ backgroundColor: C.emerald600, borderColor: C.emerald600 }}
+                    onPress={() => inv && s.setModal({ kind: 'collect', invoice: inv, report: { id: r.id, amount: r.amount } })}
+                  />
+                  <Btn small tone="outline" label="Bỏ qua" onPress={() => s.setReportStatus(r.id, 'dismissed')} />
+                </Row>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {s.properties.length > 1 && (
         <Card style={{ padding: 16 }}>
@@ -271,6 +306,7 @@ export function Overview() {
           <Bar pct={collectionPct} color={C.emerald500} />
         </Card>
 
+        {s.canViewReports && (
         <Card onPress={() => s.setActiveTab('reports')} style={{ gap: 12 }}>
           <Between>
             <Row style={{ gap: 8 }}>
@@ -301,6 +337,7 @@ export function Overview() {
           </Between>
           <Bar pct={80} color={C.indigo600} />
         </Card>
+        )}
 
         <Card onPress={() => s.setActiveTab('finance-debts')} style={{ gap: 12 }}>
           <Between>

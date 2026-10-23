@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, Share, Switch, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, ArrowRight, CheckCircle2, Droplets, MessageCircle, Share2, Zap } from 'lucide-react-native';
-import { useStore } from '../lib/store';
+import { PUBLIC_WEB_URL, useStore } from '../lib/store';
+import { AuthModal } from './Auth';
+import { AddRoomModal, EditInvoiceModal, ExpenseModal, MoveOutModal, TempResidenceModal } from './MoreModals';
 import {
   calculateFirstPeriodProRata,
   calculateInvoicePayable,
@@ -22,13 +24,21 @@ export function ModalHost() {
   const s = useStore();
   const m = s.modal;
   const close = () => s.setModal(null);
+  // Giống web: tài khoản phụ không mở được hợp đồng, giá phòng, thêm phòng, trả phòng
+  const owner = s.canViewReports;
   return (
     <>
-      {m?.kind === 'contract' && <ContractModal key={`c-${m.roomCode}`} initialRoomCode={m.roomCode} onClose={close} />}
+      {m?.kind === 'contract' && owner && <ContractModal key={`c-${m.roomCode}`} initialRoomCode={m.roomCode} onClose={close} />}
       {m?.kind === 'meter' && <MeterModal key={`m-${m.roomCode}`} initialRoomCode={m.roomCode} onClose={close} />}
-      {m?.kind === 'collect' && <CollectModal key={`p-${m.invoice.id}`} invoice={m.invoice} onClose={close} />}
+      {m?.kind === 'collect' && <CollectModal key={`p-${m.invoice.id}`} invoice={m.invoice} report={m.report} onClose={close} />}
       {m?.kind === 'invoice' && <InvoiceModal key={`i-${m.invoice.id}`} invoice={m.invoice} onClose={close} />}
-      {m?.kind === 'pricing' && <PricingModal key={`r-${m.roomCode}`} roomCode={m.roomCode} onClose={close} />}
+      {m?.kind === 'editInvoice' && <EditInvoiceModal key={`e-${m.invoice.id}`} invoice={m.invoice} onClose={close} />}
+      {m?.kind === 'pricing' && owner && <PricingModal key={`r-${m.roomCode}`} roomCode={m.roomCode} onClose={close} />}
+      {m?.kind === 'addRoom' && owner && <AddRoomModal onClose={close} />}
+      {m?.kind === 'expense' && <ExpenseModal onClose={close} />}
+      {m?.kind === 'moveOut' && owner && <MoveOutModal key={`o-${m.contract.id}`} contract={m.contract} onClose={close} />}
+      {m?.kind === 'tempResidence' && <TempResidenceModal onClose={close} />}
+      {m?.kind === 'auth' && <AuthModal onClose={close} />}
     </>
   );
 }
@@ -388,7 +398,7 @@ function MeterModal({ initialRoomCode, onClose }: { initialRoomCode?: string; on
 // ============================================================================
 // 3. THU TIỀN - TỰ TRỪ NỢ CŨ NHẤT TRƯỚC (FIFO)
 // ============================================================================
-function CollectModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+function CollectModal({ invoice, report, onClose }: { invoice: Invoice; report?: { id: string; amount: number }; onClose: () => void }) {
   const s = useStore();
   // Lấy bản mới nhất của hóa đơn (sau khi thu, danh sách đổi)
   const target = s.invoices.find((i) => i.id === invoice.id) || invoice;
@@ -396,7 +406,8 @@ function CollectModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
     .filter((i) => i.roomCode === target.roomCode && i.status !== 'draft' && i.totalAmount - i.paidAmount > 0)
     .sort((a, b) => a.billingMonth.localeCompare(b.billingMonth));
   const totalDebt = unpaid.reduce((x, i) => x + Math.max(0, i.totalAmount - i.paidAmount), 0);
-  const [amount, setAmount] = useState(totalDebt);
+  // Khách báo đã chuyển: điền sẵn số khách báo; mặc định toàn bộ nợ của phòng
+  const [amount, setAmount] = useState(Math.min(report?.amount ?? totalDebt, totalDebt));
   const [date, setDate] = useState(s.today);
   const [method, setMethod] = useState<'Chuyển khoản' | 'Tiền mặt'>('Chuyển khoản');
   const [note, setNote] = useState('');
@@ -425,7 +436,7 @@ function CollectModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
   const confirm = () => {
     if (amount <= 0 || !parseDateVN(date)) return;
-    const items = s.collectFIFO({ roomCode: target.roomCode, amount, paymentDate: date, method, note });
+    const items = s.collectFIFO({ roomCode: target.roomCode, amount, paymentDate: date, method, note }, report);
     setResult({ items, amount });
   };
 
@@ -486,12 +497,17 @@ function CollectModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const s = useStore();
   const p = s.currentProperty;
+  // Tài khoản Cloud: gắn mã ngẫu nhiên cho link trang hóa đơn người thuê (một lần cho mỗi hóa đơn)
+  useEffect(() => {
+    s.ensurePublicToken(invoice);
+  }, []);
   const inv = s.invoices.find((i) => i.id === invoice.id) || invoice;
+  const publicUrl = !s.isDemoMode && inv.publicToken ? `${PUBLIC_WEB_URL}?hd=${inv.publicToken}` : undefined;
   const [tab, setTab] = useState<'image' | 'message'>('image');
   const prevDebt = s.invoices
     .filter((i) => i.roomCode === inv.roomCode && i.billingMonth < inv.billingMonth && i.status !== 'draft')
     .reduce((x, i) => x + Math.max(0, i.totalAmount - i.paidAmount), 0);
-  const depositHeld = s.contracts.find((c) => c.roomCode === inv.roomCode && c.status === 'active')?.depositAmount ?? 0;
+  const depositHeld = s.propertyRooms.find((r) => r.code === inv.roomCode)?.deposit || 0;
   const { grandTotal } = calculateInvoicePayable(inv, prevDebt);
   const qrUrl = getVietQrUrl({
     bankBin: p.bankBin,
@@ -518,7 +534,7 @@ Khách thuê: ${inv.tenantName}
 --------------------------------
 🏦 Chuyển khoản: ${p.bankName} - ${p.bankAccount} (${p.bankOwner})
 Nội dung CK: Thanh toan ${inv.roomCode} ${inv.code}
-📷 Mã QR chuyển khoản (đã điền sẵn số tiền): ${qrUrl}
+📷 Mã QR chuyển khoản (đã điền sẵn số tiền): ${qrUrl}${publicUrl ? `\n🔗 Xem hóa đơn & bấm "Tôi đã chuyển": ${publicUrl}` : ''}
 Hạn thanh toán: ${inv.dueDate}`;
 
   // Chỉ đánh dấu "đã gửi" khi người dùng thật sự chia sẻ

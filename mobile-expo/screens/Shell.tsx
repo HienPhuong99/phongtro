@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import {
@@ -217,34 +218,70 @@ function TopBar() {
   );
 }
 
-/** Thanh tab nổi dạng viên thuốc */
+/** Thanh tab nổi dạng viên thuốc: nền kính mờ, khối chọn trượt theo lò xo */
+const PAD = 5;
+const GAP = 4;
+const GROW = 0.9; // tab đang chọn rộng hơn tab thường 90%
+const SPRING = { damping: 16, stiffness: 180, mass: 0.9, useNativeDriver: false };
+
 export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const routes = state.routes.filter((r) => TABS.some((t) => t.name === r.name));
+  const activeKey = state.routes[state.index]?.key;
+  const active = Math.max(0, routes.findIndex((r) => r.key === activeKey));
+  const [barW, setBarW] = React.useState(0);
+  const unit = Math.max(0, (barW - PAD * 2 - GAP * (routes.length - 1)) / (routes.length + GROW));
+
+  // ponytail: width/left chạy trên luồng JS (native driver không hỗ trợ), đủ mượt cho 5 tab; giật thì chuyển Reanimated
+  const grow = React.useRef(routes.map((_, i) => new Animated.Value(i === active ? 1 : 0))).current;
+  const pillX = React.useRef(new Animated.Value(0)).current;
+  const first = React.useRef(true);
+
+  React.useEffect(() => {
+    if (!unit) return;
+    const x = PAD + active * (unit + GAP);
+    if (first.current) {
+      first.current = false;
+      pillX.setValue(x);
+      return;
+    }
+    Animated.parallel([
+      Animated.spring(pillX, { toValue: x, ...SPRING }),
+      ...grow.map((g, i) => Animated.spring(g, { toValue: i === active ? 1 : 0, ...SPRING })),
+    ]).start();
+  }, [active, unit]);
+
   return (
-    <View style={[styles.tabbar, { bottom: Math.max(16, insets.bottom) }]}>
-      {state.routes.map((route, i) => {
-        const it = TABS.find((t) => t.name === route.name);
-        if (!it) return null;
-        const active = state.index === i;
+    <View onLayout={(e) => setBarW(e.nativeEvent.layout.width)} style={[styles.tabbar, { bottom: Math.max(16, insets.bottom) }]}>
+      <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+      {unit > 0 && <Animated.View pointerEvents="none" style={[styles.pill, { left: pillX, width: unit * (1 + GROW) }]} />}
+      {routes.map((route, i) => {
+        const it = TABS.find((t) => t.name === route.name)!;
+        const on = i === active;
+        const g = grow[i];
         return (
           <Pressable
             key={route.key}
             accessibilityRole="tab"
             accessibilityLabel={it.label}
-            accessibilityState={{ selected: active }}
+            accessibilityState={{ selected: on }}
             onPress={() => {
               // Bấm lại tab đang mở: chồng màn tự lùi về màn gốc
               const ev = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-              if (!active && !ev.defaultPrevented) navigateToTab(route.key);
+              if (!on && !ev.defaultPrevented) navigateToTab(route.key);
             }}
-            style={[styles.tab, active ? styles.tabOn : null]}
           >
-            <it.icon size={22} color={active ? C.white : '#111114'} />
-            {active && (
-              <Text style={{ color: C.white, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+            <Animated.View style={[styles.tab, { width: g.interpolate({ inputRange: [0, 1], outputRange: [unit, unit * (1 + GROW)] }) }]}>
+              <Animated.View style={{ transform: [{ scale: g.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }) }] }}>
+                <it.icon size={22} color={on ? C.white : '#111114'} />
+              </Animated.View>
+              <Animated.Text
+                numberOfLines={1}
+                style={{ color: C.white, fontSize: 13, fontWeight: '600', opacity: g, maxWidth: g.interpolate({ inputRange: [0, 1], outputRange: [0, 90] }) }}
+              >
                 {it.label}
-              </Text>
-            )}
+              </Animated.Text>
+            </Animated.View>
           </Pressable>
         );
       })}
@@ -364,17 +401,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    overflow: 'hidden',
+    // Android chưa có BlurTargetView nên không mờ: nền trắng trong thay thế
+    backgroundColor: 'rgba(255,255,255,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: 'rgba(255,255,255,0.7)',
     shadowColor: '#141E3C',
     shadowOpacity: 0.15,
     shadowRadius: 17,
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
-  tab: { flex: 1, height: '100%', borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  tabOn: { flex: 1.9, paddingHorizontal: 12, backgroundColor: 'rgba(0,88,190,0.86)' },
+  tab: { height: 52, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, overflow: 'hidden' },
+  pill: { position: 'absolute', top: PAD, bottom: PAD, borderRadius: 999, backgroundColor: 'rgba(0,88,190,0.88)' },
   toast: {
     position: 'absolute',
     left: 20,

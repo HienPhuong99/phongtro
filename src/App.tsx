@@ -430,6 +430,7 @@ export function App() {
   const [staffList, setStaffList] = useState<
     Array<{
       id: string;
+      property_id: string;
       staff_email: string;
       role: string;
       can_record_meters: boolean;
@@ -437,6 +438,9 @@ export function App() {
       can_view_reports: boolean;
     }>
   >([]);
+  const [auditRows, setAuditRows] = useState<
+    Array<{ id: number; actor_email: string; property_id: string; action: string; detail: string; created_at: string }> | null
+  >(null);
   const [newStaffEmail, setNewStaffEmail] = useState<string>('');
   const [newStaffRole, setNewStaffRole] = useState<'staff' | 'viewer'>('staff');
 
@@ -490,6 +494,31 @@ export function App() {
         setCloudStatus('saving');
         const newVersion = new Date().toISOString();
         const row = { state: snapshot, schema_version: SHEETS_SYNC_SCHEMA, updated_at: newVersion };
+        if (ctx.role === 'staff') {
+          // Máy chủ chỉ nhận phần thuộc khu được cấp, giữ nguyên các khu khác
+          const rpc = await supabase.rpc('staff_save_state', {
+            p_owner: ctx.ownerId,
+            p_state: snapshot,
+            p_version: cloudVersionRef.current,
+          });
+          if (rpc.error) {
+            setCloudStatus(navigator.onLine ? 'error' : 'offline');
+            return;
+          }
+          if (!rpc.data) {
+            setCloudStatus('conflict');
+            return;
+          }
+          cloudVersionRef.current = rpc.data as string;
+          writeCloudCache(cloudCacheKey(ctx.ownerId, userId), {
+            state: snapshot,
+            baseVersion: cloudVersionRef.current,
+            dirty: snapshot !== cloudSnapshotRef.current,
+          });
+          setCloudStatus('saved');
+          setCloudLastSavedAt(new Date().toLocaleTimeString('vi-VN'));
+          continue;
+        }
         const res = cloudVersionRef.current
           ? await supabase
               .from('user_app_state')
@@ -550,11 +579,9 @@ export function App() {
       role: mine.some((l) => l.role === 'staff') ? 'staff' : 'viewer',
       propertyIds: mine.map((l) => l.property_id as string),
     };
-    const res = await supabase
-      .from('user_app_state')
-      .select('state, updated_at')
-      .eq('owner_id', ownerId)
-      .maybeSingle();
+    // Tài khoản phụ chỉ nhận dữ liệu các khu được cấp (lọc ở máy chủ)
+    const rpc = await supabase.rpc('staff_load_state', { p_owner: ownerId });
+    const res = { data: rpc.data as { state: AppSnapshot; updated_at: string } | null, error: rpc.error };
     return { ctx, res };
   };
 
@@ -626,7 +653,7 @@ export function App() {
       if (ctx.role === 'owner') {
         const { data: staffs } = await supabase
           .from('property_staff')
-          .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+          .select('id, property_id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
           .eq('owner_id', userId)
           .order('created_at', { ascending: false });
         if (staffs) setStaffList(staffs);
@@ -764,7 +791,7 @@ export function App() {
         },
         { onConflict: 'owner_id,property_id,staff_email' }
       )
-      .select('id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
+      .select('id, property_id, staff_email, role, can_record_meters, can_collect_payments, can_view_reports')
       .single();
 
     if (error) {
@@ -774,14 +801,35 @@ export function App() {
     if (data) {
       setStaffList((prev) => [data, ...prev.filter((item) => item.id !== data.id)]);
       setNewStaffEmail('');
+      logAudit('Cấp quyền', `${emailClean} (${newStaffRole === 'staff' ? 'quản lý' : 'chỉ xem'})`);
       showToast(`Đã phân quyền cho ${emailClean} vào cơ sở ${currentProperty.name}!`);
     }
+  };
+
+  // Nhật ký thao tác (chỉ tài khoản Cloud). Không chặn thao tác nếu ghi lỗi.
+  const logAudit = (action: string, detail: string, propertyId = currentProperty.id) => {
+    if (isDemoMode || !authUser || !cloudCtx || cloudCtx.role === 'viewer') return;
+    supabase
+      .from('audit_log')
+      .insert({ owner_id: cloudCtx.ownerId, property_id: propertyId, action, detail: detail.slice(0, 300) })
+      .then(({ error }) => error && console.warn('audit_log:', error.message));
+  };
+
+  const loadAuditLog = async () => {
+    const { data, error } = await supabase
+      .from('audit_log')
+      .select('id, actor_email, property_id, action, detail, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) showToast('Không tải được nhật ký: ' + error.message);
+    else setAuditRows(data);
   };
 
   const handleRemovePropertyStaff = async (staffId: string, staffEmail: string) => {
     const { error } = await supabase.from('property_staff').delete().eq('id', staffId);
     if (!error) {
       setStaffList((prev) => prev.filter((item) => item.id !== staffId));
+      logAudit('Thu hồi quyền', staffEmail);
       showToast(`Đã thu hồi quyền của ${staffEmail}`);
     }
   };
@@ -845,7 +893,15 @@ export function App() {
     if (!error && data) setPaymentReports(data);
   };
   const setReportStatus = async (id: string, status: 'confirmed' | 'dismissed') => {
+    const report = paymentReports.find((r) => r.id === id);
     setPaymentReports((prev) => prev.filter((r) => r.id !== id));
+    if (report) {
+      logAudit(
+        status === 'confirmed' ? 'Xác nhận khách đã chuyển' : 'Bỏ qua lời báo',
+        `${report.room_code} ${report.invoice_code}: ${formatVND(report.amount)}`,
+        report.property_id
+      );
+    }
     const { error } = await supabase.from('invoice_payment_reports').update({ status }).eq('id', id);
     if (error) showToast('Không cập nhật được lời báo: ' + error.message);
   };
@@ -1549,6 +1605,10 @@ export function App() {
       );
     }
 
+    logAudit(
+      'Chỉnh giá phòng',
+      payload.updates.map((u) => `${u.roomCode}: ${formatVND(u.price)}`).join(', ')
+    );
     if (payload.updates.length === 1) {
       const u = payload.updates[0];
       showToast(
@@ -5737,6 +5797,9 @@ export function App() {
                   >
                     <div>
                       <span className="font-bold text-slate-900">{st.staff_email}</span>
+                      <span className="ml-2 text-slate-500">
+                        · {properties.find((p) => p.id === st.property_id)?.name || st.property_id}
+                      </span>
                       <span className="ml-2 px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold">
                         {st.role === 'staff' ? 'Ghi số & Thu tiền (Ẩn lợi nhuận)' : 'Chỉ xem'}
                       </span>
@@ -5759,6 +5822,41 @@ export function App() {
               </p>
             )}
           </div>
+          )}
+
+          {/* Nhật ký thao tác: chỉ chủ trọ xem */}
+          {!isDemoMode && authUser && cloudCtx?.role === 'owner' && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-slate-800">Nhật ký thao tác (200 dòng gần nhất)</div>
+                <button
+                  type="button"
+                  onClick={loadAuditLog}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {auditRows ? 'Tải lại' : 'Xem nhật ký'}
+                </button>
+              </div>
+              {auditRows &&
+                (auditRows.length === 0 ? (
+                  <p className="text-slate-400">Chưa có thao tác nào được ghi.</p>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 rounded-xl border border-slate-200">
+                    {auditRows.map((a) => (
+                      <div key={a.id} className="px-3 py-2">
+                        <div className="flex flex-wrap gap-x-2 text-slate-500">
+                          <span className="tabular-nums">{new Date(a.created_at).toLocaleString('vi-VN')}</span>
+                          <span>· {a.actor_email}</span>
+                          <span>· {properties.find((p) => p.id === a.property_id)?.name || a.property_id}</span>
+                        </div>
+                        <div className="text-slate-900">
+                          <strong>{a.action}</strong> {a.detail}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+            </div>
           )}
         </div>
       </div>
@@ -6467,6 +6565,9 @@ export function App() {
         initialAmount={confirmingReport?.amount}
         onConfirmCollect={(payload) => {
           const res = handleConfirmCollectFIFO(payload);
+          if (res.length > 0) {
+            logAudit('Thu tiền', `${payload.roomCode}: ${formatVND(payload.amount)} (${payload.method})`);
+          }
           if (confirmingReport && res.length > 0) {
             setReportStatus(confirmingReport.id, 'confirmed');
             setConfirmingReport(null);
@@ -6496,6 +6597,7 @@ export function App() {
             );
           }
           setEditInvoice(null);
+          logAudit('Sửa hóa đơn', `${updated.code} ${updated.roomCode}: ${formatVND(old?.totalAmount ?? 0)} → ${formatVND(updated.totalAmount)}`, updated.propertyId);
           showToast(
             updated.sentZalo
               ? `Đã lưu hóa đơn ${updated.code}`
@@ -6516,6 +6618,7 @@ export function App() {
             )
           );
           setEditInvoice(null);
+          logAudit('Huỷ hóa đơn', `${inv.code} ${inv.roomCode}: ${formatVND(inv.totalAmount)}`, inv.propertyId);
           showToast(`Đã huỷ hóa đơn ${inv.code}`);
         }}
       />
@@ -6528,6 +6631,7 @@ export function App() {
         onSave={(tx) => {
           setTransactions((prev) => [tx, ...prev]);
           setIsExpenseOpen(false);
+          logAudit('Ghi khoản chi', formatVND(tx.amount), tx.propertyId);
           showToast(`Đã ghi khoản chi ${formatVND(tx.amount)} vào sổ thu chi`);
         }}
       />
@@ -6566,6 +6670,7 @@ export function App() {
             return plan.finalInvoice ? [plan.finalInvoice, ...kept] : kept;
           });
           setMoveOutContract(null);
+          logAudit('Trả phòng', `${c.roomCode} ${c.code}, hoàn cọc ${formatVND(plan.refund)}`, c.propertyId);
           showToast(
             `Đã trả phòng ${c.roomCode}. Hoàn cọc ${formatVND(plan.refund)}${
               plan.extraDue > 0 ? `, khách còn thiếu ${formatVND(plan.extraDue)}` : ''

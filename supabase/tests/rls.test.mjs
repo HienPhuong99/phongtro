@@ -32,22 +32,24 @@ const SUPABASE_STUB = `
 async function setup() {
   const db = await PGlite.create({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_STUB);
+  // Supabase cấp sẵn quyền bảng cho anon/authenticated khi tạo bảng; RLS mới là lớp chặn thật.
+  await db.exec('alter default privileges in schema public grant all on tables to anon, authenticated');
   for (const f of fs.readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql')).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, f), 'utf8'));
   }
-  // Supabase cấp sẵn quyền bảng cho anon/authenticated; RLS mới là lớp chặn thật.
   await db.exec(`
-    grant all on all tables in schema public to anon, authenticated;
     grant execute on function public.can_access_property(uuid, text), public.is_staff_of(uuid, boolean) to anon, authenticated;
   `);
   for (const id of [A, B, S, V]) {
     await db.query('insert into auth.users (id, email) values ($1, $2)', [id, EMAIL[id]]);
   }
   const state = (owner) => ({
-    properties: [{ id: 'p1', name: 'Nhà ' + owner.slice(-1), address: 'HN', bankBin: '970436', bankName: 'VCB', bankAccount: '0123', bankOwner: 'CHU TRO' }],
+    properties: [{ id: 'p1', name: 'Nhà ' + owner.slice(-1), address: 'HN', bankBin: '970436', bankName: 'VCB', bankAccount: '0123', bankOwner: 'CHU TRO' }, ...(owner === A ? [{ id: 'p2', name: 'Khu 2' }] : [])],
     invoices: owner === A
       ? [{ id: 'i1', code: 'HD-1', propertyId: 'p1', roomCode: 'P101', tenantName: 'Nguyễn Văn An', tenantPhone: '0900000000', totalAmount: 3000000, paidAmount: 1000000, status: 'partial', publicToken: TOKEN }]
       : [],
+    // Khu p2 của A: tài khoản phụ (chỉ được cấp p1) không được thấy
+    tenants: owner === A ? [{ id: 'k2', propertyId: 'p2', fullName: 'Khách khu 2', idCard: '001099000002' }] : [],
     transactions: owner === A
       ? [{ id: 't1', propertyId: 'p1', type: 'income', invoiceCode: 'HD-1', date: '05/10/2026', isoDate: '2026-10-05', amount: 1000000 }]
       : [],
@@ -109,20 +111,60 @@ test('RLS: bảng chuẩn hoá (rooms) tách theo chủ trọ', async () => {
   await as(db, S, async () => assert.equal((await db.query('select * from public.rooms')).rows.length, 1));
 });
 
-test('Tài khoản phụ: staff đọc + ghi sổ của A (email không phân biệt hoa thường), viewer chỉ đọc', async () => {
+test('Tài khoản phụ: chỉ đọc/ghi đúng khu được cấp qua RPC, không đụng khu khác; viewer chỉ đọc', async () => {
   const db = await setup();
+  const ver = (await db.query('select updated_at from public.user_app_state where owner_id = $1', [A])).rows[0].updated_at;
   await as(db, S, async () => {
-    assert.deepEqual(await owners(db), [A]);
-    const upd = await db.query(`update public.user_app_state set state = state || '{"x":1}'::jsonb where owner_id = $1`, [A]);
-    assert.equal(upd.affectedRows, 1);
-    // Không được tự thêm mình vào khu khác hay xoá sổ
+    // Không đọc thẳng được khối sổ nữa
+    assert.deepEqual(await owners(db), []);
+    const loaded = (await db.query('select public.staff_load_state($1) as r', [A])).rows[0].r;
+    assert.deepEqual(loaded.state.properties.map((p) => p.id), ['p1']);
+    assert.deepEqual(loaded.state.tenants, []);
+    // Thử chèn dữ liệu khu p2 và sửa hóa đơn p1
+    const next = { ...loaded.state, invoices: [{ ...loaded.state.invoices[0], totalAmount: 1 }], tenants: [{ id: 'x', propertyId: 'p2' }] };
+    const saved = (await db.query('select public.staff_save_state($1, $2, $3) as v', [A, next, ver])).rows[0].v;
+    assert.ok(saved);
+    // Phiên bản cũ -> xung đột
+    assert.equal((await db.query('select public.staff_save_state($1, $2, $3) as v', [A, next, ver])).rows[0].v, null);
     assert.equal((await db.query('delete from public.user_app_state where owner_id = $1', [A])).affectedRows, 0);
     await assert.rejects(db.query(`insert into public.property_staff (owner_id, property_id, staff_email) values ($1, 'p2', 'staff@test.vn')`, [A]), /row-level security/);
+    await assert.rejects(db.query('select public.staff_load_state($1)', [B]), /FORBIDDEN/);
   });
+  const st = (await db.query('select state from public.user_app_state where owner_id = $1', [A])).rows[0].state;
+  assert.equal(st.invoices[0].totalAmount, 1);
+  assert.deepEqual(st.tenants.map((t) => t.id), ['k2']);
+  assert.deepEqual(st.properties.map((p) => p.id).sort(), ['p1', 'p2']);
   await as(db, V, async () => {
-    assert.deepEqual(await owners(db), [A]);
-    const upd = await db.query(`update public.user_app_state set state = '{}'::jsonb where owner_id = $1`, [A]);
-    assert.equal(upd.affectedRows, 0);
+    assert.equal((await db.query('select public.staff_load_state($1) as r', [A])).rows[0].r.state.properties.length, 1);
+    await assert.rejects(db.query('select public.staff_save_state($1, $2, now())', [A, {}]), /FORBIDDEN/);
+  });
+});
+
+test('Nhật ký: ghi dưới tên chính mình, chỉ chủ trọ đọc, không ai sửa/xoá', async () => {
+  const db = await setup();
+  await as(db, S, async () => {
+    await db.query(`insert into public.audit_log (owner_id, property_id, action, detail) values ($1, 'p1', 'invoice_edit', 'HD-1')`, [A]);
+    await assert.rejects(db.query(`insert into public.audit_log (owner_id, actor_email, action) values ($1, 'a@test.vn', 'x')`, [A]), /row-level security/);
+    assert.equal((await db.query('select * from public.audit_log')).rows.length, 0);
+  });
+  await as(db, B, async () => {
+    await assert.rejects(db.query(`insert into public.audit_log (owner_id, action) values ($1, 'x')`, [A]), /row-level security/);
+    assert.equal((await db.query('select * from public.audit_log')).rows.length, 0);
+  });
+  await as(db, A, async () => {
+    const rows = (await db.query('select actor_email, action from public.audit_log')).rows;
+    assert.deepEqual(rows, [{ actor_email: 'staff@test.vn', action: 'invoice_edit' }]);
+    assert.equal((await db.query('delete from public.audit_log')).affectedRows, 0);
+    assert.equal((await db.query("update public.audit_log set detail = 'x'")).affectedRows, 0);
+  });
+});
+
+test('Gói trả phí: người dùng không tự nâng gói hay gia hạn', async () => {
+  const db = await setup();
+  await as(db, A, async () => {
+    await assert.rejects(db.query("update public.profiles set plan_tier = 'pro' where id = $1", [A]), /permission denied/);
+    await assert.rejects(db.query("update public.profiles set plan_expires_at = now() + interval '1 year' where id = $1", [A]), /permission denied/);
+    assert.equal((await db.query("update public.profiles set phone = '0900' where id = $1", [A])).affectedRows, 1);
   });
 });
 

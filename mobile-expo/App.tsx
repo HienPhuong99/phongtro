@@ -333,6 +333,21 @@ export default function App() {
     const day = Math.max(1, Math.min(31, Number(startDateDay) || 11));
     const daysRemaining = 31 - day + 1;
     const prorataAmount = Math.round((contractModalRoom.price * daysRemaining) / 31);
+    const room = contractModalRoom;
+    const nextNo = Math.max(...invoices.map((i) => Number(i.code.replace(/\D/g, '')) || 0)) + 1;
+    const invCode = 'HD-IV-' + String(nextNo).padStart(5, '0');
+
+    // Hóa đơn kỳ đầu (pro-rata) để phòng mới có công nợ và thu được bằng FIFO
+    setInvoices((prev) => [
+      ...prev,
+      {
+        id: invCode, code: invCode, period: '2026-10', periodLabel: 'Tháng 10/2026',
+        roomId: room.id, roomName: room.name, tenantName: newTenantName, tenantPhone: newTenantPhone,
+        rentAmount: prorataAmount, oldElec: 0, newElec: 0, elecAmount: 0, oldWater: 0, newWater: 0,
+        waterAmount: 0, serviceAmount: 0, totalAmount: prorataAmount, paidAmount: 0,
+        remainingAmount: prorataAmount, status: 'unpaid',
+      },
+    ]);
 
     setRooms((prev) =>
       prev.map((r) =>
@@ -345,11 +360,20 @@ export default function App() {
               occupantsCount: 1,
               contractCode: 'HD-00011',
               contractEnd: '11/10/2027',
+              debt: prorataAmount,
               note: `Kỳ đầu ${daysRemaining}/31 ngày: ${formatVND(prorataAmount)}`,
             }
           : r
       )
     );
+    setTenants((prev) => [
+      ...prev,
+      {
+        id: 'KH-' + Date.now(), code: 'KH-' + String(prev.length + 1).padStart(5, '0'),
+        name: newTenantName, phone: newTenantPhone, cccd: '', roomId: room.id, roomName: room.name,
+        role: 'representative', status: 'staying', totalPaid: 0, debt: prorataAmount,
+      },
+    ]);
     setContractModalRoom(null);
     Alert.alert(
       '🎉 Tạo hợp đồng thành công',
@@ -438,7 +462,9 @@ export default function App() {
                   <Text style={styles.heroValue}>{occupancyRate}% ({rentedRoomsCount}/{rooms.length} phòng)</Text>
                 </View>
                 <View style={styles.heroPill}>
-                  <Text style={styles.heroPillText}>2 trống · 1 bảo trì</Text>
+                  <Text style={styles.heroPillText}>
+                    {rooms.filter((r) => r.status === 'vacant').length} trống · {rooms.filter((r) => r.status === 'maintenance').length} bảo trì
+                  </Text>
                 </View>
               </View>
               <View style={styles.progressTrack}>

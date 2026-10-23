@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Share, Text, View } from 'react-native';
-import { ArrowDownRight, ArrowUpRight, ChevronRight, Copy, LayoutGrid, RotateCcw, TrendingUp } from 'lucide-react-native';
+import { ArrowDownRight, ArrowUpRight, ChevronRight, Copy, LayoutGrid, RotateCcw, TrendingUp, UserPlus } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 import { formatVND } from '../lib/shared';
 import { C } from '../lib/theme';
-import { Badge, Bar, Between, Btn, Card, Kpi, Row, T } from '../lib/ui';
+import { Badge, Bar, Between, Btn, Card, Field, Kpi, Row, Select, T } from '../lib/ui';
 import { CashflowChart } from './Overview';
 
 export function Calendar() {
@@ -220,6 +221,8 @@ export function Settings() {
         <Stat label="Tài khoản nhận tiền" value={`${p.bankName} · ${p.bankAccount}`} />
         <Stat label="Chủ tài khoản" value={p.bankOwner} />
       </Card>
+      {s.canViewReports && <StaffCard />}
+      {s.isDemoMode && (
       <Card style={{ gap: 10 }}>
         <Text style={T.h2}>Dữ liệu trên máy này</Text>
         <Text style={T.xs}>Bản Demo lưu ngay trên điện thoại. Không nhập họ tên, SĐT hay CCCD của khách thuê thật.</Text>
@@ -236,6 +239,7 @@ export function Settings() {
           }
         />
       </Card>
+      )}
     </View>
   );
 }
@@ -298,5 +302,110 @@ function Ranked({
       </Between>
       <Bar pct={pct} color={barColor} />
     </Pressable>
+  );
+}
+
+type StaffRow = { id: string; staff_email: string; role: 'staff' | 'viewer' };
+
+/** Cấp quyền tài khoản phụ — dùng chung bảng property_staff với web */
+function StaffCard() {
+  const s = useStore();
+  const ownerId = s.authUser && !s.isDemoMode && s.cloudCtx?.role === 'owner' ? s.authUser.id : null;
+  const [list, setList] = useState<StaffRow[]>([]);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'staff' | 'viewer'>('staff');
+
+  useEffect(() => {
+    if (!ownerId) return setList([]);
+    supabase
+      .from('property_staff')
+      .select('id, staff_email, role')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => data && setList(data as StaffRow[]));
+  }, [ownerId]);
+
+  const add = async () => {
+    const clean = email.trim().toLowerCase();
+    if (!ownerId) return s.setModal({ kind: 'auth' });
+    if (!/^\S+@\S+\.\S+$/.test(clean)) return s.showToast('Nhập email hợp lệ');
+    const { data, error } = await supabase
+      .from('property_staff')
+      .upsert(
+        {
+          owner_id: ownerId,
+          property_id: s.currentProperty.id,
+          staff_email: clean,
+          role,
+          can_record_meters: true,
+          can_collect_payments: role === 'staff',
+          can_view_reports: false,
+        },
+        { onConflict: 'owner_id,property_id,staff_email' }
+      )
+      .select('id, staff_email, role')
+      .single();
+    if (error) return s.showToast('Không thêm được tài khoản phụ: ' + error.message);
+    setList((prev) => [data as StaffRow, ...prev.filter((x) => x.id !== data.id)]);
+    setEmail('');
+    s.showToast(`Đã phân quyền cho ${clean} vào cơ sở ${s.currentProperty.name}!`);
+  };
+
+  const remove = async (st: StaffRow) => {
+    const { error } = await supabase.from('property_staff').delete().eq('id', st.id);
+    if (error) return s.showToast('Không thu hồi được: ' + error.message);
+    setList((prev) => prev.filter((x) => x.id !== st.id));
+    s.showToast(`Đã thu hồi quyền của ${st.staff_email}`);
+  };
+
+  return (
+    <Card style={{ gap: 10 }}>
+      <Text style={T.h2}>Tài khoản phụ tại {s.currentProperty.name}</Text>
+      <Text style={T.xs}>Cấp quyền cho Quản lý / Người nhà đăng nhập bằng email của họ.</Text>
+      {ownerId ? (
+        <>
+          <Field label="Email" value={email} onChangeText={setEmail} placeholder="Email người quản lý / người nhà..." keyboardType="email-address" autoCapitalize="none" />
+          <Select
+            hideLabel
+            label="Quyền của tài khoản phụ"
+            value={role}
+            onChange={setRole}
+            options={[
+              { value: 'staff', label: 'Quản lý (Ghi điện nước & Thu tiền, ẩn Lợi nhuận)' },
+              { value: 'viewer', label: 'Chỉ xem sơ đồ phòng & hóa đơn' },
+            ]}
+          />
+          <Btn icon={UserPlus} label="Cấp quyền" style={{ alignSelf: 'flex-start' }} onPress={add} />
+          {list.length === 0 ? (
+            <Text style={[T.xs, { color: C.slate400 }]}>Chưa có tài khoản phụ nào được cấp quyền.</Text>
+          ) : (
+            list.map((st) => (
+              <Between key={st.id} style={{ padding: 12, borderRadius: 12, backgroundColor: C.slate50, borderWidth: 1, borderColor: C.slate200, gap: 8 }}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: C.slate900 }} numberOfLines={1}>{st.staff_email}</Text>
+                  <Badge label={st.role === 'staff' ? 'Ghi số & Thu tiền (Ẩn lợi nhuận)' : 'Chỉ xem'} bg={C.teal100} fg={C.teal800} style={{ alignSelf: 'flex-start' }} />
+                </View>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    Alert.alert('Thu hồi quyền?', `Thu hồi quyền của ${st.staff_email}?`, [
+                      { text: 'Huỷ', style: 'cancel' },
+                      { text: 'Thu hồi', style: 'destructive', onPress: () => remove(st) },
+                    ])
+                  }
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: C.rose600 }}>Thu hồi</Text>
+                </Pressable>
+              </Between>
+            ))
+          )}
+        </>
+      ) : (
+        <>
+          <Text style={[T.xs, { color: C.slate400 }]}>Đăng nhập tài khoản Chủ trọ để thêm và quản lý danh sách nhân viên/người nhà.</Text>
+          {s.isDemoMode && <Btn label="Đăng nhập Đám mây" style={{ alignSelf: 'flex-start' }} onPress={() => s.setModal({ kind: 'auth' })} />}
+        </>
+      )}
+    </Card>
   );
 }

@@ -107,7 +107,7 @@ export type ModalState =
   | { kind: 'collect'; invoice: Invoice; report?: { id: string; amount: number } }
   | { kind: 'invoice'; invoice: Invoice }
   | { kind: 'editInvoice'; invoice: Invoice }
-  | { kind: 'pricing'; roomCode: string }
+  | { kind: 'pricing'; roomCode: string; bulk?: boolean }
   | { kind: 'addRoom' }
   | { kind: 'expense' }
   | { kind: 'moveOut'; contract: Contract }
@@ -846,6 +846,7 @@ function useAppState() {
   const markDraftReady = (invoiceId: string) => setInvoices((prev) => prev.map((i) => (i.id === invoiceId ? { ...i, status: 'unpaid' } : i)));
 
   const resetDemoData = () => {
+    if (!isDemoMode) return; // không bao giờ ghi đè sổ Đám mây bằng dữ liệu mẫu
     applySnapshot({
       properties: SEED_PROPERTIES,
       rooms: SEED_ROOMS,

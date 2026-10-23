@@ -50,6 +50,8 @@ export const C = {
   indigo700: '#4338CA',
   teal500: '#14B8A6',
   teal600: '#0D9488',
+  teal100: '#CCFBF1',
+  teal800: '#115E59',
   cyan500: '#06B6D4',
   purple50: '#FAF5FF',
   purple600: '#9333EA',

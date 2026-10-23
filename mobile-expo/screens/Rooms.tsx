@@ -40,7 +40,7 @@ export function Rooms() {
             icon={Pencil}
             label="Điều chỉnh giá thuê phòng"
             disabled={propertyRooms.length === 0}
-            onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0]?.code || 'P101' })}
+            onPress={() => s.setModal({ kind: 'pricing', roomCode: propertyRooms[0]?.code || 'P101', bulk: true })}
           />
           <Btn
             icon={Plus}

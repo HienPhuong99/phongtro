@@ -52,13 +52,51 @@
   }
 }
 
+/* Đường cong lò xo dùng chung: vượt nhẹ rồi về đích, giống thanh tab bản Expo */
+:root {
+  --spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes uiFade {
+  from { opacity: 0; }
+}
+
+@keyframes uiSheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+}
+
 .ui-enter {
-  animation: uiSlideUpFade 160ms ease-out both;
+  animation: uiSlideUpFade 320ms var(--spring) both;
+}
+
+/* Mọi hộp thoại (lớp phủ fixed inset-0): nền mờ dần, khung bật lên theo lò xo */
+.fixed.inset-0 {
+  animation: uiFade 200ms ease-out both;
+}
+.fixed.inset-0 > div {
+  animation: uiSheetUp 380ms var(--spring) both;
+}
+
+/* Bấm nút: lún nhẹ, nhả ra nảy về */
+button {
+  transition-property: transform, background-color, border-color, color, opacity, box-shadow, flex-grow;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96);
+  transition-duration: 80ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-enter {
+  .ui-enter,
+  .fixed.inset-0,
+  .fixed.inset-0 > div {
     animation: none;
+  }
+  button:active:not(:disabled) {
+    transform: none;
   }
 }
 
@@ -185,6 +223,16 @@ html.dark .lg-clear {
 .lg-tab {
   color: var(--clear-fg);
   text-shadow: var(--clear-fg-shadow);
+  transition: flex-grow 450ms var(--spring), background-color 250ms ease, box-shadow 250ms ease, transform 300ms var(--spring) !important;
+}
+.lg-tab svg {
+  transition: transform 450ms var(--spring);
+}
+.lg-tab-on svg {
+  transform: scale(1.12);
+}
+.lg-tab-on span {
+  animation: uiFade 300ms ease-out both;
 }
 .lg-tab svg {
   filter: drop-shadow(var(--clear-fg-shadow));

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,6 +30,27 @@ export const T = StyleSheet.create({
   kpi: { fontSize: 24, fontWeight: '800', color: C.slate900, fontVariant: ['tabular-nums'] },
 });
 
+/** Lò xo dùng chung cho hộp thoại và nút bấm (cùng nhịp với thanh tab) */
+export const SPRING = { damping: 16, stiffness: 180, mass: 0.9, useNativeDriver: true };
+
+const APressable = Animated.createAnimatedComponent(Pressable);
+
+/** Lún nhẹ khi bấm, nảy về khi nhả */
+function usePressScale() {
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) => Animated.spring(scale, { toValue: v, ...SPRING, stiffness: 400 }).start();
+  return { scale, onPressIn: () => to(0.96), onPressOut: () => to(1) };
+}
+
+/** Khung hộp thoại bật lên từ dưới theo lò xo mỗi lần mở */
+export function SpringUp({ style, children }: { style: StyleProp<ViewStyle>; children: React.ReactNode }) {
+  const y = useRef(new Animated.Value(60)).current;
+  useEffect(() => {
+    Animated.spring(y, { toValue: 0, ...SPRING }).start();
+  }, []);
+  return <Animated.View style={[style, { transform: [{ translateY: y }] }]}>{children}</Animated.View>;
+}
+
 export function Card({
   children,
   style,
@@ -39,10 +61,11 @@ export function Card({
   onPress?: () => void;
 }) {
   const s = [styles.card, style];
+  const p = usePressScale();
   return onPress ? (
-    <Pressable onPress={onPress} style={({ pressed }) => [s, pressed && { opacity: 0.85 }]}>
+    <APressable onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut} style={[s, { transform: [{ scale: p.scale }] }]}>
       {children}
-    </Pressable>
+    </APressable>
   ) : (
     <View style={s}>{children}</View>
   );
@@ -118,22 +141,25 @@ export function Btn({
   full?: boolean;
 }) {
   const t = BTN[tone];
+  const p = usePressScale();
   return (
-    <Pressable
+    <APressable
       onPress={onPress}
+      onPressIn={p.onPressIn}
+      onPressOut={p.onPressOut}
       disabled={disabled}
       accessibilityRole="button"
-      style={({ pressed }) => [
+      style={[
         styles.btn,
         small && styles.btnSmall,
-        { backgroundColor: t.bg, borderColor: t.border ?? t.bg, opacity: disabled ? 0.4 : pressed ? 0.8 : 1 },
+        { backgroundColor: t.bg, borderColor: t.border ?? t.bg, opacity: disabled ? 0.4 : 1, transform: [{ scale: p.scale }] },
         full && { alignSelf: 'stretch' },
         style,
       ]}
     >
       {Icon ? <Icon size={small ? 13 : 15} color={t.fg} /> : null}
       <Text style={{ color: t.fg, fontSize: 12, fontWeight: '600' }}>{label}</Text>
-    </Pressable>
+    </APressable>
   );
 }
 
@@ -153,10 +179,14 @@ export function Chip({
   onPress: () => void;
   soft?: boolean;
 }) {
+  const p = usePressScale();
   return (
-    <Pressable
+    <APressable
       onPress={onPress}
+      onPressIn={p.onPressIn}
+      onPressOut={p.onPressOut}
       style={[
+        { transform: [{ scale: p.scale }] },
         styles.chip,
         active
           ? { backgroundColor: C.blue600, borderColor: C.blue600 }
@@ -170,7 +200,7 @@ export function Chip({
       {count !== undefined ? (
         <Text style={[T.num, { fontSize: 11, color: active ? C.white : C.slate400 }]}>{count}</Text>
       ) : null}
-    </Pressable>
+    </APressable>
   );
 }
 
@@ -314,7 +344,7 @@ export function Select<V extends string>({
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <View style={[styles.sheet, { maxHeight: '70%' }]}>
+          <SpringUp style={[styles.sheet, { maxHeight: '70%' }]}>
             <Text style={[T.h2, { padding: 16 }]}>{label}</Text>
             <ScrollView>
               {options.map((o) => (
@@ -334,7 +364,7 @@ export function Select<V extends string>({
                 </Pressable>
               ))}
             </ScrollView>
-          </View>
+          </SpringUp>
         </Pressable>
       </Modal>
     </View>
@@ -358,10 +388,10 @@ export function Sheet({
   footer?: React.ReactNode;
 }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={styles.sheet}>
+        <SpringUp style={styles.sheet}>
           <View style={[styles.row, { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.slate100, gap: 12 }]}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: C.slate900 }}>{title}</Text>
@@ -379,7 +409,7 @@ export function Sheet({
               {footer}
             </View>
           ) : null}
-        </View>
+        </SpringUp>
       </KeyboardAvoidingView>
     </Modal>
   );

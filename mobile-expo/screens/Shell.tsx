@@ -26,7 +26,7 @@ import { useOpen } from '../lib/nav';
 import { useStore } from '../lib/store';
 import type { NavTab } from '../lib/shared';
 import { C } from '../lib/theme';
-import { Card, Select, T } from '../lib/ui';
+import { Card, Select, SpringUp, T } from '../lib/ui';
 import { Overview } from './Overview';
 import { Rooms } from './Rooms';
 import { Invoices } from './Invoices';
@@ -294,9 +294,9 @@ export function Toast() {
   const insets = useSafeAreaInsets();
   if (!s.toast) return null;
   return (
-    <View pointerEvents="none" style={[styles.toast, { bottom: Math.max(16, insets.bottom) + 74 }]}>
+    <SpringUp key={s.toast} style={[styles.toast, { bottom: Math.max(16, insets.bottom) + 74, pointerEvents: 'none' }]}>
       <Text style={{ color: C.white, fontSize: 12, fontWeight: '600' }}>{s.toast}</Text>
-    </View>
+    </SpringUp>
   );
 }
 

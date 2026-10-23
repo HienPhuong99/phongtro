@@ -19,12 +19,14 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useStore } from '../lib/store';
+import { useOpen } from '../lib/nav';
 import { formatVND, parseDateVN, summarizeProperties } from '../lib/shared';
 import { C } from '../lib/theme';
 import { Badge, Bar, Between, Btn, Card, Divider, IconBox, Row, T } from '../lib/ui';
 
 export function Overview() {
   const s = useStore();
+  const open = useOpen();
   const {
     invoices,
     curMonth,
@@ -92,7 +94,7 @@ export function Overview() {
       action: 'Lập hóa đơn',
       onPress: () => {
         s.setInvoiceMonth(curMonth);
-        s.setActiveTab('invoices');
+        open('invoices');
       },
     },
     {
@@ -106,7 +108,7 @@ export function Overview() {
       action: 'Gửi',
       onPress: () => {
         s.setInvoiceMonth(nextMonth);
-        s.setActiveTab('invoices');
+        open('invoices');
       },
     },
     {
@@ -118,7 +120,7 @@ export function Overview() {
       title: `${s.overdueInvoices.length} hóa đơn quá hạn - ${formatVND(s.overdueTotalAmount)}`,
       subtitle: 'Đã qua hạn thanh toán mà chưa thu đủ.',
       action: 'Xem công nợ',
-      onPress: () => s.setActiveTab('finance-debts'),
+      onPress: () => open('finance-debts'),
     },
     {
       id: '5',
@@ -131,7 +133,7 @@ export function Overview() {
       action: 'Thu nợ',
       onPress: () => {
         s.setInvoiceMonth(curMonth);
-        s.setActiveTab('invoices');
+        open('invoices');
       },
     },
     {
@@ -145,7 +147,7 @@ export function Overview() {
         ? `${s.pendingRefundContracts[0].roomCode} (${s.pendingRefundContracts[0].tenantName})`
         : 'Đã hoàn trả toàn bộ cọc',
       action: 'Xem',
-      onPress: () => s.setActiveTab('finance-deposits'),
+      onPress: () => open('finance-deposits'),
     },
     {
       id: '7',
@@ -156,7 +158,7 @@ export function Overview() {
       title: `${vacantRooms.length} phòng đang trống`,
       subtitle: vacantRooms.map((r) => r.code).join(', ') || 'Không có phòng trống',
       action: 'Xem sơ đồ',
-      onPress: () => s.setActiveTab('rooms'),
+      onPress: () => open('rooms'),
     },
   ];
 
@@ -252,7 +254,7 @@ export function Overview() {
 
       {/* 4 thẻ KPI */}
       <View style={{ gap: 12 }}>
-        <Card onPress={() => s.setActiveTab('rooms')} style={{ gap: 12 }}>
+        <Card onPress={() => open('rooms')} style={{ gap: 12 }}>
           <Between>
             <Row style={{ gap: 8, flex: 1 }}>
               <IconBox icon={LayoutGrid} bg={C.blue50} color={C.blue600} />
@@ -284,7 +286,7 @@ export function Overview() {
           <Bar pct={s.occupancyRate} color={C.blue600} />
         </Card>
 
-        <Card onPress={() => s.setActiveTab('finance-cashbook')} style={{ gap: 12 }}>
+        <Card onPress={() => open('finance-cashbook')} style={{ gap: 12 }}>
           <Between>
             <Row style={{ gap: 8 }}>
               <IconBox icon={ArrowUpRight} bg={C.emerald50} color={C.emerald600} />
@@ -307,7 +309,7 @@ export function Overview() {
         </Card>
 
         {s.canViewReports && (
-        <Card onPress={() => s.setActiveTab('reports')} style={{ gap: 12 }}>
+        <Card onPress={() => open('reports')} style={{ gap: 12 }}>
           <Between>
             <Row style={{ gap: 8 }}>
               <IconBox icon={TrendingUp} bg={C.indigo50} color={C.indigo600} />
@@ -339,7 +341,7 @@ export function Overview() {
         </Card>
         )}
 
-        <Card onPress={() => s.setActiveTab('finance-debts')} style={{ gap: 12 }}>
+        <Card onPress={() => open('finance-debts')} style={{ gap: 12 }}>
           <Between>
             <Row style={{ gap: 8 }}>
               <IconBox icon={AlertTriangle} bg={C.rose50} color={C.rose600} />
@@ -418,7 +420,7 @@ export function Overview() {
         <View>
           <Between>
             <Text style={T.h2}>Biểu đồ Trạng thái phòng</Text>
-            <Pressable onPress={() => s.setActiveTab('rooms')}>
+            <Pressable onPress={() => open('rooms')}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: C.blue600 }}>Mở sơ đồ phòng →</Text>
             </Pressable>
           </Between>
@@ -448,7 +450,7 @@ export function Overview() {
               return (
                 <Pressable
                   key={r.id}
-                  onPress={() => s.setActiveTab('rooms')}
+                  onPress={() => open('rooms')}
                   style={{ width: '23.3%', padding: 8, borderRadius: 12, borderWidth: 1, backgroundColor: tone.bg, borderColor: tone.border }}
                 >
                   <Between style={{ gap: 2 }}>
@@ -535,7 +537,7 @@ export function Overview() {
       <Card>
         <Between style={{ marginBottom: 8 }}>
           <Text style={T.h2}>Hoạt động gần đây</Text>
-          <Pressable onPress={() => s.setActiveTab('finance-cashbook')} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Pressable onPress={() => open('finance-cashbook')} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <Text style={{ fontSize: 12, fontWeight: '500', color: C.slate500 }}>Xem sổ thu chi</Text>
             <ChevronRight size={14} color={C.slate500} />
           </Pressable>

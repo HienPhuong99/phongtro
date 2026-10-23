@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AlertTriangle, Clock, Plus, Wallet } from 'lucide-react-native';
 import { useStore } from '../lib/store';
@@ -13,9 +13,9 @@ const TITLES: Record<string, { title: string; sub: string }> = {
   'finance-deposits': { title: 'Cọc phải trả lại', sub: 'Tiền cọc đang cầm của khách, và những khoản đã tới lúc phải chuyển trả.' },
 };
 
-export function Finance() {
+export function Finance({ initial }: { initial: NavTab }) {
   const s = useStore();
-  const tab = s.activeTab;
+  const [tab, setTab] = useState<NavTab>(TITLES[initial] ? initial : 'finance-debts');
   const head = TITLES[tab] || TITLES['finance-debts'];
   const fundBalance = (method: CashTransaction['method']) =>
     s.transactions.filter((t) => t.method === method).reduce((x, t) => x + (t.type === 'income' ? t.amount : -t.amount), 0);
@@ -37,7 +37,7 @@ export function Finance() {
           ] as { id: NavTab; label: string }[]
         ).filter((t) => s.canViewReports || t.id === 'finance-cashbook' || t.id === 'finance-debts')}
         value={tab}
-        onChange={s.setActiveTab}
+        onChange={setTab}
       />
 
       {tab === 'finance-debts' && (

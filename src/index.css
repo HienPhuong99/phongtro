@@ -89,6 +89,80 @@ button:active:not(:disabled) {
   transition-duration: 80ms;
 }
 
+/* Danh sách xổ xuống của <select>: thẻ bo tròn, mục chọn kiểu viên thuốc (Chrome 135+; trình duyệt cũ giữ kiểu gốc) */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+  select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  select::picker-icon {
+    color: #94a3b8;
+    transition: rotate 250ms var(--spring);
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+  }
+  ::picker(select) {
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
+    opacity: 0;
+    translate: 0 -6px;
+    transition: opacity 180ms ease-out, translate 300ms var(--spring), overlay 180ms allow-discrete, display 180ms allow-discrete;
+  }
+  ::picker(select):popover-open {
+    opacity: 1;
+    translate: 0 0;
+  }
+  @starting-style {
+    ::picker(select):popover-open {
+      opacity: 0;
+      translate: 0 -6px;
+    }
+  }
+  select option {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+  }
+  select option:hover,
+  select option:focus-visible {
+    background: #f1f5f9;
+    outline: none;
+  }
+  select option:checked {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+  select option::checkmark {
+    color: #2563eb;
+  }
+  html.dark ::picker(select) {
+    background: var(--card);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  html.dark select option {
+    color: #e2e8f0;
+  }
+  html.dark select option:hover,
+  html.dark select option:checked {
+    background: rgba(255, 255, 255, 0.08);
+    color: #93c5fd;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-enter,
   .fixed.inset-0,

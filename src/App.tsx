@@ -6047,7 +6047,7 @@ export function App() {
           <div
             role="region"
             aria-label="Thông báo bản demo"
-            className="bg-amber-50 border-b border-amber-200 px-4 lg:px-8 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2"
+            className="mx-4 lg:mx-8 mt-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-sm px-4 py-2.5 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2"
           >
             <div>
               <strong>Bản demo.</strong> Dữ liệu chỉ lưu trên trình duyệt này. Không nhập họ tên, SĐT hay
@@ -6082,7 +6082,7 @@ export function App() {
           <div
             role="region"
             aria-label="Thông báo bản demo"
-            className="bg-teal-50 border-b border-teal-200 px-4 lg:px-8 py-2 text-xs text-teal-900 flex flex-wrap items-center justify-between gap-2"
+            className="mx-4 lg:mx-8 mt-3 rounded-2xl bg-teal-50 border border-teal-200 shadow-sm px-4 py-2.5 text-xs text-teal-900 flex flex-wrap items-center justify-between gap-2"
           >
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-teal-700 shrink-0" />

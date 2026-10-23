@@ -321,7 +321,7 @@ function ModeBanner({ topInset }: { topInset: number }) {
 
   if (s.isDemoMode) {
     return (
-      <View style={{ paddingTop: topInset, backgroundColor: C.amber50, borderBottomWidth: 1, borderBottomColor: C.amber200 }}>
+      <View style={{ paddingTop: topInset }}><View style={[styles.banner, { backgroundColor: C.amber50, borderColor: C.amber200 }]}>
         <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
           <Text style={{ fontSize: 12, color: C.amber900 }}>
             <Text style={{ fontWeight: '700' }}>Bản demo.</Text> Dữ liệu chỉ lưu trên điện thoại này. Không nhập họ tên, SĐT hay CCCD của khách thuê thật.
@@ -333,6 +333,7 @@ function ModeBanner({ topInset }: { topInset: number }) {
           </View>
         </View>
       </View>
+      </View>
     );
   }
 
@@ -340,7 +341,7 @@ function ModeBanner({ topInset }: { topInset: number }) {
   const statusColor = st === 'error' || st === 'conflict' ? C.rose700 : st === 'offline' ? C.amber700 : '#134E4A';
   const role = s.cloudCtx && s.cloudCtx.role !== 'owner' ? (s.cloudCtx.role === 'staff' ? ' · Tài khoản phụ (ghi số, thu tiền)' : ' · Chỉ xem') : '';
   return (
-    <View style={{ paddingTop: topInset, backgroundColor: '#F0FDFA', borderBottomWidth: 1, borderBottomColor: '#99F6E4' }}>
+    <View style={{ paddingTop: topInset }}><View style={[styles.banner, { backgroundColor: '#F0FDFA', borderColor: '#99F6E4' }]}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
           <ShieldCheck size={16} color="#0F766E" />
@@ -369,10 +370,12 @@ function ModeBanner({ topInset }: { topInset: number }) {
         </View>
       </View>
     </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  banner: { marginHorizontal: 12, marginTop: 8, borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
   topbar: {
     marginHorizontal: 12,
     marginTop: 12,

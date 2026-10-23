@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { AlertTriangle, Car, CheckCircle2, Clock, FileText, Plus, Users, Wallet } from 'lucide-react-native';
+import { Alert, Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { AlertTriangle, Car, CheckCircle2, Clock, FileText, IdCard, Plus, Trash2, Users, Wallet } from 'lucide-react-native';
 import { useStore } from '../lib/store';
 import { formatVND, removeAccents } from '../lib/shared';
 import { C } from '../lib/theme';
@@ -25,6 +25,7 @@ export function Tenants() {
       <View>
         <Text style={T.h1}>Khách thuê</Text>
         <Text style={T.sub}>{sub === 'tenants' ? 'Danh sách khách, dùng khi khai báo tạm trú.' : 'Danh sách xe của khách đang thuê.'}</Text>
+        <Btn tone="soft" icon={FileText} label="Khai báo tạm trú (CT01)" style={{ alignSelf: 'flex-start', marginTop: 12 }} onPress={() => s.setModal({ kind: 'tempResidence' })} />
       </View>
       <View style={{ gap: 12 }}>
         <SubTabs
@@ -84,6 +85,27 @@ export function Tenants() {
                       style={{ borderRadius: 8 }}
                     />
                     {isRep && stats.debt > 0 && <Text style={[T.num, { fontSize: 12, fontWeight: '700', color: C.rose600 }]}>Nợ {formatVND(stats.debt)}</Text>}
+                    <Row style={{ gap: 14 }}>
+                      <Pressable
+                        hitSlop={8}
+                        accessibilityLabel={t.hasCccdPhoto ? 'Bỏ đánh dấu đã chụp CCCD' : 'Đánh dấu đã chụp CCCD'}
+                        onPress={() => s.toggleCccdPhoto(t.id)}
+                      >
+                        <IdCard size={16} color={t.hasCccdPhoto ? C.emerald600 : C.slate400} />
+                      </Pressable>
+                      <Pressable
+                        hitSlop={8}
+                        accessibilityLabel={`Xóa khách ${t.name}`}
+                        onPress={() =>
+                          Alert.alert('Xóa khách?', `Xóa khách ${t.name} (phòng ${t.roomCode})?`, [
+                            { text: 'Huỷ', style: 'cancel' },
+                            { text: 'Xóa', style: 'destructive', onPress: () => s.deleteTenant(t.id) },
+                          ])
+                        }
+                      >
+                        <Trash2 size={16} color={C.slate400} />
+                      </Pressable>
+                    </Row>
                   </View>
                 </ListRow>
               );
@@ -139,7 +161,9 @@ export function Contracts() {
             {active.length} / {s.contracts.length} hợp đồng
           </Text>
         </View>
-        <Btn icon={Plus} label="Tạo hợp đồng mới" style={{ alignSelf: 'flex-start' }} onPress={() => s.setModal({ kind: 'contract', roomCode: s.vacantRooms[0]?.code })} />
+        {s.canViewReports && (
+          <Btn icon={Plus} label="Tạo hợp đồng mới" style={{ alignSelf: 'flex-start' }} onPress={() => s.setModal({ kind: 'contract', roomCode: s.vacantRooms[0]?.code })} />
+        )}
       </View>
       <ChipRow>
         {[
@@ -181,6 +205,7 @@ export function Contracts() {
             <View style={{ alignItems: 'flex-end', gap: 4 }}>
               <Text style={[T.num, { fontSize: 12, fontWeight: '700', color: C.slate900 }]}>{formatVND(c.rentAmount)}</Text>
               <Text style={[T.xxs, T.num]}>Cọc {formatVND(c.depositAmount)}</Text>
+              {c.status === 'active' && s.canViewReports && <Btn small tone="danger" label="Trả phòng" onPress={() => s.setModal({ kind: 'moveOut', contract: c })} />}
             </View>
           </ListRow>
         ))}

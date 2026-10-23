@@ -136,9 +136,19 @@ function InvoiceRow({ inv }: { inv: Invoice }) {
               <Text style={{ fontSize: 11, fontWeight: '600', color: C.blue700 }}>Nháp — điền chỉ số</Text>
             </Pressable>
           ) : (
-            <Pressable onPress={() => s.setModal({ kind: 'invoice', invoice: inv })} hitSlop={6}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: C.blue600 }}>{inv.code}</Text>
-            </Pressable>
+            <Row style={{ gap: 6 }}>
+              <Pressable onPress={() => s.setModal({ kind: 'invoice', invoice: inv })} hitSlop={6}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: C.blue600 }}>{inv.code}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Sửa hóa đơn ${inv.code}`}
+                onPress={() => s.setModal({ kind: 'editInvoice', invoice: inv })}
+                hitSlop={6}
+                style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: C.slate200 }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '600', color: C.slate500 }}>Sửa</Text>
+              </Pressable>
+            </Row>
           )}
         </Row>
       </View>

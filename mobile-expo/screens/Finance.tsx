@@ -1,6 +1,6 @@
 import React from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { AlertTriangle, Clock, Wallet } from 'lucide-react-native';
+import { AlertTriangle, Clock, Plus, Wallet } from 'lucide-react-native';
 import { useStore } from '../lib/store';
 import { formatVND, type CashTransaction, type NavTab } from '../lib/shared';
 import { C } from '../lib/theme';
@@ -28,12 +28,14 @@ export function Finance() {
         <Text style={T.sub}>{head.sub}</Text>
       </View>
       <SubTabs<NavTab>
-        tabs={[
-          { id: 'finance-cashbook', label: 'Sổ thu chi' },
-          { id: 'finance-funds', label: 'Quỹ' },
-          { id: 'finance-debts', label: 'Công nợ' },
-          { id: 'finance-deposits', label: 'Cọc phải trả' },
-        ]}
+        tabs={(
+          [
+            { id: 'finance-cashbook', label: 'Sổ thu chi' },
+            { id: 'finance-funds', label: 'Quỹ' },
+            { id: 'finance-debts', label: 'Công nợ' },
+            { id: 'finance-deposits', label: 'Cọc phải trả' },
+          ] as { id: NavTab; label: string }[]
+        ).filter((t) => s.canViewReports || t.id === 'finance-cashbook' || t.id === 'finance-debts')}
         value={tab}
         onChange={s.setActiveTab}
       />
@@ -158,6 +160,7 @@ export function Finance() {
       {tab === 'finance-cashbook' && (
         <Card style={{ gap: 8 }}>
           <Text style={T.h2}>Nhật ký Sổ thu chi ({s.transactions.length} bút toán)</Text>
+          <Btn icon={Plus} label="Ghi khoản chi" style={{ alignSelf: 'flex-start' }} onPress={() => s.setModal({ kind: 'expense' })} />
           {s.transactions.map((tx) => (
             <ListRow key={tx.id} flat>
               <View style={{ flex: 1, gap: 2 }}>

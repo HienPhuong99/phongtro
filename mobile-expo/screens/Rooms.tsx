@@ -32,7 +32,9 @@ export function Rooms() {
             {s.currentProperty.name} · {propertyRooms.length} phòng, {occupiedRooms.length} đang thuê, {vacantRooms.length} trống
           </Text>
         </View>
+        {s.canViewReports && (
         <Row style={{ gap: 8, flexWrap: 'wrap' }}>
+          <Btn tone="green" icon={Plus} label="Thêm phòng" onPress={() => s.setModal({ kind: 'addRoom' })} />
           <Btn
             tone="soft"
             icon={Pencil}
@@ -47,6 +49,7 @@ export function Rooms() {
             onPress={() => s.setModal({ kind: 'contract', roomCode: vacantRooms[0]?.code })}
           />
         </Row>
+        )}
       </View>
 
       <View style={{ gap: 12 }}>
@@ -78,7 +81,13 @@ export function Rooms() {
         />
       </View>
 
-      {view === 'floor' ? (
+      {propertyRooms.length === 0 ? (
+        <Card style={{ gap: 12, alignItems: 'center', borderStyle: 'dashed', borderColor: C.slate300 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: C.slate900 }}>{s.currentProperty.name} chưa có phòng nào</Text>
+          <Text style={[T.xs, { color: C.slate500, textAlign: 'center' }]}>Thêm phòng trước, sau đó lập hợp đồng và ghi điện nước.</Text>
+          {s.canViewReports && <Btn icon={Plus} label="Thêm phòng đầu tiên" onPress={() => s.setModal({ kind: 'addRoom' })} />}
+        </Card>
+      ) : view === 'floor' ? (
         <Card style={{ gap: 20 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {[

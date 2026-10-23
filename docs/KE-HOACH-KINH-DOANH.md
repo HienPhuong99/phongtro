@@ -391,6 +391,7 @@ Giả định: 1 người, bán thời gian khoảng 20–25 giờ/tuần, code 
 - [x] Sửa các lỗi demo trước buổi phỏng vấn đầu tiên (nhóm A + B, [AI-CHAT.md](AI-CHAT.md) #10–#13), triển khai Web và Apps Script `@15` (19/10).
 - [ ] Đọc [hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md) và tập đi một vòng demo (mục 9 của hướng dẫn) trước buổi phỏng vấn đầu tiên.
 - [ ] Tạo project Supabase (Singapore) trước 01/11. Chỉ `anon key` được nằm trong code web; `service_role key` chỉ để ở máy bạn cho script nhập liệu, không đặt tên bắt đầu bằng `VITE_`.
+- [ ] Test phân quyền theo khu trên web live (đã có migration `20261023000000`, test tự động đạt; nhật ký thao tác và khoá gói đã test live 23/10): đăng ký thêm 1 email phụ → tài khoản chủ trọ vào Cài đặt cấp quyền email đó ở **1 khu** → đăng nhập email phụ: chỉ thấy đúng khu đó, không thấy khách/CCCD khu khác → sửa 1 hóa đơn → quay lại tài khoản chủ: dữ liệu khu khác còn nguyên, Cài đặt › Nhật ký thao tác có dòng của email phụ.
 
 ---
 

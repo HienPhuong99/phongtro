@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AlertTriangle, LayoutGrid, Pencil, Plus, Wallet } from 'lucide-react-native';
 import { useStore } from '../lib/store';
+import { useOpen } from '../lib/nav';
 import { formatVND } from '../lib/shared';
 import { C } from '../lib/theme';
 import { Badge, Between, Btn, Card, Chip, ChipRow, Kpi, Row, SubTabs, T } from '../lib/ui';
 
 export function Rooms() {
   const s = useStore();
+  const open = useOpen();
   const { propertyRooms, occupiedRooms, vacantRooms, maintenanceRooms } = s;
   const [view, setView] = useState<'floor' | 'list'>('floor');
   const [filter, setFilter] = useState('all');
@@ -127,7 +129,7 @@ export function Rooms() {
                         else if (isMaint) s.setModal({ kind: 'meter', roomCode: room.code });
                         else {
                           s.setInvoiceMonth(s.nextMonth);
-                          s.setActiveTab('invoices');
+                          open('invoices');
                         }
                       }}
                       style={({ pressed }) => [

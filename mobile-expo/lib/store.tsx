@@ -11,7 +11,6 @@ import {
   FifoAllocatedItem,
   Invoice,
   LocalCloudCache,
-  NavTab,
   Property,
   Room,
   RoomPriceUpdateItem,
@@ -124,8 +123,6 @@ function useAppState() {
   const [allInvoices, setInvoices] = useState<Invoice[]>(SEED_INVOICES);
   const [allTransactions, setTransactions] = useState<CashTransaction[]>(SEED_TRANSACTIONS);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('prop-binh-an');
-  const [activeTab, setActiveTabState] = useState<NavTab>('overview');
-  const [history, setHistory] = useState<NavTab[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [demoLoaded, setDemoLoaded] = useState(false);
@@ -439,17 +436,6 @@ function useAppState() {
     const updated = { ...inv, publicToken: token };
     setInvoices((prev) => prev.map((i) => (i.id === inv.id ? updated : i)));
     return updated;
-  };
-
-  const setActiveTab = (tab: NavTab) => {
-    if (tab === activeTab) return;
-    setHistory((h) => [...h, activeTab]);
-    setActiveTabState(tab);
-  };
-  const goBack = () => {
-    const prev = history[history.length - 1];
-    setHistory((h) => h.slice(0, -1));
-    setActiveTabState(prev ?? 'overview');
   };
 
   // Tài khoản phụ: không xem báo cáo/lợi nhuận/quỹ, chỉ thấy cơ sở được cấp quyền
@@ -866,9 +852,6 @@ function useAppState() {
     selectedPropertyId,
     setSelectedPropertyId,
     currentProperty,
-    activeTab,
-    setActiveTab,
-    goBack,
     modal,
     setModal,
     toast,

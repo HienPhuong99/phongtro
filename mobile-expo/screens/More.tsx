@@ -3,6 +3,7 @@ import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { ArrowDownRight, ArrowUpRight, ChevronRight, Copy, LayoutGrid, RotateCcw, TrendingUp, UserPlus } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
+import { useOpen } from '../lib/nav';
 import { formatVND } from '../lib/shared';
 import { C } from '../lib/theme';
 import { Badge, Bar, Between, Btn, Card, Field, Kpi, Row, Select, T } from '../lib/ui';
@@ -10,6 +11,7 @@ import { CashflowChart } from './Overview';
 
 export function Calendar() {
   const s = useStore();
+  const open = useOpen();
   return (
     <View style={{ gap: 20 }}>
       <View>
@@ -24,7 +26,7 @@ export function Calendar() {
         </Card>
       )}
       {s.calendarEvents.map((ev) => (
-        <Card key={ev.id} onPress={() => s.setActiveTab(ev.actionTab)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
+        <Card key={ev.id} onPress={() => open(ev.actionTab)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
           <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.blue50, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 14, fontWeight: '800', color: C.blue700 }}>{ev.dayOfMonth}</Text>
             <Text style={{ fontSize: 10, fontWeight: '500', color: C.blue700 }}>{ev.monthYear}</Text>

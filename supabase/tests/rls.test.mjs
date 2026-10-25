@@ -121,7 +121,7 @@ test('Tài khoản phụ: chỉ đọc/ghi đúng khu được cấp qua RPC, kh
     assert.deepEqual(loaded.state.properties.map((p) => p.id), ['p1']);
     assert.deepEqual(loaded.state.tenants, []);
     // Thử chèn dữ liệu khu p2 và sửa hóa đơn p1
-    const next = { ...loaded.state, invoices: [{ ...loaded.state.invoices[0], totalAmount: 1 }], tenants: [{ id: 'x', propertyId: 'p2' }] };
+    const next = { ...loaded.state, invoices: [{ ...loaded.state.invoices[0], totalAmount: 1 }], tenants: [{ id: 'x', propertyId: 'p2' }], properties: [{ ...loaded.state.properties[0], bankAccount: '9999-STAFF' }] };
     const saved = (await db.query('select public.staff_save_state($1, $2, $3) as v', [A, next, ver])).rows[0].v;
     assert.ok(saved);
     // Phiên bản cũ -> xung đột
@@ -134,6 +134,8 @@ test('Tài khoản phụ: chỉ đọc/ghi đúng khu được cấp qua RPC, kh
   assert.equal(st.invoices[0].totalAmount, 1);
   assert.deepEqual(st.tenants.map((t) => t.id), ['k2']);
   assert.deepEqual(st.properties.map((p) => p.id).sort(), ['p1', 'p2']);
+  // Tài khoản phụ không đổi được số tài khoản nhận tiền của khu
+  assert.equal(st.properties.find((p) => p.id === 'p1').bankAccount, '0123');
   await as(db, V, async () => {
     assert.equal((await db.query('select public.staff_load_state($1) as r', [A])).rows[0].r.state.properties.length, 1);
     await assert.rejects(db.query('select public.staff_save_state($1, $2, now())', [A, {}]), /FORBIDDEN/);
@@ -204,6 +206,12 @@ test('"Tôi đã chuyển": ghi lời báo cho đúng chủ trọ, chặn ghi ch
   });
   await as(db, B, async () => assert.equal((await db.query('select * from public.invoice_payment_reports')).rows.length, 0));
   await as(db, S, async () => assert.equal((await db.query('select * from public.invoice_payment_reports')).rows.length, 3));
+  // Lời báo của khu p2: tài khoản phụ (chỉ được cấp p1) không thấy, không sửa được
+  await db.query(`insert into public.invoice_payment_reports (owner_id, public_token, invoice_code, property_id, amount) values ($1, 'x', 'HD-9', 'p2', 1)`, [A]);
+  await as(db, S, async () => {
+    assert.equal((await db.query("select * from public.invoice_payment_reports where property_id = 'p2'")).rows.length, 0);
+    assert.equal((await db.query("update public.invoice_payment_reports set status = 'confirmed' where property_id = 'p2'")).affectedRows, 0);
+  });
 });
 
 test('Xoá tài khoản: xoá sạch dữ liệu của chính mình, không đụng B; khách vô danh không gọi được', async () => {

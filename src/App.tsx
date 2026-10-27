@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, useId } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import {
   BarChart3,
@@ -188,43 +188,6 @@ const BrandLogoIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8'
     />
   </svg>
 );
-
-// Khối cầu / bông hoa 3D giả lập bằng gradient SVG (không cần ảnh ngoài)
-const ORB_TONES = {
-  violet: ['#F5F3FF', '#A78BFA', '#5B21B6'],
-  emerald: ['#ECFDF5', '#34D399', '#065F46'],
-  slate: ['#E4E4E7', '#52525B', '#09090B'],
-} as const;
-const Orb: React.FC<{ tone?: keyof typeof ORB_TONES; petals?: boolean; className?: string }> = ({
-  tone = 'violet',
-  petals = false,
-  className = '',
-}) => {
-  const id = `orb${useId().replace(/:/g, '')}`;
-  const [hi, mid, lo] = ORB_TONES[tone];
-  return (
-    <svg viewBox="0 0 200 200" className={className} aria-hidden="true">
-      <defs>
-        <radialGradient id={id} cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor={hi} />
-          <stop offset="50%" stopColor={mid} />
-          <stop offset="100%" stopColor={lo} />
-        </radialGradient>
-      </defs>
-      {petals ? (
-        [0, 30, 60, 90, 120, 150].map((a) => (
-          <ellipse key={a} cx="100" cy="100" rx="92" ry="30" transform={`rotate(${a} 100 100)`} fill={`url(#${id})`} opacity="0.6" />
-        ))
-      ) : (
-        <>
-          <ellipse cx="100" cy="176" rx="54" ry="8" fill="#000" opacity="0.12" />
-          <path d="M100 28c34 0 66 22 66 64 0 40-28 70-66 70s-68-26-68-66c0-42 32-68 68-68z" fill={`url(#${id})`} />
-          <ellipse cx="78" cy="62" rx="20" ry="11" fill="#fff" opacity="0.45" transform="rotate(-25 78 62)" />
-        </>
-      )}
-    </svg>
-  );
-};
 
 // Khung xương khi chuyển màn: khối tím cho phần nổi bật, khối xám cho các thẻ còn lại
 const PageSkeleton: React.FC<{ stacked?: boolean }> = ({ stacked = false }) => (
@@ -1828,16 +1791,16 @@ export function App() {
         label: 'Tiền điện',
         amount: octElecSum,
         pct: Math.round((octElecSum / octBreakdownTotal) * 100),
-        color: '#F59E0B',
-        bgClass: 'bg-amber-500',
+        color: '#18181B',
+        bgClass: 'bg-zinc-900',
         badgeBg: 'bg-amber-50 text-amber-700',
       },
       {
         label: 'Tiền nước',
         amount: octWaterSum,
         pct: Math.round((octWaterSum / octBreakdownTotal) * 100),
-        color: '#06B6D4',
-        bgClass: 'bg-cyan-500',
+        color: '#A78BFA',
+        bgClass: 'bg-[#A78BFA]',
         badgeBg: 'bg-cyan-50 text-cyan-700',
       },
       {
@@ -1850,8 +1813,8 @@ export function App() {
             Math.round((octElecSum / octBreakdownTotal) * 100) -
             Math.round((octWaterSum / octBreakdownTotal) * 100)
         ),
-        color: '#10B981',
-        bgClass: 'bg-emerald-500',
+        color: '#DDD6FE',
+        bgClass: 'bg-[#DDD6FE]',
         badgeBg: 'bg-emerald-50 text-emerald-700',
       },
     ];
@@ -1976,7 +1939,7 @@ export function App() {
       <div className="space-y-6 ui-enter">
         {/* Phòng vừa báo "Tôi đã chuyển" (trang hóa đơn người thuê) */}
         {paymentReports.filter((r) => r.property_id === currentProperty.id).length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-xs" data-testid="payment-reports">
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 space-y-2 text-xs" data-testid="payment-reports">
             <div className="font-bold text-amber-900">
               Phòng vừa báo đã chuyển tiền — đối chiếu biến động số dư của bạn rồi bấm Xác nhận
             </div>
@@ -2020,7 +1983,7 @@ export function App() {
 
         {/* P1 #5: Tổng quan tất cả khu (chỉ hiện khi có từ 2 khu) */}
         {visibleProperties.length > 1 && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs text-xs" data-testid="all-properties">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 text-xs" data-testid="all-properties">
             <div className="font-bold text-slate-800 mb-2">Tất cả khu · kỳ {periodLabel}</div>
             <div className="overflow-x-auto">
               <table className="w-full tabular-nums">
@@ -2068,8 +2031,7 @@ export function App() {
           <div className="flex flex-col gap-5 min-w-0">
             {/* Hàng 1: Banner chào */}
             <div className="relative overflow-hidden rounded-3xl p-6 bg-gradient-to-r from-[#DFD6FF] to-[#C9BAFF]">
-              <Orb petals className="absolute -right-16 -top-14 w-56 h-56 sm:-right-10 sm:-top-12 sm:w-64 sm:h-64 opacity-60 sm:opacity-100 pointer-events-none" />
-              <div className="relative sm:max-w-[75%]">
+              <div className="relative">
                 <h1 className="text-xl font-bold tracking-tight text-[#111827]">
                   {greeting}, cùng quản lý {currentProperty.name}
                 </h1>
@@ -2171,6 +2133,7 @@ export function App() {
                 className="text-left bg-white rounded-3xl border border-slate-100 shadow-sm p-5 hover:border-blue-200 transition flex justify-between items-center gap-4"
               >
                 <div className="min-w-0">
+                  <h2 className="font-semibold text-sm text-slate-900 mb-3">Tiến độ thu</h2>
                   <div className="text-3xl font-bold text-slate-900 tabular-nums">{collectionRatePct}%</div>
                   <p className="text-xs text-slate-400 mt-2 leading-relaxed">
                     Đã thu {formatVND(octoberPaidTotal)} / {formatVND(octoberReceivableTotal)} kỳ {periodLabel}
@@ -2249,9 +2212,302 @@ export function App() {
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="w-28 shrink-0 rounded-2xl bg-gradient-to-br from-[#D1FAE5] to-[#A7F3D0] flex items-center justify-center">
-                  <Orb tone="emerald" className="w-24 h-24" />
+                {quickCollectInvoice && (
+                  <div className="w-32 shrink-0 rounded-2xl bg-blue-50 p-3 flex flex-col justify-end">
+                    <div className="text-[10px] text-slate-500">Còn nợ</div>
+                    <div className="text-base font-bold text-blue-700 tabular-nums leading-tight">
+                      {formatVND(quickCollectInvoice.totalAmount - quickCollectInvoice.paidAmount)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Kỳ {quickCollectInvoice.billingMonth.split('-').reverse().join('/')}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          <div
+            className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <span>Biểu đồ Dòng tiền & Lợi nhuận qua các kỳ</span>
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Rê chuột vào từng tháng để xem chi tiết Thu · Chi · Lợi nhuận ròng
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-600" /> Doanh thu
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-zinc-900" /> Chi phí
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#A78BFA]" /> Lợi nhuận
+                </span>
+              </div>
+            </div>
+
+            <div className="relative h-56 w-full pt-2">
+              <svg viewBox="0 0 720 205" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="dashIncomeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7C3AED" />
+                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.85" />
+                  </linearGradient>
+                  <linearGradient id="dashProfitArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#A78BFA" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.01" />
+                  </linearGradient>
+                </defs>
+
+                {/* Đường lưới ngang */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                  const y = 170 - ratio * 140;
+                  const valLabel = Math.round((dashboardMaxChart * ratio) / 1000000);
+                  return (
+                    <g key={idx}>
+                      <line
+                        x1="46"
+                        y1={y}
+                        x2="690"
+                        y2={y}
+                        stroke="#F1F5F9"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="38"
+                        y={y + 4}
+                        textAnchor="end"
+                        className="fill-slate-400 text-[10px] tabular-nums"
+                      >
+                        {valLabel === 0 ? '0' : `${valLabel}tr`}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Vùng màu dưới đường lợi nhuận */}
+                <polygon
+                  points={[
+                    '115,170',
+                    ...monthlyChart.map((pt, i) => {
+                      const x = 115 + i * 130;
+                      const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                      return `${x},${y}`;
+                    }),
+                    `${115 + (monthlyChart.length - 1) * 130},170`,
+                  ].join(' ')}
+                  fill="url(#dashProfitArea)"
+                />
+
+                {/* Cột Doanh thu & Chi phí */}
+                {monthlyChart.map((pt, i) => {
+                  const xCenter = 115 + i * 130;
+                  const incH = (pt.income / dashboardMaxChart) * 140;
+                  const expH = Math.max(4, (pt.expense / dashboardMaxChart) * 140);
+                  const isHovered = hoveredChartIdx === i;
+                  return (
+                    <g
+                      key={pt.month}
+                      onMouseEnter={() => setHoveredChartIdx(i)}
+                      onMouseLeave={() => setHoveredChartIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      {isHovered && (
+                        <rect
+                          x={xCenter - 38}
+                          y="20"
+                          width="76"
+                          height="152"
+                          rx="8"
+                          fill="#F8FAFC"
+                        />
+                      )}
+                      {/* Cột Thu */}
+                      <rect
+                        x={xCenter - 22}
+                        y={170 - incH}
+                        width="20"
+                        height={incH}
+                        rx="4"
+                        fill="url(#dashIncomeGrad)"
+                      />
+                      {/* Cột Chi */}
+                      <rect
+                        x={xCenter + 2}
+                        y={170 - expH}
+                        width="18"
+                        height={expH}
+                        rx="4"
+                        fill="#18181B"
+                      />
+                      {/* Giá trị tóm tắt trên đỉnh cột */}
+                      <text
+                        x={xCenter - 12}
+                        y={170 - incH - 5}
+                        textAnchor="middle"
+                        className="fill-blue-700 text-[9px] font-bold tabular-nums"
+                      >
+                        {(pt.income / 1000000).toFixed(1)}tr
+                      </text>
+                      {/* Nhãn trục X */}
+                      <text
+                        x={xCenter}
+                        y="190"
+                        textAnchor="middle"
+                        className="fill-slate-600 text-[10px] font-semibold tabular-nums"
+                      >
+                        {pt.month}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Đường biểu diễn Lợi nhuận */}
+                <polyline
+                  fill="none"
+                  stroke="#A78BFA"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={monthlyChart.map((pt, i) => {
+                    const x = 115 + i * 130;
+                    const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                    return `${x},${y}`;
+                  }).join(' ')}
+                />
+
+                {/* Điểm tròn Lợi nhuận */}
+                {monthlyChart.map((pt, i) => {
+                  const x = 115 + i * 130;
+                  const y = 170 - (pt.profit / dashboardMaxChart) * 140;
+                  return (
+                    <circle
+                      key={pt.month}
+                      cx={x}
+                      cy={y}
+                      r={hoveredChartIdx === i ? '5.5' : '4'}
+                      className="fill-[#A78BFA] stroke-white stroke-2 transition-all"
+                    />
+                  );
+                })}
+              </svg>
+
+              {hoveredChartIdx !== null && (
+                <div className="absolute top-1 right-2 bg-slate-900/95 text-white rounded-xl px-3.5 py-2 text-xs shadow-xl space-y-0.5 pointer-events-none">
+                  <div className="font-bold text-slate-200">
+                    Kỳ {monthlyChart[hoveredChartIdx].month}
+                  </div>
+                  <div className="text-violet-300 tabular-nums">
+                    Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
+                  </div>
+                  <div className="text-zinc-300 tabular-nums">
+                    Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
+                  </div>
+                  <div className="text-[#C4B5FD] font-bold tabular-nums">
+                    Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Cơ cấu doanh thu hóa đơn tháng (Stacked Progress Bar) */}
+            <div className="pt-4 mt-2 border-t border-slate-100 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800">
+                  Cơ cấu khoản thu hóa đơn kỳ {periodLabel}
+                </span>
+                <span className="text-slate-500 font-semibold tabular-nums">
+                  Tổng lập HĐ: {formatVND(octoberReceivableTotal)}
+                </span>
+              </div>
+
+              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden flex gap-0.5">
+                {revenueSegments.map((seg) => (
+                  <div
+                    key={seg.label}
+                    className={`${seg.bgClass} h-full transition-all`}
+                    style={{ width: `${Math.max(4, seg.pct)}%` }}
+                    title={`${seg.label}: ${formatVND(seg.amount)} (${seg.pct}%)`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+                {revenueSegments.map((seg) => (
+                  <div
+                    key={seg.label}
+                    className="p-3 rounded-xl sk-b text-[11px]"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium truncate">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: seg.color }}
+                        />
+                        <span className="truncate">{seg.label}</span>
+                      </span>
+                      <span className="font-bold text-slate-500">{seg.pct}%</span>
+                    </div>
+                    <div className="font-extrabold text-slate-900 mt-0.5 tabular-nums">
+                      {formatVND(seg.amount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+            {/* Hoạt động gần đây */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-semibold text-sm text-slate-900">Hoạt động gần đây</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceExpanded(true);
+                    setActiveTab('finance-cashbook');
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Xem sổ thu chi
+                </button>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {transactions.slice(0, 4).map((tx) => (
+                  <div key={tx.id} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                          tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                        }`}
+                      >
+                        {tx.type === 'income' ? (
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        ) : (
+                          <ArrowDownRight className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-900 truncate">
+                          {tx.category}
+                          {tx.roomCode ? <span className="text-slate-400 font-normal"> · {tx.roomCode}</span> : null}
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {tx.date} · {tx.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`text-xs font-bold shrink-0 tabular-nums ${
+                        tx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'
+                      }`}
+                    >
+                      {formatVND(tx.type === 'income' ? tx.amount : -tx.amount, tx.type === 'income')}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -2358,7 +2614,7 @@ export function App() {
                 <p className="text-xs text-slate-500 mt-3">Đã kín phòng, chưa có phòng trống.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 mt-3">
-                  {vacantRooms.slice(0, 2).map((r, i) => (
+                  {vacantRooms.slice(0, 2).map((r) => (
                     <button
                       key={r.id}
                       type="button"
@@ -2368,19 +2624,14 @@ export function App() {
                       }}
                       className="text-left group"
                     >
-                      <div
-                        className={`relative h-24 rounded-xl flex items-center justify-center overflow-hidden ${
-                          i % 2 === 0 ? 'bg-[#EDE9FE]' : 'bg-[#E4E4E7]'
-                        }`}
-                      >
-                        <Orb tone={i % 2 === 0 ? 'violet' : 'slate'} className="w-16 h-16 transition group-hover:scale-105" />
-                        <span className="absolute bottom-1.5 right-1.5 bg-zinc-900 text-white text-[10px] px-1.5 py-0.5 rounded tabular-nums">
+                      <div className="relative h-24 rounded-xl bg-blue-50 border border-transparent group-hover:border-blue-300 transition p-3 flex flex-col justify-between">
+                        <span className="text-[10px] text-slate-500">Tầng {r.floor}</span>
+                        <span className="text-2xl font-bold text-blue-700 tracking-tight">{r.code}</span>
+                        <span className="absolute bottom-2 right-2 bg-zinc-900 text-white text-[10px] px-1.5 py-0.5 rounded tabular-nums">
                           {formatVND(r.price)}
                         </span>
                       </div>
-                      <div className="text-xs font-medium text-slate-900 line-clamp-2 mt-2">
-                        Phòng {r.code} · Tầng {r.floor}
-                      </div>
+                      <div className="text-xs font-medium text-slate-900 mt-2 tabular-nums">Cọc {formatVND(r.deposit)}</div>
                       <div className="text-[10px] text-slate-400">Bấm để lập hợp đồng</div>
                     </button>
                   ))}
@@ -2432,308 +2683,8 @@ export function App() {
               );
             })()}
 
-            {/* Hoạt động gần đây */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold text-sm text-slate-900">Hoạt động gần đây</h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFinanceExpanded(true);
-                    setActiveTab('finance-cashbook');
-                  }}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  Xem sổ thu chi
-                </button>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {transactions.slice(0, 4).map((tx) => (
-                  <div key={tx.id} className="py-2.5 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                          tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                        }`}
-                      >
-                        {tx.type === 'income' ? (
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        ) : (
-                          <ArrowDownRight className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-slate-900 truncate">
-                          {tx.category}
-                          {tx.roomCode ? <span className="text-slate-400 font-normal"> · {tx.roomCode}</span> : null}
-                        </div>
-                        <div className="text-[11px] text-slate-400 truncate">
-                          {tx.date} · {tx.description}
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      className={`text-xs font-bold shrink-0 tabular-nums ${
-                        tx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'
-                      }`}
-                    >
-                      {formatVND(tx.type === 'income' ? tx.amount : -tx.amount, tx.type === 'income')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ROW BIỂU ĐỒ TRỰC QUAN: Biểu đồ Xu hướng Dòng tiền 5 tháng + Biểu đồ Tròn Donut Trạng thái & Cơ cấu Thu */}
-        <div
-          className={`grid grid-cols-1 ${
-            isMobilePreview ? 'gap-5' : 'xl:grid-cols-3 gap-6'
-          }`}
-        >
-          {/* Biểu đồ kết hợp Cột + Đường: Xu hướng Doanh thu · Chi phí · Lợi nhuận */}
-          <div
-            className={`bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between ${
-              isMobilePreview ? '' : 'xl:col-span-2'
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-blue-600" />
-                  <span>Biểu đồ Dòng tiền & Lợi nhuận qua các kỳ</span>
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Rê chuột vào từng tháng để xem chi tiết Thu · Chi · Lợi nhuận ròng
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-600" /> Doanh thu
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-500" /> Chi phí
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Lợi nhuận
-                </span>
-              </div>
-            </div>
-
-            <div className="relative h-56 w-full pt-2">
-              <svg viewBox="0 0 720 205" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="dashIncomeGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7C3AED" />
-                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.85" />
-                  </linearGradient>
-                  <linearGradient id="dashProfitArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10B981" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#10B981" stopOpacity="0.01" />
-                  </linearGradient>
-                </defs>
-
-                {/* Đường lưới ngang */}
-                {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
-                  const y = 170 - ratio * 140;
-                  const valLabel = Math.round((dashboardMaxChart * ratio) / 1000000);
-                  return (
-                    <g key={idx}>
-                      <line
-                        x1="46"
-                        y1={y}
-                        x2="690"
-                        y2={y}
-                        stroke="#F1F5F9"
-                        strokeWidth="1"
-                      />
-                      <text
-                        x="38"
-                        y={y + 4}
-                        textAnchor="end"
-                        className="fill-slate-400 text-[10px] tabular-nums"
-                      >
-                        {valLabel === 0 ? '0' : `${valLabel}tr`}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Vùng màu dưới đường lợi nhuận */}
-                <polygon
-                  points={[
-                    '115,170',
-                    ...monthlyChart.map((pt, i) => {
-                      const x = 115 + i * 130;
-                      const y = 170 - (pt.profit / dashboardMaxChart) * 140;
-                      return `${x},${y}`;
-                    }),
-                    `${115 + (monthlyChart.length - 1) * 130},170`,
-                  ].join(' ')}
-                  fill="url(#dashProfitArea)"
-                />
-
-                {/* Cột Doanh thu & Chi phí */}
-                {monthlyChart.map((pt, i) => {
-                  const xCenter = 115 + i * 130;
-                  const incH = (pt.income / dashboardMaxChart) * 140;
-                  const expH = Math.max(4, (pt.expense / dashboardMaxChart) * 140);
-                  const isHovered = hoveredChartIdx === i;
-                  return (
-                    <g
-                      key={pt.month}
-                      onMouseEnter={() => setHoveredChartIdx(i)}
-                      onMouseLeave={() => setHoveredChartIdx(null)}
-                      className="cursor-pointer"
-                    >
-                      {isHovered && (
-                        <rect
-                          x={xCenter - 38}
-                          y="20"
-                          width="76"
-                          height="152"
-                          rx="8"
-                          fill="#F8FAFC"
-                        />
-                      )}
-                      {/* Cột Thu */}
-                      <rect
-                        x={xCenter - 22}
-                        y={170 - incH}
-                        width="20"
-                        height={incH}
-                        rx="4"
-                        fill="url(#dashIncomeGrad)"
-                      />
-                      {/* Cột Chi */}
-                      <rect
-                        x={xCenter + 2}
-                        y={170 - expH}
-                        width="18"
-                        height={expH}
-                        rx="4"
-                        fill="#F59E0B"
-                      />
-                      {/* Giá trị tóm tắt trên đỉnh cột */}
-                      <text
-                        x={xCenter - 12}
-                        y={170 - incH - 5}
-                        textAnchor="middle"
-                        className="fill-blue-700 text-[9px] font-bold tabular-nums"
-                      >
-                        {(pt.income / 1000000).toFixed(1)}tr
-                      </text>
-                      {/* Nhãn trục X */}
-                      <text
-                        x={xCenter}
-                        y="190"
-                        textAnchor="middle"
-                        className="fill-slate-600 text-[10px] font-semibold tabular-nums"
-                      >
-                        {pt.month}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Đường biểu diễn Lợi nhuận */}
-                <polyline
-                  fill="none"
-                  stroke="#10B981"
-                  strokeWidth="2.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={monthlyChart.map((pt, i) => {
-                    const x = 115 + i * 130;
-                    const y = 170 - (pt.profit / dashboardMaxChart) * 140;
-                    return `${x},${y}`;
-                  }).join(' ')}
-                />
-
-                {/* Điểm tròn Lợi nhuận */}
-                {monthlyChart.map((pt, i) => {
-                  const x = 115 + i * 130;
-                  const y = 170 - (pt.profit / dashboardMaxChart) * 140;
-                  return (
-                    <circle
-                      key={pt.month}
-                      cx={x}
-                      cy={y}
-                      r={hoveredChartIdx === i ? '5.5' : '4'}
-                      className="fill-emerald-500 stroke-white stroke-2 transition-all"
-                    />
-                  );
-                })}
-              </svg>
-
-              {hoveredChartIdx !== null && (
-                <div className="absolute top-1 right-2 bg-slate-900/95 text-white rounded-xl px-3.5 py-2 text-xs shadow-xl space-y-0.5 pointer-events-none">
-                  <div className="font-bold text-slate-200">
-                    Kỳ {monthlyChart[hoveredChartIdx].month}
-                  </div>
-                  <div className="text-sky-300 tabular-nums">
-                    Thu: {formatVND(monthlyChart[hoveredChartIdx].income)}
-                  </div>
-                  <div className="text-amber-300 tabular-nums">
-                    Chi: {formatVND(monthlyChart[hoveredChartIdx].expense)}
-                  </div>
-                  <div className="text-emerald-300 font-bold tabular-nums">
-                    Lợi nhuận: {formatVND(monthlyChart[hoveredChartIdx].profit)}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Cơ cấu doanh thu hóa đơn tháng (Stacked Progress Bar) */}
-            <div className="pt-4 mt-2 border-t border-slate-100 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">
-                  Cơ cấu khoản thu hóa đơn kỳ {periodLabel}
-                </span>
-                <span className="text-slate-500 font-semibold tabular-nums">
-                  Tổng lập HĐ: {formatVND(octoberReceivableTotal)}
-                </span>
-              </div>
-
-              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden flex gap-0.5">
-                {revenueSegments.map((seg) => (
-                  <div
-                    key={seg.label}
-                    className={`${seg.bgClass} h-full transition-all`}
-                    style={{ width: `${Math.max(4, seg.pct)}%` }}
-                    title={`${seg.label}: ${formatVND(seg.amount)} (${seg.pct}%)`}
-                  />
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
-                {revenueSegments.map((seg) => (
-                  <div
-                    key={seg.label}
-                    className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 text-[11px]"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium truncate">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: seg.color }}
-                        />
-                        <span className="truncate">{seg.label}</span>
-                      </span>
-                      <span className="font-bold text-slate-500">{seg.pct}%</span>
-                    </div>
-                    <div className="font-extrabold text-slate-900 mt-0.5 tabular-nums">
-                      {formatVND(seg.amount)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Cột phải: Biểu đồ Tròn Donut Trạng thái Phòng + Sơ đồ Ô Phòng Nhanh */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between space-y-4">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between space-y-4">
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900">
@@ -2782,7 +2733,7 @@ export function App() {
                     cy="55"
                     r={donutRadius}
                     fill="none"
-                    stroke="#10B981"
+                    stroke="#C4B5FD"
                     strokeWidth="12"
                     strokeDasharray={`${vacDash} ${donutCircumference}`}
                     strokeDashoffset={-occDash}
@@ -2794,7 +2745,7 @@ export function App() {
                     cy="55"
                     r={donutRadius}
                     fill="none"
-                    stroke="#F43F5E"
+                    stroke="#18181B"
                     strokeWidth="12"
                     strokeDasharray={`${maintDash} ${donutCircumference}`}
                     strokeDashoffset={-(occDash + vacDash)}
@@ -2812,30 +2763,30 @@ export function App() {
               </div>
 
               <div className="flex-1 space-y-2 text-xs tabular-nums">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-blue-50/60 border border-blue-100">
+                <div className="flex items-center justify-between p-2.5 rounded-xl sk-b">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                     Đã thuê
                   </span>
-                  <span className="font-bold text-blue-700">
+                  <span className="font-bold text-slate-900">
                     {occupiedRooms.length} phòng
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                <div className="flex items-center justify-between p-2.5 rounded-xl sk-b">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#C4B5FD]" />
                     Trống
                   </span>
-                  <span className="font-bold text-emerald-700">
+                  <span className="font-bold text-slate-900">
                     {vacantRooms.length} phòng
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50/60 border border-rose-100">
+                <div className="flex items-center justify-between p-2.5 rounded-xl sk-b">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-zinc-900" />
                     Đang sửa chữa
                   </span>
-                  <span className="font-bold text-rose-700">
+                  <span className="font-bold text-slate-900">
                     {maintenanceRooms.length} phòng
                   </span>
                 </div>
@@ -2844,11 +2795,11 @@ export function App() {
 
             {/* Bản đồ nhiệt trạng thái từng phòng (Interactive Room Matrix) */}
             <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
                 <span className="font-semibold text-slate-700">
-                  Bản đồ nhanh {propertyRooms.length} phòng (Bấm để xem):
+                  Bản đồ nhanh {propertyRooms.length} phòng
                 </span>
-                <span>Xanh dương: Đang ở · Xanh lá: Trống</span>
+                <span>Tím: đang ở · Viền đứt: trống · Xám: đang sửa</span>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {propertyRooms.map((r) => {
@@ -2865,10 +2816,10 @@ export function App() {
                       onClick={() => setActiveTab('rooms')}
                       className={`p-2 rounded-xl border text-left transition flex flex-col justify-between ${
                         r.status === 'occupied'
-                          ? 'bg-blue-50/50 border-blue-200 hover:bg-blue-100/70'
+                          ? 'bg-blue-50 border-blue-100 hover:border-blue-300'
                           : r.status === 'vacant'
-                            ? 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/70'
-                            : 'bg-rose-50/70 border-rose-200 hover:bg-rose-100/70'
+                            ? 'bg-white border-dashed border-blue-300 hover:bg-blue-50'
+                            : 'bg-slate-100 border-slate-100 hover:border-slate-300'
                       }`}
                     >
                       <div className="flex items-center justify-between w-full">
@@ -2890,6 +2841,7 @@ export function App() {
                 })}
               </div>
             </div>
+          </div>
           </div>
         </div>
 

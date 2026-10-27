@@ -293,6 +293,41 @@ body {
   translate: 0 -50%;
   pointer-events: auto;
 }
+/* Áp phong cách V18 cho mọi màn (không sửa từng màn):
+   - tab gạch chân -> nhóm nút viên thuốc, mục đang chọn nền đen
+   - nút chính -> viên thuốc đen; thẻ viền rất nhạt + bóng mảnh; tiêu đề màn to hơn */
+:has(> button.border-b-2) {
+  border-bottom-width: 0 !important;
+  gap: 6px !important;
+  flex-wrap: wrap;
+}
+button.border-b-2 {
+  border-bottom-width: 0;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #f4f5f7;
+}
+button.border-b-2.border-blue-600 {
+  background: #18181b;
+  color: #fff;
+}
+html.dark button.border-b-2 { background: var(--card-2); }
+html.dark button.border-b-2.border-blue-600 { background: #7c3aed; color: #fff; }
+button.bg-blue-600 {
+  background-color: #18181b;
+  border-radius: 9999px;
+}
+button.bg-blue-600:hover:not(:disabled) { background-color: #27272a; }
+html.dark button.bg-blue-600 { background-color: #7c3aed; }
+html.dark button.bg-blue-600:hover:not(:disabled) { background-color: #6d28d9; }
+.shadow-2xs { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+html:not(.dark) .border-slate-200\/80,
+html:not(.dark) .border-slate-200\/90 { border-color: #eef0f3; }
+main h1.text-xl.text-slate-900 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  letter-spacing: -0.01em;
+}
 .sk-a { background: #dcd6f7; }
 .sk-b { background: #f1f3f5; }
 html.dark .sk-a { background: rgba(139, 92, 246, 0.28); }
